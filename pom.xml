@@ -1014,9 +1014,9 @@
 	</build>
 	<distributionManagement>
 		<repository>
-			<id>apache-releases</id>
-			<name>Apache Release Distribution Repository</name>
-			<url>https://repository.apache.org/service/local/staging/deploy/maven2</url>
+			<id>cayenne-unofficial</id>
+			<name>Cayenne Unofficial Releases @ ObjectStyle</name>
+			<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
 		</repository>
 	</distributionManagement>
 

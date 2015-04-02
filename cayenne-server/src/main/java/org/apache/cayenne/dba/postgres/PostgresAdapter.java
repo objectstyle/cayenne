@@ -19,12 +19,6 @@
 
 package org.apache.cayenne.dba.postgres;
 
-import java.sql.Types;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.access.translator.select.QualifierTranslator;
@@ -35,9 +29,9 @@ import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
-import org.apache.cayenne.dba.QuotingStrategy;
 import org.apache.cayenne.dba.JdbcAdapter;
 import org.apache.cayenne.dba.PkGenerator;
+import org.apache.cayenne.dba.QuotingStrategy;
 import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.map.DbAttribute;
@@ -46,6 +40,14 @@ import org.apache.cayenne.merge.MergerFactory;
 import org.apache.cayenne.query.Query;
 import org.apache.cayenne.query.SQLAction;
 import org.apache.cayenne.resource.ResourceLocator;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * DbAdapter implementation for <a href="http://www.postgresql.org">PostgreSQL
@@ -114,6 +116,23 @@ public class PostgresAdapter extends JdbcAdapter {
         }
 
         return super.buildAttribute(name, typeName, type, size, scale, allowNulls);
+    }
+
+    @Override
+    public void bindParameter(PreparedStatement statement, Object object, int pos, int sqlType, int scale) throws SQLException, Exception {
+        super.bindParameter(statement, object, pos, mapNTypes(sqlType), scale);
+    }
+
+    private int mapNTypes(int sqlType) {
+        switch (sqlType) {
+            case Types.NCHAR : return Types.CHAR;
+            case Types.NCLOB : return Types.CLOB;
+            case Types.NVARCHAR : return Types.VARCHAR;
+            case Types.LONGNVARCHAR : return Types.LONGVARCHAR;
+
+            default:
+                return sqlType;
+        }
     }
 
     /**
@@ -234,4 +253,10 @@ public class PostgresAdapter extends JdbcAdapter {
     public MergerFactory mergerFactory() {
         return new PostgresMergerFactory();
     }
+
+    @Override
+    public boolean supportsCatalogsOnReverseEngineering() {
+        return false;
+    }
+
 }

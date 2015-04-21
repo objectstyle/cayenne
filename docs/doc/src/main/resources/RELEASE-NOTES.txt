@@ -16,6 +16,10 @@ Changes/New Features:
 
 CAY-1991 More control over generated String property names
 CAY-1992 Allow to exclude DataMap java class from Modeler class generation
+CAY-1995 Add support for iterators to Select
+CAY-2001 Saving a display state of Project
+CAY-2004 EJBQL: Support for ordering on aggregate expressions
+CAY-2005 Improving generated DISTINCT performance on PostgreSQL
 
 Bug Fixes:
 
@@ -25,6 +29,7 @@ CAY-1993 Reverse Engineering does not work with PostgreSQL database
 CAY-1994 Modeler Migration Tool Shows No Changes
 CAY-1997 Difference in NULL handling inside the path between PropertyUtils and DataObject.readNestedProperty
 CAY-1998 Speeding up PropertyUtils
+CAY-1999 Unneeded Property import for superclasses with no properties
 
 ----------------------------------
 Release: 4.0.M2

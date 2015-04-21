@@ -19,6 +19,7 @@
 package org.apache.cayenne.query;
 
 import org.apache.cayenne.DataRow;
+import org.apache.cayenne.ResultBatchIterator;
 import org.apache.cayenne.ResultIterator;
 import org.apache.cayenne.ResultIteratorCallback;
 import org.apache.cayenne.access.DataContext;
@@ -202,6 +203,27 @@ public class SQLSelectIT extends ServerCase {
 	}
 
     @Test
+    public void test_SelectFirst() throws Exception {
+        createPaintingsDataSet();
+
+        Painting p = SQLSelect.query(Painting.class, "SELECT * FROM PAINTING ORDER BY PAINTING_TITLE").selectFirst(context);
+
+        assertNotNull(p);
+        assertEquals("painting1", p.getPaintingTitle());
+    }
+
+    @Test
+    public void test_SelectFirstByContext() throws Exception {
+        createPaintingsDataSet();
+
+        SQLSelect<Painting> q = SQLSelect.query(Painting.class, "SELECT * FROM PAINTING ORDER BY PAINTING_TITLE");
+        Painting p = context.selectFirst(q);
+
+        assertNotNull(p);
+        assertEquals("painting1", p.getPaintingTitle());
+    }
+
+    @Test
     public void test_Iterate() throws Exception {
         createPaintingsDataSet();
 
@@ -233,6 +255,27 @@ public class SQLSelectIT extends ServerCase {
             }
 
             assertEquals(20, count);
+        } finally {
+            it.close();
+        }
+    }
+
+    @Test
+    public void test_BatchIterator() throws Exception {
+        createPaintingsDataSet();
+
+        ResultBatchIterator<Painting> it = SQLSelect.query(Painting.class, "SELECT * FROM PAINTING")
+                .columnNameCaps(CapsStrategy.UPPER).batchIterator(context, 5);
+
+        try {
+            int count = 0;
+
+            for (List<Painting> paintingList : it) {
+                count++;
+                assertEquals(5, paintingList.size());
+            }
+
+            assertEquals(4, count);
         } finally {
             it.close();
         }

@@ -18,8 +18,9 @@
  ****************************************************************/
 package org.apache.cayenne.tools;
 
-import org.apache.cayenne.access.loader.filters.EntityFilters;
-import org.apache.cayenne.access.loader.filters.FilterFactory;
+import java.io.File;
+
+import org.apache.cayenne.access.loader.filters.OldFilterConfigBridge;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.DbAdapterFactory;
@@ -49,7 +50,6 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 
 import javax.sql.DataSource;
-import java.io.File;
 
 public class DbImporterTask extends Task {
 
@@ -57,7 +57,7 @@ public class DbImporterTask extends Task {
 
     private final ReverseEngineering reverseEngineering = new ReverseEngineering();
 
-    private final EntityFilters.Builder filterBuilder = new EntityFilters.Builder();
+    private final OldFilterConfigBridge filterBuilder = new OldFilterConfigBridge();
 
     public DbImporterTask() {
         config = new DbImportConfiguration();
@@ -70,7 +70,7 @@ public class DbImporterTask extends Task {
     public void execute() {
 
         config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering)
-                .add(filterBuilder.build())
+                .add(filterBuilder)
                 .filtersConfig());
 
         validateAttributes();
@@ -184,7 +184,7 @@ public class DbImporterTask extends Task {
     }
 
     public void setImportProcedures(boolean importProcedures) {
-        filterBuilder.setProceduresFilters(importProcedures ? FilterFactory.TRUE : FilterFactory.NULL);
+        filterBuilder.setProceduresFilters(importProcedures);
     }
 
     public void setProcedurePattern(String procedurePattern) {

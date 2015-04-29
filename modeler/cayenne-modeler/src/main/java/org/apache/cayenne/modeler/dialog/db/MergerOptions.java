@@ -19,7 +19,25 @@
 
 package org.apache.cayenne.modeler.dialog.db;
 
+import java.awt.Component;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.sql.DataSource;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.WindowConstants;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
 import org.apache.cayenne.access.loader.DbLoaderConfiguration;
+import org.apache.cayenne.access.loader.filters.TableFilter;
+import org.apache.cayenne.access.loader.filters.FiltersConfig;
+import org.apache.cayenne.access.loader.filters.PatternFilter;
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -54,20 +72,6 @@ import org.apache.cayenne.tools.dbimport.config.FiltersConfigBuilder;
 import org.apache.cayenne.tools.dbimport.config.ReverseEngineering;
 import org.apache.cayenne.tools.dbimport.config.Schema;
 import org.apache.cayenne.validation.ValidationResult;
-
-import javax.sql.DataSource;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.WindowConstants;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import java.awt.Component;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Iterator;
-import java.util.List;
 
 public class MergerOptions extends CayenneController {
 
@@ -169,9 +173,7 @@ public class MergerOptions extends CayenneController {
             merger = new DbMerger(adapter.mergerFactory());
 
             DbLoaderConfiguration config = new DbLoaderConfiguration();
-            ReverseEngineering engineering = new ReverseEngineering();
-            engineering.addSchema(new Schema(defaultSchema));
-            config.setFiltersConfig(new FiltersConfigBuilder(engineering).filtersConfig());
+            config.setFiltersConfig(FiltersConfig.create(null, defaultSchema, TableFilter.everything(), PatternFilter.INCLUDE_NOTHING));
 
             List<MergerToken> mergerTokens = merger.createMergeTokens(
                     connectionInfo.makeDataSource(getApplication().getClassLoadingService()),

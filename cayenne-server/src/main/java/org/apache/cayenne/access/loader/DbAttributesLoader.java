@@ -18,18 +18,26 @@
  ****************************************************************/
 package org.apache.cayenne.access.loader;
 
+import org.apache.cayenne.map.DbEntity;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 /**
- * @since 4.0.
+ * Interface responsible for attributes loading. Several options possible here
+ *  1) load attributes for each table separately
+ *  2) load attributes for schema and group it by table names
+ *
+ *  here is a trade of between count of queries and amount af calculation.
+ *
+ *
+ * @since 4.0
  */
-public class BooleanNameFilter implements NameFilter {
-    private final boolean isInclude;
+public interface DbAttributesLoader {
 
-    public BooleanNameFilter(boolean isInclude) {
-        this.isInclude = isInclude;
-    }
+    // TODO use instant field for logging
+    Log LOGGER = LogFactory.getLog(DbTableLoader.class);
 
-    @Override
-    public boolean isIncluded(String string) {
-        return this.isInclude;
-    }
+    void loadDbAttributes(DbEntity entity);
+
 }
+

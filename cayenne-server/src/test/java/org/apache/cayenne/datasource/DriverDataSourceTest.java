@@ -16,39 +16,29 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
+package org.apache.cayenne.datasource;
 
-package org.apache.cayenne.dba.postgres;
+import org.apache.cayenne.datasource.DriverDataSource;
+import org.junit.Test;
 
-import org.apache.cayenne.access.translator.select.DefaultSelectTranslator;
-import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.map.EntityResolver;
-import org.apache.cayenne.query.Query;
+import java.sql.SQLException;
 
-/**
- * @since 1.2
- */
-class PostgresSelectTranslator extends DefaultSelectTranslator {
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
-	/**
-	 * @since 4.0
-	 */
-	public PostgresSelectTranslator(Query query, DbAdapter adapter, EntityResolver entityResolver) {
-		super(query, adapter, entityResolver);
-	}
+public class DriverDataSourceTest {
 
-	@Override
-	protected void appendLimitAndOffsetClauses(StringBuilder buffer) {
-
-		// limit results
-		int offset = queryMetadata.getFetchOffset();
-		int limit = queryMetadata.getFetchLimit();
-
-		if (limit > 0) {
-			buffer.append(" LIMIT ").append(limit);
-		}
-
-		if (offset > 0) {
-			buffer.append(" OFFSET ").append(offset);
-		}
-	}
+    @Test
+    public void testLazyInstantiationOfDriverClass() {
+        DriverDataSource dataSource = new DriverDataSource("does.not.exist.Driver", "jdbc:postgresql://localhost/database");
+        assertNotNull(dataSource);
+        
+        try {
+            dataSource.getConnection();
+            fail();
+        } catch (SQLException e) {
+            // expected because driver class does not exist
+        }
+    }
+    
 }

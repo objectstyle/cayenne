@@ -16,39 +16,49 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-
-package org.apache.cayenne.dba.postgres;
-
-import org.apache.cayenne.access.translator.select.DefaultSelectTranslator;
-import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.map.EntityResolver;
-import org.apache.cayenne.query.Query;
+package org.apache.cayenne.datasource;
 
 /**
- * @since 1.2
+ * A collection of pooling parameters used by {@link PoolingDataSource}.
+ * 
+ * @since 4.0
  */
-class PostgresSelectTranslator extends DefaultSelectTranslator {
+public class PoolingDataSourceParameters {
 
-	/**
-	 * @since 4.0
-	 */
-	public PostgresSelectTranslator(Query query, DbAdapter adapter, EntityResolver entityResolver) {
-		super(query, adapter, entityResolver);
+	private String validationQuery;
+	private int minConnections;
+	private int maxConnections;
+	private long maxQueueWaitTime;
+
+	public int getMinConnections() {
+		return minConnections;
 	}
 
-	@Override
-	protected void appendLimitAndOffsetClauses(StringBuilder buffer) {
+	public void setMinConnections(int minConnections) {
+		this.minConnections = minConnections;
+	}
 
-		// limit results
-		int offset = queryMetadata.getFetchOffset();
-		int limit = queryMetadata.getFetchLimit();
+	public int getMaxConnections() {
+		return maxConnections;
+	}
 
-		if (limit > 0) {
-			buffer.append(" LIMIT ").append(limit);
-		}
+	public void setMaxConnections(int maxConnections) {
+		this.maxConnections = maxConnections;
+	}
 
-		if (offset > 0) {
-			buffer.append(" OFFSET ").append(offset);
-		}
+	public long getMaxQueueWaitTime() {
+		return maxQueueWaitTime;
+	}
+
+	public void setMaxQueueWaitTime(long maxQueueWaitTime) {
+		this.maxQueueWaitTime = maxQueueWaitTime;
+	}
+
+	public String getValidationQuery() {
+		return validationQuery;
+	}
+
+	public void setValidationQuery(String validationQuery) {
+		this.validationQuery = validationQuery;
 	}
 }

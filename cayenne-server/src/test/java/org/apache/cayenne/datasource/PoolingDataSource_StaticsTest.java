@@ -16,28 +16,26 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.conn;
+package org.apache.cayenne.datasource;
 
+import static org.junit.Assert.assertEquals;
+
+import org.apache.cayenne.datasource.PoolingDataSource;
 import org.junit.Test;
 
-import java.sql.SQLException;
+public class PoolingDataSource_StaticsTest {
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+	@Test
+	public void testMaxIdleConnections() {
 
-public class DriverDataSourceTest {
+		assertEquals(1, PoolingDataSource.maxIdleConnections(1, 1));
+		assertEquals(2, PoolingDataSource.maxIdleConnections(1, 2));
+		assertEquals(1, PoolingDataSource.maxIdleConnections(0, 2));
+		assertEquals(2, PoolingDataSource.maxIdleConnections(0, 3));
+		assertEquals(2, PoolingDataSource.maxIdleConnections(0, 4));
+		assertEquals(3, PoolingDataSource.maxIdleConnections(0, 5));
+		assertEquals(6, PoolingDataSource.maxIdleConnections(5, 6));
 
-    @Test
-    public void testLazyInstantiationOfDriverClass() {
-        DriverDataSource dataSource = new DriverDataSource("does.not.exist.Driver", "jdbc:postgresql://localhost/database");
-        assertNotNull(dataSource);
-        
-        try {
-            dataSource.getConnection();
-            fail();
-        } catch (SQLException e) {
-            // expected because driver class does not exist
-        }
-    }
-    
+	}
+
 }

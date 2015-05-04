@@ -16,39 +16,26 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
+package org.apache.cayenne.datasource;
 
-package org.apache.cayenne.dba.postgres;
-
-import org.apache.cayenne.access.translator.select.DefaultSelectTranslator;
-import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.map.EntityResolver;
-import org.apache.cayenne.query.Query;
+import java.sql.SQLException;
 
 /**
- * @since 1.2
+ * Thrown when the pool fails to validate a fresh connection that is known to be
+ * in a good state.
+ * 
+ * @since 4.0
  */
-class PostgresSelectTranslator extends DefaultSelectTranslator {
+public class BadValidationQueryException extends SQLException {
 
-	/**
-	 * @since 4.0
-	 */
-	public PostgresSelectTranslator(Query query, DbAdapter adapter, EntityResolver entityResolver) {
-		super(query, adapter, entityResolver);
+	private static final long serialVersionUID = -3690715196865727679L;
+
+	public BadValidationQueryException(String message) {
+		super(message);
 	}
 
-	@Override
-	protected void appendLimitAndOffsetClauses(StringBuilder buffer) {
-
-		// limit results
-		int offset = queryMetadata.getFetchOffset();
-		int limit = queryMetadata.getFetchLimit();
-
-		if (limit > 0) {
-			buffer.append(" LIMIT ").append(limit);
-		}
-
-		if (offset > 0) {
-			buffer.append(" OFFSET ").append(offset);
-		}
+	public BadValidationQueryException(String message, Throwable cause) {
+		super(message, cause);
 	}
+
 }

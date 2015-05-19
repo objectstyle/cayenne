@@ -22,11 +22,8 @@ import java.sql.Driver;
 
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.conn.DataSourceInfo;
-import org.apache.cayenne.datasource.PoolingDataSource;
-import org.apache.cayenne.datasource.PoolingDataSourceParameters;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
@@ -40,9 +37,6 @@ public class PoolingDataSource_FailingValidationQueryIT extends ServerCase {
 
 	@Inject
 	private AdhocObjectFactory objectFactory;
-
-	@Inject
-	private JdbcEventLogger logger;
 
 	protected PoolingDataSourceParameters createParameters() {
 		PoolingDataSourceParameters poolParameters = new PoolingDataSourceParameters();
@@ -58,9 +52,12 @@ public class PoolingDataSource_FailingValidationQueryIT extends ServerCase {
 		Driver driver = objectFactory.newInstance(Driver.class, dataSourceInfo.getJdbcDriver());
 		DriverDataSource nonPooling = new DriverDataSource(driver, dataSourceInfo.getDataSourceUrl(),
 				dataSourceInfo.getUserName(), dataSourceInfo.getPassword());
-		nonPooling.setLogger(logger);
 
 		PoolingDataSourceParameters poolParameters = createParameters();
-		new PoolingDataSource(nonPooling, poolParameters);
+		UnmanagedPoolingDataSource ds = new UnmanagedPoolingDataSource(nonPooling, poolParameters);
+
+		// the exception should happen in the line above... this line is to
+		// prevent compiler warnings
+		ds.close();
 	}
 }

@@ -18,6 +18,8 @@
  ****************************************************************/
 package org.apache.cayenne.configuration.server;
 
+import java.sql.Driver;
+
 import javax.sql.DataSource;
 
 import org.apache.cayenne.ConfigurationException;
@@ -26,10 +28,9 @@ import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.conn.DataSourceInfo;
 import org.apache.cayenne.datasource.DataSourceBuilder;
-import org.apache.cayenne.datasource.PoolingDataSource;
+import org.apache.cayenne.datasource.UnmanagedPoolingDataSource;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -45,9 +46,6 @@ import org.apache.commons.logging.LogFactory;
 public class XMLPoolingDataSourceFactory implements DataSourceFactory {
 
 	private static final Log logger = LogFactory.getLog(XMLPoolingDataSourceFactory.class);
-
-	@Inject
-	protected JdbcEventLogger jdbcEventLogger;
 
 	@Inject
 	private RuntimeProperties properties;
@@ -66,13 +64,15 @@ public class XMLPoolingDataSourceFactory implements DataSourceFactory {
 			throw new ConfigurationException(message);
 		}
 
-		long maxQueueWaitTime = properties.getLong(Constants.SERVER_MAX_QUEUE_WAIT_TIME,
-				PoolingDataSource.MAX_QUEUE_WAIT_DEFAULT);
+		long maxQueueWaitTime = properties.getLong(Constants.JDBC_MAX_QUEUE_WAIT_TIME,
+				UnmanagedPoolingDataSource.MAX_QUEUE_WAIT_DEFAULT);
 
-		return DataSourceBuilder.builder(objectFactory, jdbcEventLogger).driver(descriptor.getJdbcDriver())
-				.url(descriptor.getDataSourceUrl()).userName(descriptor.getUserName())
-				.password(descriptor.getPassword()).minConnections(descriptor.getMinConnections())
-				.maxConnections(descriptor.getMaxConnections()).maxQueueWaitTime(maxQueueWaitTime).build();
+		Driver driver = objectFactory.newInstance(Driver.class, descriptor.getJdbcDriver());
+
+		return DataSourceBuilder.url(descriptor.getDataSourceUrl()).driver(driver).userName(descriptor.getUserName())
+				.password(descriptor.getPassword())
+				.pool(descriptor.getMinConnections(), descriptor.getMaxConnections())
+				.maxQueueWaitTime(maxQueueWaitTime).build();
 	}
 
 }

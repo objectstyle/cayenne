@@ -34,20 +34,20 @@ import org.apache.cayenne.di.Inject;
  */
 public class DriverDataSourceFactory implements DataSourceFactory {
 
-    private AdhocObjectFactory objectFactory;
+	private AdhocObjectFactory objectFactory;
 
-    public DriverDataSourceFactory(@Inject AdhocObjectFactory objectFactory) {
-        this.objectFactory = objectFactory;
-    }
+	public DriverDataSourceFactory(@Inject AdhocObjectFactory objectFactory) {
+		this.objectFactory = objectFactory;
+	}
 
-    public DataSource getDataSource(DataNodeDescriptor nodeDescriptor) throws Exception {
-        DataSourceInfo properties = nodeDescriptor.getDataSourceDescriptor();
-        if (properties == null) {
-            throw new IllegalArgumentException("'nodeDescriptor' contains no datasource descriptor");
-        }
+	public DataSource getDataSource(DataNodeDescriptor nodeDescriptor) throws Exception {
+		DataSourceInfo properties = nodeDescriptor.getDataSourceDescriptor();
+		if (properties == null) {
+			throw new IllegalArgumentException("'nodeDescriptor' contains no datasource descriptor");
+		}
 
-        Driver driver = objectFactory.newInstance(Driver.class, properties.getJdbcDriver());
-        return new DriverDataSource(driver, properties.getDataSourceUrl(), properties.getUserName(),
-                properties.getPassword());
-    }
+		Driver driver = objectFactory.newInstance(Driver.class, properties.getJdbcDriver());
+		return new DriverDataSource(driver, properties.getDataSourceUrl(), properties.getUserName(),
+				properties.getPassword());
+	}
 }

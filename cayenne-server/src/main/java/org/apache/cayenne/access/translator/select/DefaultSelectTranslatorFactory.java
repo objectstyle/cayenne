@@ -16,29 +16,22 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.datasource;
+package org.apache.cayenne.access.translator.select;
 
-import org.apache.cayenne.datasource.DriverDataSource;
-import org.junit.Test;
+import org.apache.cayenne.dba.DbAdapter;
+import org.apache.cayenne.map.EntityResolver;
+import org.apache.cayenne.query.SelectQuery;
 
-import java.sql.SQLException;
+/**
+ * A {@link SelectTranslator} factory that delegates translator creation to
+ * DbAdapter.
+ * 
+ * @since 4.0
+ */
+public class DefaultSelectTranslatorFactory implements SelectTranslatorFactory {
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
-public class DriverDataSourceTest {
-
-    @Test
-    public void testLazyInstantiationOfDriverClass() {
-        DriverDataSource dataSource = new DriverDataSource("does.not.exist.Driver", "jdbc:postgresql://localhost/database");
-        assertNotNull(dataSource);
-        
-        try {
-            dataSource.getConnection();
-            fail();
-        } catch (SQLException e) {
-            // expected because driver class does not exist
-        }
-    }
-    
+	@Override
+	public SelectTranslator translator(SelectQuery<?> query, DbAdapter adapter, EntityResolver entityResolver) {
+		return adapter.getSelectTranslator(query, entityResolver);
+	}
 }

@@ -17,32 +17,20 @@
  *  under the License.
  ****************************************************************/
 
-package org.apache.cayenne.dba.openbase;
+package org.apache.cayenne.java8;
 
-import org.apache.cayenne.access.DataNode;
-import org.apache.cayenne.access.jdbc.SelectAction;
-import org.apache.cayenne.access.translator.select.SelectTranslator;
-import org.apache.cayenne.dba.JdbcActionBuilder;
-import org.apache.cayenne.query.SQLAction;
-import org.apache.cayenne.query.SelectQuery;
+import org.apache.cayenne.configuration.server.ServerRuntime;
+import org.apache.cayenne.di.Module;
+import org.junit.Before;
 
-/**
- * @since 1.2
- */
-class OpenBaseActionBuilder extends JdbcActionBuilder {
+public class RuntimeBase {
 
-	OpenBaseActionBuilder(DataNode dataNode) {
-		super(dataNode);
-	}
+    protected ServerRuntime runtime;
 
-	@Override
-	public <T> SQLAction objectSelectAction(SelectQuery<T> query) {
-		return new SelectAction(query, dataNode) {
+    @Before
+    public void setUpRuntime() throws Exception {
+        Module java8Module = new CayenneJava8Module();
+        this.runtime = new ServerRuntime("cayenne-java8.xml", java8Module);
+    }
 
-			@Override
-			protected SelectTranslator createTranslator() {
-				return new OpenBaseSelectTranslator(query, dataNode.getAdapter(), dataNode.getEntityResolver());
-			}
-		};
-	}
 }

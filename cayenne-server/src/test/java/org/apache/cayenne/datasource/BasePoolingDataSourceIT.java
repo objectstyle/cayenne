@@ -22,11 +22,8 @@ import java.sql.Driver;
 import java.sql.SQLException;
 
 import org.apache.cayenne.conn.DataSourceInfo;
-import org.apache.cayenne.datasource.PoolingDataSource;
-import org.apache.cayenne.datasource.PoolingDataSourceParameters;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
@@ -36,16 +33,15 @@ import org.junit.Before;
 @UseServerRuntime(CayenneProjects.TESTMAP_PROJECT)
 public class BasePoolingDataSourceIT extends ServerCase {
 
+	protected static final long QUEUE_WAIT_TIME = 1000l;
+
 	@Inject
 	private DataSourceInfo dataSourceInfo;
 
 	@Inject
 	private AdhocObjectFactory objectFactory;
 
-	@Inject
-	private JdbcEventLogger logger;
-
-	protected PoolingDataSource dataSource;
+	protected UnmanagedPoolingDataSource dataSource;
 
 	@Before
 	public void before() throws SQLException {
@@ -53,16 +49,15 @@ public class BasePoolingDataSourceIT extends ServerCase {
 		Driver driver = objectFactory.newInstance(Driver.class, dataSourceInfo.getJdbcDriver());
 		DriverDataSource nonPooling = new DriverDataSource(driver, dataSourceInfo.getDataSourceUrl(),
 				dataSourceInfo.getUserName(), dataSourceInfo.getPassword());
-		nonPooling.setLogger(logger);
 
 		PoolingDataSourceParameters poolParameters = createParameters();
-		this.dataSource = new PoolingDataSource(nonPooling, poolParameters);
+		this.dataSource = new UnmanagedPoolingDataSource(nonPooling, poolParameters);
 	}
 
 	@After
 	public void after() throws SQLException {
 		if (dataSource != null) {
-			dataSource.shutdown();
+			dataSource.close();
 		}
 	}
 
@@ -70,7 +65,7 @@ public class BasePoolingDataSourceIT extends ServerCase {
 		PoolingDataSourceParameters poolParameters = new PoolingDataSourceParameters();
 		poolParameters.setMinConnections(2);
 		poolParameters.setMaxConnections(3);
-		poolParameters.setMaxQueueWaitTime(1000);
+		poolParameters.setMaxQueueWaitTime(QUEUE_WAIT_TIME);
 		return poolParameters;
 	}
 

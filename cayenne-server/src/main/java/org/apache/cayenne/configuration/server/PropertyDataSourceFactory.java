@@ -18,6 +18,8 @@
  ****************************************************************/
 package org.apache.cayenne.configuration.server;
 
+import java.sql.Driver;
+
 import javax.sql.DataSource;
 
 import org.apache.cayenne.ConfigurationException;
@@ -25,10 +27,9 @@ import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.datasource.DataSourceBuilder;
-import org.apache.cayenne.datasource.PoolingDataSource;
+import org.apache.cayenne.datasource.UnmanagedPoolingDataSource;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.log.JdbcEventLogger;
 
 /**
  * A DataSourceFactrory that creates a DataSource based on system properties.
@@ -53,9 +54,6 @@ public class PropertyDataSourceFactory implements DataSourceFactory {
 	protected RuntimeProperties properties;
 
 	@Inject
-	protected JdbcEventLogger jdbcEventLogger;
-
-	@Inject
 	private AdhocObjectFactory objectFactory;
 
 	@Override
@@ -69,13 +67,14 @@ public class PropertyDataSourceFactory implements DataSourceFactory {
 		String password = getProperty(Constants.JDBC_PASSWORD_PROPERTY, suffix);
 		int minConnections = getIntProperty(Constants.JDBC_MIN_CONNECTIONS_PROPERTY, suffix, 1);
 		int maxConnections = getIntProperty(Constants.JDBC_MAX_CONNECTIONS_PROPERTY, suffix, 1);
-		long maxQueueWaitTime = properties.getLong(Constants.SERVER_MAX_QUEUE_WAIT_TIME,
-				PoolingDataSource.MAX_QUEUE_WAIT_DEFAULT);
+		long maxQueueWaitTime = properties.getLong(Constants.JDBC_MAX_QUEUE_WAIT_TIME,
+				UnmanagedPoolingDataSource.MAX_QUEUE_WAIT_DEFAULT);
 		String validationQuery = properties.get(Constants.JDBC_VALIDATION_QUERY_PROPERTY);
 
-		return DataSourceBuilder.builder(objectFactory, jdbcEventLogger).driver(driverClass).url(url)
-				.userName(username).password(password).minConnections(minConnections).maxConnections(maxConnections)
-				.maxQueueWaitTime(maxQueueWaitTime).validationQuery(validationQuery).build();
+		Driver driver = objectFactory.newInstance(Driver.class, driverClass);
+		return DataSourceBuilder.url(url).driver(driver).userName(username).password(password)
+				.pool(minConnections, maxConnections).maxQueueWaitTime(maxQueueWaitTime)
+				.validationQuery(validationQuery).build();
 	}
 
 	protected int getIntProperty(String propertyName, String suffix, int defaultValue) {

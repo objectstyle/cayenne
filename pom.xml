@@ -57,6 +57,7 @@
 		<module>cayenne-project</module>
 		<module>cayenne-lifecycle</module>
 		<module>cayenne-crypto</module>
+		<module>cayenne-joda</module>
 		<module>itests</module>
 		<module>modeler</module>
 		<module>plugins</module>
@@ -1457,6 +1458,15 @@
 			<properties>
 				<javadoc.doclint.none>-Xdoclint:none</javadoc.doclint.none>
 			</properties>
+		</profile>
+		<profile>
+			<id>cayenne-java8-module-to-build</id>
+			<activation>
+				<jdk>[1.8,)</jdk>
+			</activation>
+			<modules>
+				<module>cayenne-java8</module>
+			</modules>
 		</profile>
 	</profiles>
 

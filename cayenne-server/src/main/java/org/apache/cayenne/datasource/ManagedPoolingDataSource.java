@@ -29,22 +29,24 @@ import javax.sql.DataSource;
 import org.apache.cayenne.di.ScopeEventListener;
 
 /**
- * A wrapper for {@link PoolingDataSourceManager} that manages the underlying
+ * A wrapper for {@link UnmanagedPoolingDataSource} that automatically manages the underlying
  * connection pool size.
  * 
  * @since 4.0
  */
-public class ManagedPoolingDataSource implements DataSource, ScopeEventListener {
+public class ManagedPoolingDataSource implements PoolingDataSource, ScopeEventListener {
 
 	private PoolingDataSourceManager dataSourceManager;
 	private DataSource dataSource;
 
-	public ManagedPoolingDataSource(PoolingDataSource dataSource) {
-
-		this.dataSource = dataSource;
-
+	public ManagedPoolingDataSource(UnmanagedPoolingDataSource dataSource) {
 		// wake every 2 minutes...
-		this.dataSourceManager = new PoolingDataSourceManager(dataSource, 120000);
+		this(dataSource, 120000);
+	}
+
+	public ManagedPoolingDataSource(UnmanagedPoolingDataSource dataSource, long managerWakeTime) {
+		this.dataSource = dataSource;
+		this.dataSourceManager = new PoolingDataSourceManager(dataSource, managerWakeTime);
 
 		dataSourceManager.start();
 	}
@@ -59,10 +61,12 @@ public class ManagedPoolingDataSource implements DataSource, ScopeEventListener 
 	 */
 	@Override
 	public void beforeScopeEnd() {
-		shutdown();
+		close();
 	}
 
-	public void shutdown() {
+	@Override
+	public void close() {
+
 		// swap the underlying DataSource to prevent further interaction with
 		// the callers
 		this.dataSource = new StoppedDataSource(dataSource);

@@ -16,23 +16,28 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.dba.oracle;
 
-import org.apache.cayenne.access.DataNode;
-import org.apache.cayenne.access.translator.select.SelectTranslator;
-import org.apache.cayenne.query.SelectQuery;
+package org.apache.cayenne.java8;
 
-/**
- * @since 3.0
- */
-class Oracle8SelectAction extends OracleSelectAction {
+import org.apache.cayenne.configuration.Constants;
+import org.apache.cayenne.di.Binder;
+import org.apache.cayenne.di.Module;
+import org.apache.cayenne.java8.access.types.LocalDateTimeType;
+import org.apache.cayenne.java8.access.types.LocalDateType;
+import org.apache.cayenne.java8.access.types.LocalTimeType;
 
-	<T> Oracle8SelectAction(SelectQuery<T> query, DataNode dataNode) {
-		super(query, dataNode);
-	}
+public class CayenneJava8Module implements Module {
 
-	@Override
-	protected SelectTranslator createTranslator() {
-		return new Oracle8SelectTranslator(query, dataNode.getAdapter(), dataNode.getEntityResolver());
-	}
+    public CayenneJava8Module() {
+    }
+
+    @Override
+    public void configure(Binder binder) {
+        binder
+                .bindList(Constants.SERVER_DEFAULT_TYPES_LIST)
+                .add(new LocalDateType())
+                .add(new LocalTimeType())
+                .add(new LocalDateTimeType());
+    }
+
 }

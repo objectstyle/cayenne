@@ -23,39 +23,27 @@ import java.sql.Driver;
 import javax.sql.DataSource;
 
 import org.apache.cayenne.CayenneRuntimeException;
-import org.apache.cayenne.di.AdhocObjectFactory;
-import org.apache.cayenne.log.JdbcEventLogger;
-import org.apache.cayenne.log.NoopJdbcEventLogger;
 
 /**
- * A builder class that creates a default Cayenne implementation of a pooling
- * {@link DataSource}.
+ * A builder class that allows to build a {@link DataSource} with optional
+ * pooling.
  * 
  * @since 4.0
  */
 public class DataSourceBuilder {
 
-	private AdhocObjectFactory objectFactory;
-	private JdbcEventLogger logger;
 	private String userName;
 	private String password;
-	private String driver;
+	private String driverClassName;
+	private Driver driver;
 	private String url;
-	private PoolingDataSourceParameters poolParameters;
 
-	public static DataSourceBuilder builder(AdhocObjectFactory objectFactory, JdbcEventLogger logger) {
-		return new DataSourceBuilder(objectFactory, logger);
+	public static DataSourceBuilder url(String url) {
+		return new DataSourceBuilder(url);
 	}
 
-	private DataSourceBuilder(AdhocObjectFactory objectFactory, JdbcEventLogger logger) {
-		this.objectFactory = objectFactory;
-		this.logger = logger;
-		this.logger = NoopJdbcEventLogger.getInstance();
-		this.poolParameters = new PoolingDataSourceParameters();
-
-		poolParameters.setMinConnections(1);
-		poolParameters.setMaxConnections(1);
-		poolParameters.setMaxQueueWaitTime(PoolingDataSource.MAX_QUEUE_WAIT_DEFAULT);
+	private DataSourceBuilder(String url) {
+		this.url = url;
 	}
 
 	public DataSourceBuilder userName(String userName) {
@@ -70,67 +58,53 @@ public class DataSourceBuilder {
 
 	public DataSourceBuilder driver(String driver) {
 		// TODO: guess the driver from URL
+		this.driver = null;
+		this.driverClassName = driver;
+		return this;
+	}
+
+	public DataSourceBuilder driver(Driver driver) {
 		this.driver = driver;
+		this.driverClassName = null;
 		return this;
 	}
 
-	public DataSourceBuilder url(String url) {
-		this.url = url;
-		return this;
+	/**
+	 * Turns produced DataSource into a pooled DataSource.
+	 */
+	public PoolingDataSourceBuilder pool(int minConnection, int maxConnections) {
+		return new PoolingDataSourceBuilder(this);
 	}
 
-	public DataSourceBuilder minConnections(int minConnections) {
-		poolParameters.setMinConnections(minConnections);
-		return this;
-	}
-
-	public DataSourceBuilder maxConnections(int maxConnections) {
-		poolParameters.setMaxConnections(maxConnections);
-		return this;
-	}
-
-	public DataSourceBuilder maxQueueWaitTime(long maxQueueWaitTime) {
-		poolParameters.setMaxQueueWaitTime(maxQueueWaitTime);
-		return this;
-	}
-
-	public DataSourceBuilder validationQuery(String validationQuery) {
-		poolParameters.setValidationQuery(validationQuery);
-		return this;
-	}
-
+	/**
+	 * Builds a non-pooling DataSource. To create connection pool use
+	 * {@link #pool(int, int)} method.
+	 */
 	public DataSource build() {
-
-		// sanity checks...
-		if (poolParameters.getMaxConnections() < 0) {
-			throw new CayenneRuntimeException("Maximum number of connections can not be negative ("
-					+ poolParameters.getMaxConnections() + ").");
-		}
-
-		if (poolParameters.getMinConnections() < 0) {
-			throw new CayenneRuntimeException("Minimum number of connections can not be negative ("
-					+ poolParameters.getMinConnections() + ").");
-		}
-
-		if (poolParameters.getMinConnections() > poolParameters.getMaxConnections()) {
-			throw new CayenneRuntimeException("Minimum number of connections can not be bigger then maximum.");
-		}
-
-		return buildManaged(buildPooling(buildNonPooling()));
+		Driver driver = loadDriver();
+		return new DriverDataSource(driver, url, userName, password);
 	}
 
-	private DataSource buildNonPooling() {
-		Driver driver = objectFactory.newInstance(Driver.class, this.driver);
-		DriverDataSource dataSource = new DriverDataSource(driver, url, userName, password);
-		dataSource.setLogger(logger);
-		return dataSource;
-	}
+	private Driver loadDriver() {
 
-	private PoolingDataSource buildPooling(DataSource nonPoolingDataSource) {
-		return new PoolingDataSource(nonPoolingDataSource, poolParameters);
-	}
+		if (driver != null) {
+			return driver;
+		}
 
-	private DataSource buildManaged(PoolingDataSource dataSource) {
-		return new ManagedPoolingDataSource(dataSource);
+		Class<?> driverClass;
+		try {
+			// note: implicitly using current class's ClassLoader ....
+			driverClass = Class.forName(driverClassName);
+		} catch (Exception ex) {
+			throw new CayenneRuntimeException("Can not load JDBC driver named '" + driverClassName + "': "
+					+ ex.getMessage());
+		}
+
+		try {
+			return (Driver) driverClass.newInstance();
+		} catch (Exception ex) {
+			throw new CayenneRuntimeException("Error instantiating driver '" + driverClassName + "': "
+					+ ex.getMessage());
+		}
 	}
 }

@@ -431,7 +431,7 @@ public class DataContextIT extends ServerCase {
 				"INSERT INTO PAINTING (PAINTING_ID, PAINTING_TITLE, ARTIST_ID, ESTIMATED_PRICE) "
 						+ "VALUES ($pid, '$pt', $aid, $price)");
 
-		Map<String, Object> map = new HashMap<String, Object>();
+		Map<String, Object> map = new HashMap<>();
 		map.put("pid", new Integer(1));
 		map.put("pt", "P1");
 		map.put("aid", new Integer(33002));
@@ -457,7 +457,7 @@ public class DataContextIT extends ServerCase {
 
 		Map<String, Object>[] maps = new Map[3];
 		for (int i = 0; i < maps.length; i++) {
-			maps[i] = new HashMap<String, Object>();
+			maps[i] = new HashMap<>();
 			maps[i].put("pid", new Integer(1 + i));
 			maps[i].put("pt", "P-" + i);
 			maps[i].put("aid", new Integer(33002));
@@ -666,8 +666,7 @@ public class DataContextIT extends ServerCase {
 
 		SelectQuery<Artist> q1 = new SelectQuery<Artist>(Artist.class);
 
-		ResultIterator<Artist> it = context.iterator(q1);
-		try {
+		try (ResultIterator<Artist> it = context.iterator(q1);) {
 			int count = 0;
 
 			for (Artist a : it) {
@@ -675,8 +674,6 @@ public class DataContextIT extends ServerCase {
 			}
 
 			assertEquals(7, count);
-		} finally {
-			it.close();
 		}
 	}
 
@@ -685,9 +682,8 @@ public class DataContextIT extends ServerCase {
 		createLargeArtistsDataSet();
 
 		SelectQuery<Artist> q1 = new SelectQuery<Artist>(Artist.class);
-		ResultBatchIterator<Artist> it = context.batchIterator(q1, 5);
 
-		try {
+		try (ResultBatchIterator<Artist> it = context.batchIterator(q1, 5);) {
 			int count = 0;
 
 			for (List<Artist> artistList : it) {
@@ -696,8 +692,6 @@ public class DataContextIT extends ServerCase {
 			}
 
 			assertEquals(4, count);
-		} finally {
-			it.close();
 		}
 	}
 
@@ -707,9 +701,8 @@ public class DataContextIT extends ServerCase {
 		createArtistsDataSet();
 
 		SelectQuery<Artist> q1 = new SelectQuery<Artist>(Artist.class);
-		ResultIterator<?> it = context.performIteratedQuery(q1);
 
-		try {
+		try (ResultIterator<?> it = context.performIteratedQuery(q1);) {
 			int count = 0;
 			while (it.hasNextRow()) {
 				it.nextRow();
@@ -717,8 +710,6 @@ public class DataContextIT extends ServerCase {
 			}
 
 			assertEquals(7, count);
-		} finally {
-			it.close();
 		}
 	}
 
@@ -726,9 +717,7 @@ public class DataContextIT extends ServerCase {
 	public void testPerformIteratedQuery2() throws Exception {
 		createArtistsAndPaintingsDataSet();
 
-		ResultIterator<?> it = context.performIteratedQuery(SelectQuery.query(Artist.class));
-
-		try {
+		try (ResultIterator<?> it = context.performIteratedQuery(SelectQuery.query(Artist.class));) {
 			while (it.hasNextRow()) {
 				DataRow row = (DataRow) it.nextRow();
 
@@ -738,8 +727,6 @@ public class DataContextIT extends ServerCase {
 				assertNotNull(paintings);
 				assertEquals("Expected one painting for artist: " + artist, 1, paintings.size());
 			}
-		} finally {
-			it.close();
 		}
 	}
 

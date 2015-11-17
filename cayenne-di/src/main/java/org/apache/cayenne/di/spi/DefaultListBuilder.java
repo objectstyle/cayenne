@@ -21,12 +21,14 @@ package org.apache.cayenne.di.spi;
 import org.apache.cayenne.di.DIRuntimeException;
 import org.apache.cayenne.di.Key;
 import org.apache.cayenne.di.ListBuilder;
-import org.apache.cayenne.di.UnorderedListBuilder;
 import org.apache.cayenne.di.Provider;
 import org.apache.cayenne.di.Scope;
+import org.apache.cayenne.di.UnorderedListBuilder;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @since 3.1
@@ -50,6 +52,23 @@ class DefaultListBuilder<T> implements ListBuilder<T> {
             throws DIRuntimeException {
 
         Key<?> key = Key.get(interfaceType);
+        Binding<?> binding = injector.getBinding(key);
+
+        if (binding == null) {
+            return addWithBinding(interfaceType);
+        }
+
+        getListProvider().add(key, binding.getScoped());
+        return this;
+    }
+
+    <K extends T> ListBuilder<T> addWithBinding(Class<K> interfaceType) {
+        Key<K> key = Key.get(interfaceType);
+
+        Provider<K> provider0 = new ConstructorInjectingProvider<>(interfaceType, injector);
+        Provider<K> provider1 = new FieldInjectingProvider<>(provider0, injector);
+        injector.putBinding(key, provider1);
+
         getListProvider().add(key, injector.getProvider(key));
         return this;
     }
@@ -99,15 +118,15 @@ class DefaultListBuilder<T> implements ListBuilder<T> {
     @Override
     public ListBuilder<T> addAll(Collection<T> objects) throws DIRuntimeException {
 
-        ListProvider listProvider = getListProvider();
-
+        Map<Key<?>, Provider<?>> keyProviderMap = new LinkedHashMap<>();
         for (T object : objects) {
             Provider<T> provider0 = new InstanceProvider<T>(object);
             Provider<T> provider1 = new FieldInjectingProvider<T>(provider0, injector);
 
-            listProvider.add(Key.get(object.getClass(), String.valueOf(object.hashCode())), provider1);
+            keyProviderMap.put(Key.get(object.getClass(), String.valueOf(object.hashCode())), provider1);
         }
 
+        getListProvider().addAll(keyProviderMap);
         return this;
     }
 

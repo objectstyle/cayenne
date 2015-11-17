@@ -34,8 +34,8 @@ import org.apache.cayenne.unit.di.server.UseServerRuntime;
 import org.junit.Before;
 import org.junit.Test;
 
-@UseServerRuntime(CayenneProjects.TESTMAP_PROJECT)
-public class AshwoodEntitySorterIT extends ServerCase {
+@UseServerRuntime(CayenneProjects.PEOPLE_PROJECT)
+public class AshwoodEntitySorter_InheritanceIT extends ServerCase {
 
 	@Inject
 	protected ObjectContext context;
@@ -43,12 +43,11 @@ public class AshwoodEntitySorterIT extends ServerCase {
 	private EntityResolver resolver;
 	private AshwoodEntitySorter sorter;
 
-	private DbEntity artist;
-	private DbEntity artistExhibit;
-	private DbEntity exhibit;
-	private DbEntity gallery;
-	private DbEntity painting;
-	private DbEntity paintingInfo;
+	private DbEntity address;
+	private DbEntity clientCompany;
+	private DbEntity department;
+	private DbEntity person;
+	private DbEntity personNotes;
 
 	@Before
 	public void before() {
@@ -57,27 +56,28 @@ public class AshwoodEntitySorterIT extends ServerCase {
 		this.sorter = new AshwoodEntitySorter();
 		sorter.setEntityResolver(resolver);
 
-		this.artist = resolver.getDbEntity("ARTIST");
-		this.artistExhibit = resolver.getDbEntity("ARTIST_EXHIBIT");
-		this.exhibit = resolver.getDbEntity("EXHIBIT");
-		this.gallery = resolver.getDbEntity("GALLERY");
-		this.painting = resolver.getDbEntity("PAINTING");
-		this.paintingInfo = resolver.getDbEntity("PAINTING_INFO");
+		this.address = resolver.getDbEntity("ADDRESS");
+		this.clientCompany = resolver.getDbEntity("CLIENT_COMPANY");
+		this.department = resolver.getDbEntity("DEPARTMENT");
+		this.person = resolver.getDbEntity("PERSON");
+		this.personNotes = resolver.getDbEntity("PERSON_NOTES");
 	}
 
 	@Test
 	public void testSortDbEntities() {
 
-		List<DbEntity> entities = Arrays.asList(artist, artistExhibit, exhibit, gallery, painting, paintingInfo);
+		List<DbEntity> entities = Arrays.asList(address, clientCompany, department, person, personNotes);
 		Collections.shuffle(entities);
 
 		sorter.sortDbEntities(entities, false);
 
-		assertTrue(entities.indexOf(artist) < entities.indexOf(artistExhibit));
-		assertTrue(entities.indexOf(artist) < entities.indexOf(painting));
-		assertTrue(entities.indexOf(gallery) < entities.indexOf(exhibit));
-		assertTrue(entities.indexOf(exhibit) < entities.indexOf(artistExhibit));
-		assertTrue(entities.indexOf(painting) < entities.indexOf(paintingInfo));
+		assertTrue(entities.indexOf(person) < entities.indexOf(personNotes));
+		assertTrue(entities.indexOf(clientCompany) < entities.indexOf(person));
+		assertTrue(entities.indexOf(person) < entities.indexOf(address));
+
+		// this is actually undefined as person depends on department, and
+		// department depends on person
+		// assertTrue(entities.indexOf(person) < entities.indexOf(department));
 	}
 
 }

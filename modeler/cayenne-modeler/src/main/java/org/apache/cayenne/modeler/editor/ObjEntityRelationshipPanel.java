@@ -40,17 +40,18 @@ import org.apache.cayenne.modeler.event.TablePopupHandler;
 import org.apache.cayenne.modeler.pref.TableColumnPreferences;
 import org.apache.cayenne.modeler.util.CayenneTable;
 import org.apache.cayenne.modeler.util.CellRenderers;
+import org.apache.cayenne.modeler.util.DbRelationshipPathComboBoxEditor;
 import org.apache.cayenne.modeler.util.ModelerUtil;
 import org.apache.cayenne.modeler.util.PanelFactory;
 import org.apache.cayenne.modeler.util.UIUtil;
-import org.apache.cayenne.modeler.util.combo.AutoCompletion;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
@@ -79,25 +80,25 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
 
     private static Log logObj = LogFactory.getLog(ObjEntityRelationshipPanel.class);
 
-    private static final Object[] deleteRules = new Object[]{
+    private static final Object[] DELETE_RULES = new Object[]{
             DeleteRule.deleteRuleName(DeleteRule.NO_ACTION),
             DeleteRule.deleteRuleName(DeleteRule.NULLIFY),
             DeleteRule.deleteRuleName(DeleteRule.CASCADE),
             DeleteRule.deleteRuleName(DeleteRule.DENY),
     };
 
-    protected ProjectController mediator;
-    protected CayenneTable table;
+    private ProjectController mediator;
+    private CayenneTable table;
     private TableColumnPreferences tablePreferences;
     private ActionListener resolver;
     private ObjEntityAttributeRelationshipTab parentPanel;
     private boolean enabledResolve;//for JBottom "resolve" in ObjEntityAttrRelationshipTab
 
     /**
-     * By now popup menu item is made similiar to toolbar button. (i.e. all functionality
+     * By now popup menu item is made similar to toolbar button. (i.e. all functionality
      * is here) This should be probably refactored as Action.
      */
-    protected JMenuItem resolveMenu;
+    private JMenuItem resolveMenu;
 
     public ObjEntityRelationshipPanel(ProjectController mediator, ObjEntityAttributeRelationshipTab parentPanel) {
         this.mediator = mediator;
@@ -105,6 +106,14 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
 
         init();
         initController();
+    }
+
+    public CayenneTable getTable() {
+        return table;
+    }
+
+    public void setTable(CayenneTable table) {
+        this.table = table;
     }
 
     private void init() {
@@ -287,7 +296,6 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
 
         JComboBox combo = (JComboBox) editor.getComponent();
         combo.setRenderer(CellRenderers.entityListRendererWithIcons(entity.getDataMap()));
-        combo.setModel(new DefaultComboBoxModel(createObjEntityComboModel()));
 
         ObjRelationshipTableModel model = (ObjRelationshipTableModel) table.getModel();
         model.fireTableDataChanged();
@@ -304,11 +312,7 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
             public void tableChanged(TableModelEvent e) {
                 if (table.getSelectedRow() >= 0) {
                     ObjRelationship rel = model.getRelationship(table.getSelectedRow());
-                    if (((ObjEntity) rel.getSourceEntity()).getDbEntity() != null) {
-                        enabledResolve = true;
-                    } else
-                        enabledResolve = false;
-
+                    enabledResolve = rel.getSourceEntity().getDbEntity() != null;
                     resolveMenu.setEnabled(enabledResolve);
                 }
             }
@@ -318,23 +322,26 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
         table.setRowHeight(25);
         table.setRowMargin(3);
 
-        TableColumn col = table.getColumnModel().getColumn(
-                ObjRelationshipTableModel.REL_TARGET);
-        JComboBox targetCombo = Application.getWidgetFactory().createComboBox(
-                createObjEntityComboModel(),
-                false);
-        AutoCompletion.enable(targetCombo);
+        TableColumn col = table.getColumnModel().getColumn(ObjRelationshipTableModel.REL_TARGET_PATH);
+        col.setCellEditor(new DbRelationshipPathComboBoxEditor());
+        col.setCellRenderer(new DefaultTableCellRenderer(){
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
+                setToolTipText("To choose relationship press enter two times.To choose next relationship press dot.");
+                return this;
+            }
+        });
 
-        targetCombo.setRenderer(CellRenderers.entityListRendererWithIcons(entity
-                .getDataMap()));
-        targetCombo.setSelectedIndex(-1);
-        col.setCellEditor(Application.getWidgetFactory().createCellEditor(targetCombo));
-
-        col = table.getColumnModel().getColumn(ObjRelationshipTableModel.REL_DELETERULE);
+        col = table.getColumnModel().getColumn(ObjRelationshipTableModel.REL_DELETE_RULE);
         JComboBox deleteRulesCombo = Application.getWidgetFactory().createComboBox(
-                deleteRules,
+                DELETE_RULES,
                 false);
-        deleteRulesCombo.setEditable(false);
+        deleteRulesCombo.setFocusable(false);
+        deleteRulesCombo.setEditable(true);
+        ((JComponent) deleteRulesCombo.getEditor().getEditorComponent()).setBorder(null);
+        deleteRulesCombo.setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
         deleteRulesCombo.setSelectedIndex(0); // Default to the first value
         col.setCellEditor(Application.getWidgetFactory().createCellEditor(
                 deleteRulesCombo));
@@ -412,6 +419,7 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
                         ? table.getSelectionForeground()
                         : table.getForeground());
             }
+            setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
 
             return this;
         }
@@ -424,9 +432,10 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
 
             if (!e.getValueIsAdjusting() && !((ListSelectionModel) e.getSource()).isSelectionEmpty()) {
 
-                parentPanel.getAttributePanel().table.getSelectionModel().clearSelection();
-                if (parentPanel.getAttributePanel().table.getCellEditor() != null)
-                    parentPanel.getAttributePanel().table.getCellEditor().stopCellEditing();
+                parentPanel.getAttributePanel().getTable().getSelectionModel().clearSelection();
+                if (parentPanel.getAttributePanel().getTable().getCellEditor() != null) {
+                    parentPanel.getAttributePanel().getTable().getCellEditor().stopCellEditing();
+                }
                 Application.getInstance().getActionManager().getAction(RemoveAttributeRelationshipAction.class).setCurrentSelectedPanel(parentPanel.getRelationshipPanel());
                 Application.getInstance().getActionManager().getAction(CutAttributeRelationshipAction.class).setCurrentSelectedPanel(parentPanel.getRelationshipPanel());
                 Application.getInstance().getActionManager().getAction(CopyAttributeRelationshipAction.class).setCurrentSelectedPanel(parentPanel.getRelationshipPanel());
@@ -469,4 +478,5 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
     public ActionListener getResolver() {
         return resolver;
     }
+
 }

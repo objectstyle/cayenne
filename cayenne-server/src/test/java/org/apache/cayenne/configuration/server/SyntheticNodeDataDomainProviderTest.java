@@ -16,23 +16,27 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.modeler.util;
+package org.apache.cayenne.configuration.server;
 
-import org.apache.cayenne.map.Attribute;
-import org.apache.cayenne.map.Relationship;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-/**
- * EntityTreeFilter is an interface for deciding which attributes or
- * relationships should appear in the tree
- */
-public interface EntityTreeFilter {
-    /**
-     * Checks if attribute should appear in the tree 
-     */
-    boolean attributeMatch(Object node, Attribute attr);
-    
-    /**
-     * Checks if relationship should appear in the tree 
-     */
-    boolean relationshipMatch(Object node, Relationship rel);
+import org.apache.cayenne.access.DataDomain;
+import org.junit.Test;
+
+public class SyntheticNodeDataDomainProviderTest {
+
+	@Test
+	public void testCreateSyntheticDataNodeName() {
+
+		DataDomain ddMock = mock(DataDomain.class);
+
+		SyntheticNodeDataDomainProvider p = new SyntheticNodeDataDomainProvider();
+		assertEquals("cayenne", p.createSyntheticDataNodeName(ddMock));
+
+		when(ddMock.getName()).thenReturn("n");
+		assertEquals("n", p.createSyntheticDataNodeName(ddMock));
+	}
+
 }

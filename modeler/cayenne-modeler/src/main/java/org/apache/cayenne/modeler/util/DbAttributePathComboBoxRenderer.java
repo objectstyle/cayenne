@@ -16,23 +16,33 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
+
 package org.apache.cayenne.modeler.util;
 
-import org.apache.cayenne.map.Attribute;
-import org.apache.cayenne.map.Relationship;
+import org.apache.cayenne.map.DbAttribute;
 
-/**
- * EntityTreeFilter is an interface for deciding which attributes or
- * relationships should appear in the tree
- */
-public interface EntityTreeFilter {
-    /**
-     * Checks if attribute should appear in the tree 
-     */
-    boolean attributeMatch(Object node, Attribute attr);
-    
-    /**
-     * Checks if relationship should appear in the tree 
-     */
-    boolean relationshipMatch(Object node, Relationship rel);
+import javax.swing.BorderFactory;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.Component;
+import java.awt.Font;
+
+public class DbAttributePathComboBoxRenderer extends DefaultTableCellRenderer {
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                   boolean hasFocus, int row, int column) {
+        super.getTableCellRendererComponent(table, value, isSelected,  hasFocus,  row, column);
+
+        setText("");
+        setFont(new Font("Verdana", Font.PLAIN , 12));
+
+        if (value instanceof DbAttribute) {
+           setText(ModelerUtil.getObjectName(value));
+        } else if (value != null) {
+            setText(value.toString());
+        }
+        setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
+        return this;
+    }
 }

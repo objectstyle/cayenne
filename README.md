@@ -24,7 +24,7 @@ to facilitate testing and adoption of new Cayenne features between the official 
 [ObjectStyle LLC](http://objectstyle.com), its clients, and can be freely used by anyone else under the terms
 of the Apache License.
 
-To use the unofficial builds, add the following repository:
+To use the unofficial builds, add the following repository to your ```pom.xml```:
 
 ```xml
 <repository>

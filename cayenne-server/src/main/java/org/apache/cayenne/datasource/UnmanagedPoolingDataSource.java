@@ -136,7 +136,7 @@ public class UnmanagedPoolingDataSource implements PoolingDataSource {
 		this.poolCap = new Semaphore(maxConnections);
 		this.maxIdleConnections = maxIdleConnections(minConnections, maxConnections);
 
-		// grow pull to min connections
+		// grow pool to min connections
 		try {
 			for (int i = 0; i < minConnections; i++) {
 				PoolAwareConnection c = createUnchecked();
@@ -155,6 +155,10 @@ public class UnmanagedPoolingDataSource implements PoolingDataSource {
 
 	int availableSize() {
 		return available.size();
+	}
+
+	int canExpandSize() {
+		return poolCap.availablePermits();
 	}
 
 	@Override
@@ -264,7 +268,13 @@ public class UnmanagedPoolingDataSource implements PoolingDataSource {
 			return null;
 		}
 
-		PoolAwareConnection c = createWrapped();
+		PoolAwareConnection c;
+		try {
+			c = createWrapped();
+		} catch (SQLException e) {
+			poolCap.release();
+			throw e;
+		}
 
 		pool.put(c, 1);
 
@@ -335,8 +345,11 @@ public class UnmanagedPoolingDataSource implements PoolingDataSource {
 			return resetState(c);
 		}
 
-		throw new ConnectionUnavailableException(
-				"Can't obtain connection. Request to pool timed out. Total pool size: " + pool.size());
+		int poolSize = poolSize();
+		int canGrow = poolCap.availablePermits();
+
+		throw new ConnectionUnavailableException("Can't obtain connection. Request to pool timed out. Total pool size: "
+				+ poolSize + ", can expand by: " + canGrow);
 	}
 
 	@Override

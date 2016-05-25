@@ -19,15 +19,17 @@
 
 package org.apache.cayenne.access.translator.batch;
 
-import java.util.Iterator;
-import java.util.List;
-
-import org.apache.cayenne.access.translator.ParameterBinding;
+import org.apache.cayenne.access.translator.DbAttributeBinding;
+import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.QuotingStrategy;
+import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.query.BatchQueryRow;
 import org.apache.cayenne.query.UpdateBatchQuery;
+
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * A translator for UpdateBatchQueries that produces parameterized SQL.
@@ -79,7 +81,7 @@ public class UpdateBatchTranslator extends DefaultBatchTranslator {
     }
 
     @Override
-    protected ParameterBinding[] createBindings() {
+    protected DbAttributeBinding[] createBindings() {
         UpdateBatchQuery updateBatch = (UpdateBatchQuery) query;
 
         List<DbAttribute> updatedDbAttributes = updateBatch.getUpdatedAttributes();
@@ -88,23 +90,29 @@ public class UpdateBatchTranslator extends DefaultBatchTranslator {
         int ul = updatedDbAttributes.size();
         int ql = qualifierAttributes.size();
 
-        ParameterBinding[] bindings = new ParameterBinding[ul + ql];
+        DbAttributeBinding[] bindings = new DbAttributeBinding[ul + ql];
 
         for (int i = 0; i < ul; i++) {
             DbAttribute a = updatedDbAttributes.get(i);
-            bindings[i] = new ParameterBinding(a);
+
+            String typeName = TypesMapping.getJavaBySqlType(a.getType());
+            ExtendedType extendedType = adapter.getExtendedTypes().getRegisteredType(typeName);
+            bindings[i] = new DbAttributeBinding(a, extendedType);
         }
 
         for (int i = 0; i < ql; i++) {
             DbAttribute a = qualifierAttributes.get(i);
-            bindings[ul + i] = new ParameterBinding(a);
+
+            String typeName = TypesMapping.getJavaBySqlType(a.getType());
+            ExtendedType extendedType = adapter.getExtendedTypes().getRegisteredType(typeName);
+            bindings[ul + i] = new DbAttributeBinding(a, extendedType);
         }
 
         return bindings;
     }
 
     @Override
-    protected ParameterBinding[] doUpdateBindings(BatchQueryRow row) {
+    protected DbAttributeBinding[] doUpdateBindings(BatchQueryRow row) {
 
         UpdateBatchQuery updateBatch = (UpdateBatchQuery) query;
 

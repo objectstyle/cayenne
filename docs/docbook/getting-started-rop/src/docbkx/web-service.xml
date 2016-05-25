@@ -29,8 +29,8 @@
         ...
         &lt;dependency&gt;
             &lt;groupId&gt;com.caucho&lt;/groupId&gt;
-            &lt;artifactId&gt;resin-hessian&lt;/artifactId&gt;
-            &lt;version&gt;3.1.6&lt;/version&gt;
+            &lt;artifactId&gt;hessian&lt;/artifactId&gt;
+            &lt;version&gt;4.0.38&lt;/version&gt;
         &lt;/dependency&gt;
     &lt;/dependencies&gt;
 
@@ -73,7 +73,7 @@
     <section xml:id="configuring-web-xml">
         <title>Configuring web.xml</title>
         <para>Cayenne web service is declared in the web.xml. It is implemented as a servlet
-            "org.apache.cayenne.configuration.rop.server.ROPHessianServlet". Open
+            "org.apache.cayenne.rop.ROPServlet". Open
             tutorial/src/main/webapp/WEB-INF/web.xml in Eclipse and add a service declaration: </para>
         <programlisting>&lt;?xml version="1.0" encoding="utf-8"?>
  &lt;!DOCTYPE web-app
@@ -83,7 +83,7 @@
     &lt;display-name>Cayenne Tutorial&lt;/display-name>
     &lt;servlet>
         &lt;servlet-name>cayenne-project&lt;/servlet-name>
-        &lt;servlet-class>org.apache.cayenne.configuration.rop.server.ROPHessianServlet&lt;/servlet-class>
+        &lt;servlet-class>org.apache.cayenne.rop.ROPServlet&lt;/servlet-class>
         &lt;load-on-startup>0&lt;/load-on-startup>
     &lt;/servlet>
     &lt;servlet-mapping>

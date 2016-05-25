@@ -21,7 +21,7 @@ package org.apache.cayenne.gen;
 import java.util.Collection;
 
 import org.apache.cayenne.map.ObjEntity;
-import org.apache.cayenne.query.Query;
+import org.apache.cayenne.map.QueryDescriptor;
 
 /**
  * @since 3.0
@@ -66,11 +66,14 @@ public class ClientClassGenerationAction extends ClassGenerationAction {
             }
         }
     }
-    
+
     @Override
-    public void addQueries(Collection<Query> queries) {
-        if (queries != null) {
-            artifacts.add(new ClientDataMapArtifact(dataMap, queries));
+    public void addQueries(Collection<QueryDescriptor> queries) {
+        if (artifactsGenerationMode == ArtifactsGenerationMode.DATAMAP
+                || artifactsGenerationMode == ArtifactsGenerationMode.ALL) {
+            if (queries != null) {
+                artifacts.add(new ClientDataMapArtifact(dataMap, queries));
+            }
         }
     }
 }

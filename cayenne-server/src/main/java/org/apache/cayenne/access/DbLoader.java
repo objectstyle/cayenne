@@ -118,6 +118,26 @@ public class DbLoader {
 	}
 
 	/**
+	 * Check if database support schemas.
+	 */
+	protected boolean supportSchemas() throws SQLException {
+		if (metaData == null) {
+			metaData = connection.getMetaData();
+		}
+		return metaData.supportsSchemasInTableDefinitions();
+	}
+
+	/**
+	 * Check if database support catalogs.
+	 */
+	protected boolean supportCatalogs() throws SQLException {
+		if (metaData == null) {
+			metaData = connection.getMetaData();
+		}
+		return metaData.supportsCatalogsInTableDefinitions();
+	}
+
+	/**
 	 * @since 3.0
 	 */
 	public void setCreatingMeaningfulPK(boolean creatingMeaningfulPK) {
@@ -766,7 +786,7 @@ public class DbLoader {
 				procedure.setCatalog(rs.getString("PROCEDURE_CAT"));
 				procedure.setSchema(rs.getString("PROCEDURE_SCHEM"));
 
-				if (filters.proceduresFilter(procedure.getCatalog(), procedure.getSchema()).isInclude(
+				if (!filters.proceduresFilter(procedure.getCatalog(), procedure.getSchema()).isInclude(
 						procedure.getName())) {
 					LOGGER.info("skipping Cayenne PK procedure: " + name);
 					continue;

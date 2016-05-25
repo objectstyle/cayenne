@@ -19,8 +19,6 @@
 
 package org.apache.cayenne.map;
 
-import org.apache.cayenne.query.MockQuery;
-import org.apache.cayenne.query.Query;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -112,16 +110,18 @@ public class DataMapNamespaceTest {
         MockMappingNamespace namespace = new MockMappingNamespace();
         map.setNamespace(namespace);
 
-        Query q1 = new MockQuery("query");
-        Query q2 = new MockQuery("query");
-        namespace.addQuery(q1);
+        QueryDescriptor q1 = QueryDescriptor.selectQueryDescriptor();
+        q1.setName("query");
+        QueryDescriptor q2 = QueryDescriptor.selectQueryDescriptor();
+        q2.setName("query");
+        namespace.addQueryDescriptor(q1);
 
-        assertSame(q1, map.getQuery("query"));
+        assertSame(q1, map.getQueryDescriptor("query"));
 
-        map.addQuery(q2);
-        assertSame(q2, map.getQuery("query"));
+        map.addQueryDescriptor(q2);
+        assertSame(q2, map.getQueryDescriptor("query"));
 
-        map.removeQuery("query");
-        assertSame(q1, map.getQuery("query"));
+        map.removeQueryDescriptor("query");
+        assertSame(q1, map.getQueryDescriptor("query"));
     }
 }

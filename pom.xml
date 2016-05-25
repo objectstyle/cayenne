@@ -24,7 +24,7 @@
 	<groupId>org.apache.cayenne</groupId>
 	<name>Cayenne</name>
 
-	<version>4.0.M3-SNAPSHOT</version>
+	<version>4.0.M4-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<description>
@@ -39,9 +39,9 @@
 		<project.build.datetime>${maven.build.timestamp}</project.build.datetime>
         <jacoco.version>0.7.1.201405082137</jacoco.version>
 
-        <pmd.skip>false</pmd.skip>
-        <checkstyle.skip>false</checkstyle.skip>
-        <findbugs.skip>false</findbugs.skip>
+        <pmd.skip>true</pmd.skip>
+        <checkstyle.skip>true</checkstyle.skip>
+        <findbugs.skip>true</findbugs.skip>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -64,8 +64,7 @@
 		<module>plugins</module>
 		<module>tutorials</module>
 		<module>docs</module>
-		<module>assembly</module>
-    </modules>
+	</modules>
 	<issueManagement>
 		<system>jira</system>
 		<url>https://issues.apache.org/jira/browse/CAY</url>
@@ -817,7 +816,7 @@
 				<plugin>
 					<groupId>org.apache.rat</groupId>
 					<artifactId>apache-rat-plugin</artifactId>
-					<version>0.8</version>
+					<version>0.11</version>
 				</plugin>
 				<plugin>
 					<groupId>org.objectstyle.japp</groupId>
@@ -920,7 +919,8 @@
                         <exclude>**/*.eomodeld</exclude>
                         <exclude>**/*.fspec</exclude>
 
-                        <exclude>derby.log</exclude>
+                        <exclude>**/*.log</exclude>
+                        <exclude>**/*.iml</exclude>
 					</excludes>
 				</configuration>
 			</plugin>
@@ -1457,6 +1457,8 @@
 			</activation>
 			<modules>
 				<module>cayenne-java8</module>
+				<module>cayenne-protostuff</module>
+				<module>assembly</module>
 			</modules>
 		</profile>
 	</profiles>

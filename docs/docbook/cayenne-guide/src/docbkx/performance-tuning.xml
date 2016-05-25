@@ -26,20 +26,23 @@
             application of prefetching is to refresh stale object relationships, so more generally
             it can be viewed as a technique for managing subsets of the object graph.</para>
         <para>Prefetching example:
-            <programlisting language="java">SelectQuery query = new SelectQuery(Artist.class);
+            <programlisting language="java">ObjectSelect&lt;Artist> query = ObjectSelect.query(Artist.class);
 
-// this instructs Cayenne to prefetch one of Artist's relationships
-query.addPrefetch("paintings");
+// instructs Cayenne to prefetch one of Artist's relationships
+query.prefetch(Artist.PAINTINGS.disjoint());
+
+// the above line is equivalent to the following: 
+// query.prefetch("paintings", PrefetchTreeNode.DISJOINT_PREFETCH_SEMANTICS);
 
 // query is expecuted as usual, but the resulting Artists will have
 // their paintings "inflated"
-List&lt;Artist> artists = context.performQuery(query);</programlisting>All
-            types of relationships can be preftetched - to-one, to-many, flattened. </para>
-        <para>A prefetch can span multiple relationships:
-            <programlisting language="java"> query.addPrefetch("paintings.gallery");</programlisting></para>
+List&lt;Artist> artists = query.select(context);</programlisting>All
+            types of relationships can be preftetched - to-one, to-many, flattened. A prefetch can
+            span multiple relationships:
+            <programlisting language="java">query.prefetch(Artist.PAINTINGS.dot(Painting.GALLERY).disjoint());</programlisting></para>
         <para>A query can have multiple
-            prefetches:<programlisting language="java">query.addPrefetch("paintings");
-query.addPrefetch("paintings.gallery"); </programlisting></para>
+            prefetches:<programlisting language="java">query.prefetch(Artist.PAINTINGS.disjoint());
+query.prefetch(Artist.PAINTINGS.dot(Painting.GALLERY).disjoint());</programlisting></para>
         <para>If a query is fetching DataRows, all "disjoint" prefetches are ignored, only "joint"
             prefetches are executed (see prefetching semantics discussion below for what disjoint and
             joint prefetches mean).</para>
@@ -51,28 +54,23 @@ query.addPrefetch("paintings.gallery"); </programlisting></para>
                 query root objects with related objects fully resolved. However semantics can affect
                 preformance, in some cases significantly. There are 3 types of prefetch semantics,
                 all defined as constants in
-                org.apache.cayenne.query.PrefetchTreeNode:<programlisting language="java">PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS
+                <code>org.apache.cayenne.query.PrefetchTreeNode</code>:<programlisting language="java">PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS
 PrefetchTreeNode.DISJOINT_PREFETCH_SEMANTICS
 PrefetchTreeNode.DISJOINT_BY_ID_PREFETCH_SEMANTICS</programlisting></para>
-            <para>Each query has a default prefetch semantics, so generally users do not have to
-                worry about changing it, except when performance is a concern, or a few special
-                cases when a default sematics can't produce the correct result. SelectQuery uses
-                DISJOINT_PREFETCH_SEMANTICS by default. Semantics can be changed as
-                follows:<programlisting language="java">SelectQuery query = new SelectQuery(Artist.class);
-query.addPrefetch("paintings").setSemantics(
-                PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS); </programlisting></para>
-            <para>There's no limitation on mixing different types of semantics in the same
-                SelectQuery. Multiple prefetches each can have its own semantics. </para>
-            <para>SQLTemplate and ProcedureQuery are both using JOINT_PREFETCH_SEMANTICS and it can
-                not be changed due to the nature of these two queries.</para>
+            <para>There's no limitation on mixing different types of semantics in the same query.
+                Each prefetch can have its own semantics. <code>SelectQuery</code> uses
+                    <code>DISJOINT_PREFETCH_SEMANTICS</code> by default. <code>ObjectSelect</code>
+                requires explicit semantics as we've seen above. <code>SQLTemplate</code> and
+                    <code>ProcedureQuery</code> are both using <code>JOINT_PREFETCH_SEMANTICS</code>
+                and it can not be changed due to the nature of those two queries.</para>
         </section>
         <section xml:id="disjoint-prefetch-semantics">
             <title>Disjoint Prefetching Semantics</title>
-            <para>This semantics (only applicable to SelectQuery) results in Cayenne generatiing one
-                SQL statement for the main objects, and a separate statement for each prefetch path
-                (hence "disjoint" - related objects are not fetched with the main query). Each
-                additional SQL statement uses a qualifier of the main query plus a set of joins
-                traversing the preftech path between the main and related entity. </para>
+            <para>This semantics results in Cayenne generatiing one SQL statement for the main
+                objects, and a separate statement for each prefetch path (hence "disjoint" - related
+                objects are not fetched with the main query). Each additional SQL statement uses a
+                qualifier of the main query plus a set of joins traversing the preftech path between
+                the main and related entity. </para>
             <para>This strategy has an advantage of efficient JVM memory use, and faster overall
                 result processing by Cayenne, but it requires (1+N) SQL statements to be executed,
                 where N is the number of prefetched relationships.</para>
@@ -141,15 +139,12 @@ query.addPrefetch("paintings").setSemantics(
             in the application in many cases. So performance sensitive selects should consider
             DataRows - it saves memory and CPU cycles. All selecting queries support DataRows
             option,
-            e.g.:<programlisting language="java">SelectQuery query = new SelectQuery(Artist.class);
-query.setFetchingDataRows(true);
+            e.g.:<programlisting language="java">ObjectSelect&lt;DataRow> query = ObjectSelect.dataRowQuery(Artist.class);
 
-List&lt;DataRow> rows = context.performQuery(query); </programlisting><programlisting language="java">SQLTemplate query = new SQLTemplate(Artist.class, "SELECT * FROM ARTIST");
-query.setFetchingDataRows(true);
-
-List&lt;DataRow> rows = context.performQuery(query);</programlisting></para>
-        <para>Moreover DataRows may be converted to Persistent objects later as needed. So e.g. you
-            may implement some in-memory filtering, only converting a subset of fetched
+List&lt;DataRow> rows = query.select(context);</programlisting><programlisting language="java">SQLSelect&lt;DataRow> query = SQLSelect.dataRowQuery("SELECT * FROM ARTIST");
+List&lt;DataRow> rows = query.select(context);</programlisting></para>
+        <para>Individual DataRows may be converted to Persistent objects as needed. So e.g. you may
+            implement some in-memory filtering, only converting a subset of fetched
             objects:<programlisting language="java">// you need to cast ObjectContext to DataContext to get access to 'objectFromDataRow'
 DataContext dataContext = (DataContext) context;
 
@@ -213,9 +208,9 @@ for(DataRow row : rows) {
     // do something with the object...
     ...
 });</programlisting></para>
-        <para>Another example is a BatchIterator that allows to process more than one object in each
-            iteration. This is a common scenario in various data processing jobs - read a batch of
-            objects, process them, commit  the results, and then repeat. This allows to further
+        <para>Another example is a batch iterator that allows to process more than one object in
+            each iteration. This is a common scenario in various data processing jobs - read a batch
+            of objects, process them, commit the results, and then repeat. This allows to further
             optimize processing (e.g. by avoiding frequent
             commits).<programlisting>try(ResultBatchIterator&lt;Artist> it = ObjectSelect.query(Artist.class).iterator(context)) {
     for(List&lt;Artist> list : it) {
@@ -234,19 +229,14 @@ for(DataRow row : rows) {
             appears to be a list of Persistent objects - there's no iterator to close or DataRows to
             convert to objects:</para>
         <para>
-            <programlisting language="java">SelectQuery query = new SelectQuery(Artist.class);
-query.setPageSize(50);
-
-// the fact that result is paginated is transparent
-List&lt;Artist> artists = ctxt.performQuery(query);</programlisting>
+            <programlisting language="java">// the fact that result is paginated is transparent
+List&lt;Artist> artists = 
+    ObjectSelect.query(Artist.class).pageSize(50).select(context);</programlisting>
         </para>
         <para>Having said that, DataRows option can be combined with pagination, providing the best
             of both
-            worlds:<programlisting language="java">SelectQuery query = new SelectQuery(Artist.class);
-query.setPageSize(50);
-query.setFetchingDataRows(true);
-
-List&lt;DataRow> rows = ctxt.performQuery(query);</programlisting></para>
+            worlds:<programlisting language="java">List&lt;DataRow> rows = 
+    ObjectSelect.dataRowQuery(Artist.class).pageSize(50).select(context);</programlisting></para>
         <para>The way pagination works internally, it first fetches a list of IDs for the root
             entity of the query. This is very fast and initially takes very little memory. Then when
             an object is requested at an arbitrary index in the list, this object and adjacent
@@ -267,6 +257,76 @@ List&lt;DataRow> rows = ctxt.performQuery(query);</programlisting></para>
         </section>
         <section xml:id="query-result-caching">
             <title>Query Result Caching</title>
+            <para>Cayenne supports mostly transparent caching of the query results. There are two
+                levels of the cache: local (i.e. results cached by the ObjectContext) and shared
+                (i.e. the results cached at the stack level and shared between all contexts). Local
+                cache is much faster then the shared one, but is limited to a single context. It is
+                often used with a shared read-only ObjectContext. </para>
+            <para>To take advantage of query result caching, the first step is to mark your queries
+                appropriately. Here is an example for ObjectSelect query. Other types of queries
+                have similar
+                API:<programlisting>ObjectSelect.query(Artist.class).localCache("artists");</programlisting></para>
+            <para>This tells Cayenne that the query created here would like to use local cache of
+                the context it is executed against. A vararg parameter to <code>localCache()</code>
+                (or <code>sharedCache()</code>) method contains so called "cache groups". Those are
+                arbitrary names that allow to categorize queries for the purpose of setting cache
+                policies or explicit invalidation of the cache. More on that below.</para>
+            <para>The above API is enough for the caching to work, but by default your cache is an
+                unmanaged LRU map. You can't control its size, expiration policies, etc. For the
+                managed cache, you will need to explicitly use one of the more advanced cache
+                providers. One such provider available in Cayenne is a provider for <link
+                    xlink:href="http://www.ehcache.org/">EhCache</link>. It can be enabled on
+                ServerRuntime startup in a custom
+                Module:<programlisting>ServerRuntimeBuilder
+  .builder()
+  .addModule((binder) -> 
+     binder.bind(QueryCache.class).to(EhCacheQueryCache.class)
+  )
+  .build();</programlisting></para>
+            <para>By default EhCache reads a file called "ehcache.xml" located on classpath. You can
+                put your cache configuration in that file.
+                E.g.:<programlisting>&lt;ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="ehcache.xsd" updateCheck="false"
+	monitoring="off" dynamicConfig="false">
+
+	&lt;defaultCache maxEntriesLocalHeap="1000" eternal="false"
+		overflowToDisk="false" timeToIdleSeconds="3600" timeToLiveSeconds="3600">
+	&lt;/defaultCache>
+	
+	&lt;cache name="artists" timeToLiveSeconds="20" maxEntriesLocalHeap="100" />
+&lt;/ehcache></programlisting></para>
+            <para>The example shows how to configure default cache settings ("defaultCache") as well
+                as settings for a named cache group ("artists"). For many other things you can put
+                in "ehcache.xml" refer to EhCache docs.</para>
+            <para>Often "passive" cache expiration policies similar to shown above are not
+                sufficient, and the users want real-time cache invalidation when the data changes.
+                So in addition to those policies, the app can invalidate individual cache groups
+                explicitly with
+                <code>RefreshQuery</code>:<programlisting>RefreshQuery refresh = new RefreshQuery("artist");
+context.performGenericQuery(refresh);</programlisting></para>
+            <para>The above can be used e.g. to build UI for manual cache invalidation. It is also
+                possible to automate cache refresh when certain entities are committed. This
+                requires including <code>cayenne-lifecycle.jar</code> deoendency. From that library
+                you will need two things: <code>@CacheGroups</code> annotation to mark entities that
+                generate cache invalidation events and  <code>CacheInvalidationFilter</code> that
+                catches the updates to the annotated objects and generates appropriate invalidation
+                events:<programlisting>// configure filter on startup
+ServerRuntimeBuilder
+  .builder()
+  .addModule((binder) -> 
+     binder.bindList(Constants.SERVER_DOMAIN_FILTERS_LIST).add(CacheInvalidationFilter.class)
+  )
+  .build();</programlisting></para>
+            <para>Now you can associate entities with cache groups, so that commits to those
+                entities would atomatically invalidate the
+                groups:<programlisting>@CacheGroups("artists")
+public class Artist extends _Artist {
+}</programlisting></para>
+            <para>Finally you may cluster cache group events. They are very small and can be
+                efficiently sent over the wire to other JVMs running Cayenne. An example of Cayenne
+                setup with event clustering  is <link
+                    xlink:href="https://github.com/andrus/wowodc13/tree/master/services/src/main/java/demo/services/cayenne"
+                    >available on GitHub</link>.</para>
         </section>
     </section>
     <section xml:id="turning-off-synchronization-of-objectcontexts">

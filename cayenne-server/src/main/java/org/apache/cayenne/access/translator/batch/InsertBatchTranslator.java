@@ -19,14 +19,16 @@
 
 package org.apache.cayenne.access.translator.batch;
 
-import java.util.List;
-
-import org.apache.cayenne.access.translator.ParameterBinding;
+import org.apache.cayenne.access.translator.DbAttributeBinding;
+import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.QuotingStrategy;
+import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.query.BatchQueryRow;
 import org.apache.cayenne.query.InsertBatchQuery;
+
+import java.util.List;
 
 /**
  * Translator of InsertBatchQueries.
@@ -82,15 +84,18 @@ public class InsertBatchTranslator extends DefaultBatchTranslator {
     }
 
     @Override
-    protected ParameterBinding[] createBindings() {
+    protected DbAttributeBinding[] createBindings() {
         List<DbAttribute> attributes = query.getDbAttributes();
         int len = attributes.size();
 
-        ParameterBinding[] bindings = new ParameterBinding[len];
+        DbAttributeBinding[] bindings = new DbAttributeBinding[len];
 
         for (int i = 0; i < len; i++) {
             DbAttribute a = attributes.get(i);
-            bindings[i] = new ParameterBinding(a);
+
+            String typeName = TypesMapping.getJavaBySqlType(a.getType());
+            ExtendedType extendedType = adapter.getExtendedTypes().getRegisteredType(typeName);
+            bindings[i] = new DbAttributeBinding(a, extendedType);
 
             // include/exclude state depends on DbAttribute only and can be
             // precompiled here
@@ -107,12 +112,12 @@ public class InsertBatchTranslator extends DefaultBatchTranslator {
     }
 
     @Override
-    protected ParameterBinding[] doUpdateBindings(BatchQueryRow row) {
+    protected DbAttributeBinding[] doUpdateBindings(BatchQueryRow row) {
         int len = bindings.length;
 
         for (int i = 0, j = 1; i < len; i++) {
 
-            ParameterBinding b = bindings[i];
+            DbAttributeBinding b = bindings[i];
 
             // exclusions are permanent
             if (!b.isExcluded()) {

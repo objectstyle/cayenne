@@ -22,14 +22,14 @@ package org.apache.cayenne.query;
 import java.io.Serializable;
 
 import org.apache.cayenne.access.QueryEngine;
-import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.EntityResolver;
+import org.apache.cayenne.map.QueryDescriptor;
 
 /**
  * Defines minimal API of a query descriptor that is executable via Cayenne.
  */
-public interface Query extends Serializable, ConfigurationNode {
+public interface Query extends Serializable {
 
     /**
      * Returns query runtime parameters. The method is called at various stages of the
@@ -68,6 +68,7 @@ public interface Query extends Serializable, ConfigurationNode {
      * queries stored in the DataMap.
      * 
      * @since 1.1
+     * @deprecated {@link QueryDescriptor#getName()} should be used instead
      */
     String getName();
 

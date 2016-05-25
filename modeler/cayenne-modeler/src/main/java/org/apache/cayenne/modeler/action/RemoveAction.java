@@ -61,8 +61,8 @@ import org.apache.cayenne.modeler.undo.RemoveRelationshipUndoableEdit;
 import org.apache.cayenne.modeler.undo.RemoveUndoableEdit;
 import org.apache.cayenne.modeler.util.CayenneAction;
 import org.apache.cayenne.modeler.util.ProjectUtil;
-import org.apache.cayenne.query.AbstractQuery;
 import org.apache.cayenne.query.Query;
+import org.apache.cayenne.map.QueryDescriptor;
 
 import javax.swing.KeyStroke;
 import javax.swing.undo.CompoundEdit;
@@ -72,6 +72,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -448,7 +449,12 @@ public class RemoveAction extends CayenneAction {
         domain.getDataMaps().remove(map);
         if (map.getConfigurationSource() != null) {
             URL mapURL = map.getConfigurationSource().getURL();
-            getCurrentProject().getUnusedResources().add(mapURL);
+            Collection<URL> unusedResources = getCurrentProject().getUnusedResources();
+            unusedResources.add(mapURL);
+            if (map.getReverseEngineering() != null && map.getReverseEngineering().getConfigurationSource() != null) {
+                URL reverseEngineeringURL = map.getReverseEngineering().getConfigurationSource().getURL();
+                unusedResources.add(reverseEngineeringURL);
+            }
         }
         
         Iterator<DataNodeDescriptor> iterator = domain.getNodeDescriptors().iterator();
@@ -490,13 +496,13 @@ public class RemoveAction extends CayenneAction {
     /**
      * Removes current Query from its DataMap and fires "remove" QueryEvent.
      */
-    public void removeQuery(DataMap map, Query query) {
+    public void removeQuery(DataMap map, QueryDescriptor query) {
         ProjectController mediator = getProjectController();
 
         QueryEvent e = new QueryEvent(Application.getFrame(), query, MapEvent.REMOVE, map);
         e.setDomain((DataChannelDescriptor) mediator.getProject().getRootNode());
 
-        map.removeQuery(query.getName());
+        map.removeQueryDescriptor(query.getName());
         mediator.fireQueryEvent(e);
     }
 
@@ -532,15 +538,14 @@ public class RemoveAction extends CayenneAction {
         // TODO: (Andrus, 09/09/2005) show warning dialog?
 
         // clone to be able to remove within iterator...
-        for (Query query : new ArrayList<Query>(map.getQueries())) {
-            if (query instanceof AbstractQuery) {
-                AbstractQuery next = (AbstractQuery) query;
-                Object root = next.getRoot();
+        for (QueryDescriptor query : new ArrayList<>(map.getQueryDescriptors())) {
+            if (!QueryDescriptor.EJBQL_QUERY.equals(query.getType())) {
+                Object root = query.getRoot();
 
                 if (root == entity
                         || (root instanceof String && root.toString().equals(
                                 entity.getName()))) {
-                    removeQuery(map, next);
+                    removeQuery(map, query);
                 }
             }
         }
@@ -651,10 +656,10 @@ public class RemoveAction extends CayenneAction {
 
             removeObjEntity(((ObjEntity) object).getDataMap(), (ObjEntity) object);
         }
-        else if (object instanceof Query) {
-            undo = new RemoveUndoableEdit(((Query) object).getDataMap(), (Query) object);
+        else if (object instanceof QueryDescriptor) {
+            undo = new RemoveUndoableEdit(((Query) object).getDataMap(), (QueryDescriptor) object);
 
-            removeQuery(((Query) object).getDataMap(), (Query) object);
+            removeQuery(((Query) object).getDataMap(), (QueryDescriptor) object);
         }
         else if (object instanceof Procedure) {
             undo = new RemoveUndoableEdit(

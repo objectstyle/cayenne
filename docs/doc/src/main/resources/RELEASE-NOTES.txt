@@ -7,7 +7,32 @@ http://cayenne.apache.org/
 To browse individual bug reports check out project issue tracker:
 https://issues.apache.org/jira/browse/CAY
 
+----------------------------------
+Release: 4.0.M4
+Date:
+----------------------------------
 Changes/New Features:
+
+CAY-2051 Applying new Reverse Engineering to the Modeler
+CAY-2053 SQLExec fluent query API
+CAY-2060 Replace Query objects in DataMap with query descriptors
+CAY-2062 MappedSelect and MappedExec fluent query API
+CAY-2063 ProcedureCall fluent query API
+CAY-2065 Pluggable serialization and connectivity layers for ROP
+CAY-2073 Ordering.orderedList methods
+CAY-2074 Support for catalogs in stored procedures
+
+Bug Fixes:
+
+CAY-2064 Issue with BeanAccessor for classes with complex inheritance
+CAY-2066 Fixes for inner enums handling in ExtendedTypeMap
+CAY-2067 Cayenne 4.0 connection pool is occasionally running out of connections
+CAY-2078 Client code gen bug. Unnecessary DataMap class generation setting datamap gen to false.
+CAY-2080 Cayenne doesn't pick up reverse engineering file changes
+CAY-2084 ObjectIdQuery - no cache access polymorphism
+CAY-2086 SelectById.selectFirst stack overflow
+CAY-2087 PostCommitFilter is confused about changes made by Pre* listeners
+
 ----------------------------------
 Release: 4.0.M3
 Date:
@@ -36,10 +61,14 @@ CAY-2028 Wrap DataChannelFilter calls in the main transaction
 CAY-2029 Allow out-of-order insertion into DI lists
 CAY-2030 Capturing a stream of commit changes
 CAY-2035 Autobind items added to collections (Cayenne DI)
+CAY-2042 Remove an arbitrary limitation on 1000 runtime DbRelationships
 CAY-2043 ServerRuntimeBuilder: use DataDomain name for the default DataNode
+CAY-2044 Collection setter for to-many relationships
+CAY-2045 Add autosuggestion fields to choose attributes and relationships
 
 Bug Fixes:
 
+CAY-1977 Cleanup Modeler reverse engineering functionality
 CAY-1987 Widen types before performing in-memory evaluation of qualifiers using j.l.Number subclasses
 CAY-1990 Incorrect display of the raw SQL query in Modeler
 CAY-1993 Reverse Engineering does not work with PostgreSQL database
@@ -51,6 +80,8 @@ CAY-2003 cdbimport doesn't work properly with several includeTable tags
 CAY-2015 Joint prefetches combined with DisjointById prefetches return null incorrectly
 CAY-2020 typo: correction to upper alpha range in Rot13PasswordEncoder
 CAY-2041 "cayenne.jdbc.max_connections" and "cayenne.jdbc.min_connections" command line options are ignored
+CAY-2047 Relationship mapping with target inheritance
+CAY-2049 Changing the Relationship name in ObjRelationship Inspector has no effect
 
 ----------------------------------
 Release: 4.0.M2

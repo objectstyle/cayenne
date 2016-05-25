@@ -38,6 +38,8 @@ import org.apache.cayenne.ResultIterator;
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.access.OperationObserver;
 import org.apache.cayenne.access.jdbc.reader.RowReader;
+import org.apache.cayenne.access.translator.ParameterBinding;
+import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.TypesMapping;
@@ -149,8 +151,8 @@ public class SQLTemplateAction implements SQLAction {
 
 		// for now supporting deprecated batch parameters...
 		@SuppressWarnings("unchecked")
-		Iterator<Map<String, ?>> it = (size > 0) ? query.parametersIterator() : IteratorUtils
-				.singletonIterator(Collections.emptyMap());
+		Iterator<Map<String, ?>> it = (size > 0) ? query.parametersIterator()
+				: IteratorUtils.singletonIterator(Collections.emptyMap());
 		for (int i = 0; i < batchSize; i++) {
 			Map<String, ?> nextParameters = it.next();
 
@@ -343,14 +345,23 @@ public class SQLTemplateAction implements SQLAction {
 	/**
 	 * Binds parameters to the PreparedStatement.
 	 */
-	protected void bind(PreparedStatement preparedStatement, SQLParameterBinding[] bindings) throws SQLException,
-			Exception {
+	protected void bind(PreparedStatement preparedStatement, SQLParameterBinding[] bindings)
+			throws SQLException, Exception {
 		// bind parameters
 		if (bindings.length > 0) {
 			int len = bindings.length;
 			for (int i = 0; i < len; i++) {
-				dataNode.getAdapter().bindParameter(preparedStatement, bindings[i].getValue(), i + 1,
-						bindings[i].getJdbcType(), bindings[i].getScale());
+
+				Object value = bindings[i].getValue();
+				ExtendedType extendedType = value != null
+						? getAdapter().getExtendedTypes().getRegisteredType(value.getClass())
+						: getAdapter().getExtendedTypes().getDefaultType();
+
+				ParameterBinding binding = new ParameterBinding(extendedType);
+				binding.setType(bindings[i].getJdbcType());
+				binding.setStatementPosition(i + 1);
+				binding.setValue(value);
+				dataNode.getAdapter().bindParameter(preparedStatement, binding);
 			}
 		}
 

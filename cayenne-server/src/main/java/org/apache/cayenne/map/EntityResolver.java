@@ -19,7 +19,6 @@
 
 package org.apache.cayenne.map;
 
-import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.ObjectId;
 import org.apache.cayenne.Persistent;
 import org.apache.cayenne.query.Query;
@@ -39,6 +38,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Represents a virtual shared namespace for zero or more DataMaps. Unlike
@@ -53,6 +53,7 @@ import java.util.Collections;
 public class EntityResolver implements MappingNamespace, Serializable {
 
     protected static final Log logger = LogFactory.getLog(EntityResolver.class);
+    protected static AtomicLong incrementer = new AtomicLong();
 
     @Deprecated
     protected boolean indexedByClass;
@@ -107,7 +108,7 @@ public class EntityResolver implements MappingNamespace, Serializable {
                         DbRelationship reverse = relationship.createReverseRelationship();
 
                         Entity targetEntity = reverse.getSourceEntity();
-                        reverse.setName(makeUniqueRelationshipName(targetEntity));
+                        reverse.setName(getUniqueRelationshipName(targetEntity));
                         reverse.setRuntime(true);
                         targetEntity.addRelationship(reverse);
 
@@ -130,15 +131,14 @@ public class EntityResolver implements MappingNamespace, Serializable {
         // noop
     }
 
-    private String makeUniqueRelationshipName(Entity entity) {
-        for (int i = 0; i < 1000; i++) {
-            String name = "runtimeRelationship" + i;
-            if (entity.getRelationship(name) == null) {
-                return name;
-            }
-        }
+    private String getUniqueRelationshipName(Entity entity) {
+        String name;
 
-        throw new CayenneRuntimeException("Could not come up with a unique relationship name");
+        do {
+            name = "runtimeRelationship" + incrementer.getAndIncrement();
+        } while(entity.getRelationship(name) != null);
+
+        return name;
     }
 
     /**
@@ -264,9 +264,9 @@ public class EntityResolver implements MappingNamespace, Serializable {
         return mappingCache.getProcedures();
     }
 
-    public Collection<Query> getQueries() {
+    public Collection<QueryDescriptor> getQueryDescriptors() {
         checkMappingCache();
-        return mappingCache.getQueries();
+        return mappingCache.getQueryDescriptors();
     }
 
     public DbEntity getDbEntity(String name) {
@@ -314,15 +314,15 @@ public class EntityResolver implements MappingNamespace, Serializable {
     /**
      * Returns a named query or null if no query exists for a given name.
      */
-    public Query getQuery(String name) {
+    public QueryDescriptor getQueryDescriptor(String name) {
         checkMappingCache();
 
-        Query result = mappingCache.getQuery(name);
+        QueryDescriptor result = mappingCache.getQueryDescriptor(name);
         if (result == null) {
             // reconstruct cache just in case some of the datamaps
             // have changed and now contain the required information
             refreshMappingCache();
-            result = mappingCache.getQuery(name);
+            result = mappingCache.getQueryDescriptor(name);
         }
         return result;
     }
@@ -550,14 +550,6 @@ public class EntityResolver implements MappingNamespace, Serializable {
     @Deprecated
     public Procedure lookupProcedure(String procedureName) {
         return getProcedure(procedureName);
-    }
-
-    /**
-     * @deprecated since 4.0 use {@link #getQuery(String)}.
-     */
-    @Deprecated
-    public Query lookupQuery(String name) {
-        return getQuery(name);
     }
 
     public synchronized void removeDataMap(DataMap map) {

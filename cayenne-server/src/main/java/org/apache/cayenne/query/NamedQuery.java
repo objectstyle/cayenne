@@ -19,15 +19,12 @@
 
 package org.apache.cayenne.query;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.Persistent;
 import org.apache.cayenne.map.EntityResolver;
+import org.apache.cayenne.map.QueryDescriptor;
 import org.apache.cayenne.util.EqualsBuilder;
 import org.apache.cayenne.util.HashCodeBuilder;
 import org.apache.cayenne.util.Util;
@@ -37,6 +34,7 @@ import org.apache.cayenne.util.Util;
  * actual query is resolved during execution.
  * 
  * @since 1.2
+ * @deprecated since 4.0 you should use {@link MappedQuery} instead
  */
 public class NamedQuery extends IndirectQuery {
 
@@ -169,13 +167,11 @@ public class NamedQuery extends IndirectQuery {
      * EntityResolver.
      */
     protected Query resolveQuery(EntityResolver resolver) {
-        Query query = resolver.lookupQuery(getName());
+        QueryDescriptor queryDescriptor = resolver.getQueryDescriptor(getName());
 
-        if (query == null) {
-            throw new CayenneRuntimeException("Can't find named query for name '"
-                    + getName()
-                    + "'");
-        }
+        Query query = queryDescriptor.buildQuery();
+
+        Object root = queryDescriptor.getRoot();
 
         if (query == this) {
             throw new CayenneRuntimeException("Named query resolves to self: '"

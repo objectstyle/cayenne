@@ -18,9 +18,11 @@
  ****************************************************************/
 package org.apache.cayenne.access.translator.batch;
 
-import org.apache.cayenne.access.translator.ParameterBinding;
+import org.apache.cayenne.access.translator.DbAttributeBinding;
+import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.QuotingStrategy;
+import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.query.BatchQueryRow;
 import org.apache.cayenne.query.DeleteBatchQuery;
@@ -54,16 +56,19 @@ public class SoftDeleteBatchTranslator extends DeleteBatchTranslator {
     }
 
     @Override
-    protected ParameterBinding[] createBindings() {
+    protected DbAttributeBinding[] createBindings() {
 
-        ParameterBinding[] superBindings = super.createBindings();
+        DbAttributeBinding[] superBindings = super.createBindings();
 
         int slen = superBindings.length;
 
-        ParameterBinding[] bindings = new ParameterBinding[slen + 1];
+        DbAttributeBinding[] bindings = new DbAttributeBinding[slen + 1];
 
         DbAttribute deleteAttribute = query.getDbEntity().getAttribute(deletedFieldName);
-        bindings[0] = new ParameterBinding(deleteAttribute);
+        String typeName = TypesMapping.getJavaBySqlType(deleteAttribute.getType());
+        ExtendedType extendedType = adapter.getExtendedTypes().getRegisteredType(typeName);
+
+        bindings[0] = new DbAttributeBinding(deleteAttribute, extendedType);
         bindings[0].include(1, true);
         
         System.arraycopy(superBindings, 0, bindings, 1, slen);
@@ -72,7 +77,7 @@ public class SoftDeleteBatchTranslator extends DeleteBatchTranslator {
     }
 
     @Override
-    protected ParameterBinding[] doUpdateBindings(BatchQueryRow row) {
+    protected DbAttributeBinding[] doUpdateBindings(BatchQueryRow row) {
         int len = bindings.length;
 
         DeleteBatchQuery deleteBatch = (DeleteBatchQuery) query;
@@ -80,7 +85,7 @@ public class SoftDeleteBatchTranslator extends DeleteBatchTranslator {
         // skip position 0... Otherwise follow super algorithm
         for (int i = 1, j = 2; i < len; i++) {
 
-            ParameterBinding b = bindings[i];
+            DbAttributeBinding b = bindings[i];
 
             // skip null attributes... they are translated as "IS NULL"
             if (deleteBatch.isNull(b.getAttribute())) {

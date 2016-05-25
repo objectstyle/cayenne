@@ -20,7 +20,7 @@ package org.apache.cayenne.access;
 
 import org.apache.cayenne.DataRow;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.query.NamedQuery;
+import org.apache.cayenne.query.MappedSelect;
 import org.apache.cayenne.query.SelectQuery;
 import org.apache.cayenne.testdo.return_types.ReturnTypesMap1;
 import org.apache.cayenne.testdo.return_types.ReturnTypesMap2;
@@ -38,17 +38,14 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeThat;
+import static org.junit.Assert.*;
 import static org.junit.Assume.assumeTrue;
 
 /**
  * Test Types mapping for selected columns
  */
 @UseServerRuntime(CayenneProjects.RETURN_TYPES_PROJECT)
-public class ReturnTypesMappingIT extends ServerCase {
+public class    ReturnTypesMappingIT extends ServerCase {
 
     @Inject
     private DataContext context;
@@ -68,9 +65,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Long bigintValue = 5326457654783454355l;
         test.setBigintColumn(bigintValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Long.class, columnValue.getClass());
@@ -104,9 +100,8 @@ public class ReturnTypesMappingIT extends ServerCase {
             };
             test.setBinaryColumn(binaryValue);
             context.commitChanges();
-    
-            NamedQuery q = new NamedQuery("SelectReturnTypesMap2");
-            DataRow testRead = (DataRow) context.performQuery(q).get(0);
+			
+            DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap2")).get(0);
             Object columnValue = testRead.get(columnName);
             assertNotNull(columnValue);
             assertEquals(byte[].class, columnValue.getClass());
@@ -142,9 +137,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Boolean bitValue = true;
         test.setBitColumn(bitValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertTrue(Boolean.class.equals(columnValue.getClass())
@@ -182,9 +176,8 @@ public class ReturnTypesMappingIT extends ServerCase {
             };
             test.setBlobColumn(blobValue);
             context.commitChanges();
-    
-            NamedQuery q = new NamedQuery("SelectReturnTypesMap2");
-            DataRow testRead = (DataRow) context.performQuery(q).get(0);
+			
+            DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap2")).get(0);
             Object columnValue = testRead.get(columnName);
             assertNotNull(columnValue);
             assertEquals(byte[].class, columnValue.getClass());
@@ -220,9 +213,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Boolean booleanValue = true;
         test.setBooleanColumn(booleanValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertTrue(Boolean.class.equals(columnValue.getClass())
@@ -255,9 +247,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         String charValue = "Char string for tests!";
         test.setCharColumn(charValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(String.class, columnValue.getClass());
@@ -272,9 +263,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         String charValue = "درخت‌های جستجوی متوازن، نیازی ندارد که به صورت!";
         test.setNCharColumn(charValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(String.class, columnValue.getClass());
@@ -310,9 +300,8 @@ public class ReturnTypesMappingIT extends ServerCase {
             String clobValue = buffer.toString();
             test.setClobColumn(clobValue);
             context.commitChanges();
-    
-            NamedQuery q = new NamedQuery("SelectReturnTypesLobsMap1");
-            DataRow testRead = (DataRow) context.performQuery(q).get(0);
+			
+            DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesLobsMap1")).get(0);
             Object columnValue = testRead.get(columnName);
             if (columnValue == null && testRead.containsKey(columnName.toLowerCase())) {
                 columnValue = testRead.get(columnName.toLowerCase());
@@ -337,9 +326,8 @@ public class ReturnTypesMappingIT extends ServerCase {
             String clobValue = buffer.toString();
             test.setNClobColumn(clobValue);
             context.commitChanges();
-
-            NamedQuery q = new NamedQuery("SelectReturnTypesLobsMap1");
-            DataRow testRead = (DataRow) context.performQuery(q).get(0);
+			
+            DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesLobsMap1")).get(0);
             Object columnValue = testRead.get(columnName);
             if (columnValue == null && testRead.containsKey(columnName.toLowerCase())) {
                 columnValue = testRead.get(columnName.toLowerCase());
@@ -383,9 +371,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Date dateValue = cal.getTime();
         test.setDateColumn(dateValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Date.class, columnValue.getClass());
@@ -419,9 +406,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         BigDecimal decimalValue = new BigDecimal("578438.57843");
         test.setDecimalColumn(decimalValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(BigDecimal.class, columnValue.getClass());
@@ -452,9 +438,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Double doubleValue = 3298.4349783d;
         test.setDoubleColumn(doubleValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Double.class, columnValue.getClass());
@@ -485,9 +470,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Float floatValue = 375.437f;
         test.setFloatColumn(floatValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertTrue(Float.class.equals(columnValue.getClass())
@@ -519,9 +503,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Integer integerValue = 54235;
         test.setIntegerColumn(integerValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Integer.class, columnValue.getClass());
@@ -555,9 +538,8 @@ public class ReturnTypesMappingIT extends ServerCase {
             };
             test.setLongvarbinaryColumn(longvarbinaryValue);
             context.commitChanges();
-    
-            NamedQuery q = new NamedQuery("SelectReturnTypesMap2");
-            DataRow testRead = (DataRow) context.performQuery(q).get(0);
+			
+            DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap2")).get(0);
             Object columnValue = testRead.get(columnName);
             assertNotNull(columnValue);
             assertEquals(byte[].class, columnValue.getClass());
@@ -597,9 +579,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         String longvarcharValue = buffer.toString();
         test.setLongvarcharColumn(longvarcharValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(String.class, columnValue.getClass());
@@ -618,9 +599,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         String longnvarcharValue = buffer.toString();
         test.setLongnvarcharColumn(longnvarcharValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(String.class, columnValue.getClass());
@@ -655,9 +635,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         BigDecimal numericValue = new BigDecimal("578438.57843");
         test.setNumericColumn(numericValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(BigDecimal.class, columnValue.getClass());
@@ -688,9 +667,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Float realValue = 5788.57843f;
         test.setRealColumn(realValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
 
@@ -729,9 +707,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Short smallintValue = 32564;
         test.setSmallintColumn(smallintValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Short.class, columnValue.getClass());
@@ -765,9 +742,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Date timeValue = new Time(cal.getTime().getTime());
         test.setTimeColumn(timeValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Date.class, columnValue.getClass());
@@ -802,9 +778,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Date timestampValue = Calendar.getInstance().getTime();
         test.setTimestampColumn(timestampValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(Date.class, columnValue.getClass());
@@ -842,9 +817,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         Byte tinyintValue = 89;
         test.setTinyintColumn(tinyintValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertTrue(Short.class.equals(columnValue.getClass()));
@@ -878,9 +852,8 @@ public class ReturnTypesMappingIT extends ServerCase {
             };
             test.setVarbinaryColumn(varbinaryValue);
             context.commitChanges();
-    
-            NamedQuery q = new NamedQuery("SelectReturnTypesMap2");
-            DataRow testRead = (DataRow) context.performQuery(q).get(0);
+			
+            DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap2")).get(0);
             Object columnValue = testRead.get(columnName);
             assertNotNull(columnValue);
             assertEquals(byte[].class, columnValue.getClass());
@@ -916,9 +889,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         String varcharValue = "VARChar string for tests!";
         test.setVarcharColumn(varcharValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(String.class, columnValue.getClass());
@@ -933,9 +905,8 @@ public class ReturnTypesMappingIT extends ServerCase {
         String varcharValue = "ی متوازن، نیازی ندارد که ب";
         test.setNVarcharColumn(varcharValue);
         context.commitChanges();
-
-        NamedQuery q = new NamedQuery("SelectReturnTypesMap1");
-        DataRow testRead = (DataRow) context.performQuery(q).get(0);
+		
+        DataRow testRead = (DataRow) context.performQuery(MappedSelect.query("SelectReturnTypesMap1")).get(0);
         Object columnValue = testRead.get(columnName);
         assertNotNull(columnValue);
         assertEquals(String.class, columnValue.getClass());

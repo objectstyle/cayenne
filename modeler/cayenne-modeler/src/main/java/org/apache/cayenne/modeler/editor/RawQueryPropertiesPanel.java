@@ -30,19 +30,18 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 
-import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.util.CellRenderers;
 import org.apache.cayenne.modeler.util.Comparators;
-import org.apache.cayenne.query.Query;
 
 import com.jgoodies.forms.builder.PanelBuilder;
 import com.jgoodies.forms.layout.CellConstraints;
 import com.jgoodies.forms.layout.FormLayout;
+import org.apache.cayenne.map.QueryDescriptor;
+import org.apache.cayenne.query.QueryMetadata;
 
 /**
  * A panel that supports editing the properties a query not based on ObjEntity, but still
@@ -122,12 +121,10 @@ public abstract class RawQueryPropertiesPanel extends SelectPropertiesPanel {
      * Updates the view from the current model state. Invoked when a currently displayed
      * query is changed.
      */
-    public void initFromModel(Query query) {
+    public void initFromModel(QueryDescriptor query) {
         super.initFromModel(query);
-        EntityResolver entRes = new EntityResolver(((DataChannelDescriptor) mediator
-                .getProject()
-                .getRootNode()).getDataMaps());
-        boolean fetchingDO = !query.getMetaData(entRes).isFetchingDataRows();
+
+        boolean fetchingDO = !Boolean.valueOf(query.getProperties().get(QueryMetadata.FETCHING_DATA_ROWS_PROPERTY));
         dataObjects.setSelected(fetchingDO);
 
         // TODO: now we only allow ObjEntities from the current map,
@@ -150,7 +147,7 @@ public abstract class RawQueryPropertiesPanel extends SelectPropertiesPanel {
 
     protected abstract void setEntity(ObjEntity selectedEntity);
 
-    protected abstract ObjEntity getEntity(Query query);
+    protected abstract ObjEntity getEntity(QueryDescriptor query);
 
     protected void setFetchingDataObjects(boolean dataObjects) {
         entities.setEnabled(dataObjects && isEnabled());
@@ -159,6 +156,7 @@ public abstract class RawQueryPropertiesPanel extends SelectPropertiesPanel {
             entities.getModel().setSelectedItem(null);
         }
 
-        setQueryProperty("fetchingDataRows", dataObjects ? Boolean.FALSE : Boolean.TRUE);
+        setQueryProperty(QueryMetadata.FETCHING_DATA_ROWS_PROPERTY,
+                dataObjects ? Boolean.FALSE.toString() : Boolean.TRUE.toString());
     }
 }

@@ -22,6 +22,7 @@ package org.apache.cayenne.query;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -62,6 +63,22 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 		Collections.sort(objects, ComparatorUtils.chainedComparator(orderings));
 	}
 
+	/**
+	 * Orders a given list of objects, using a List of Orderings applied
+	 * according the default iteration order of the Orderings list. I.e. each
+	 * Ordering with lower index is more significant than any other Ordering
+	 * with higher index. List being ordered is modified in place.
+	 * 
+	 * @since 4.0
+	 */
+	public static <E> List<E> orderedList(List<E> objects, List<? extends Ordering> orderings) {
+		List<E> newList = new ArrayList<E>(objects);
+		
+		orderList(newList, orderings);
+		
+		return newList;
+	}
+	
 	public Ordering() {
 	}
 
@@ -313,9 +330,21 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 	}
 
 	/**
+	 * @since 4.0
+	 */
+	public <E> List<E> orderedList(List<E> objects) {
+		List<E> newList = new ArrayList<E>(objects);
+		
+		orderList(newList);
+		
+		return newList;
+	}
+
+	/**
 	 * Comparable interface implementation. Can compare two Java Beans based on
 	 * the stored expression.
 	 */
+	@Override
 	public int compare(Object o1, Object o2) {
 		Expression exp = getSortSpec();
 		Object value1 = null;
@@ -367,6 +396,7 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 	 * 
 	 * @since 1.1
 	 */
+	@Override
 	public void encodeAsXML(XMLEncoder encoder) {
 		encoder.print("<ordering");
 

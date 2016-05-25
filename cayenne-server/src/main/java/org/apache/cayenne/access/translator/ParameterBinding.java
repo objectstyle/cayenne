@@ -18,10 +18,10 @@
  ****************************************************************/
 package org.apache.cayenne.access.translator;
 
-import org.apache.cayenne.map.DbAttribute;
+import org.apache.cayenne.access.types.ExtendedType;
 
 /**
- * Describes a PreparedStatement parameter binding mapped to a DbAttribute.
+ * Describes a PreparedStatement parameter generic binding.
  * 
  * @since 4.0
  */
@@ -29,17 +29,15 @@ public class ParameterBinding {
 
 	static final int EXCLUDED_POSITION = -1;
 
-	private DbAttribute attribute;
 	private Object value;
 	private int statementPosition;
+	private ExtendedType extendedType;
+	private Integer type;
+	private int scale;
 
-	public ParameterBinding(DbAttribute attribute) {
-		this.attribute = attribute;
+	public ParameterBinding(ExtendedType extendedType) {
 		this.statementPosition = EXCLUDED_POSITION;
-	}
-
-	public DbAttribute getAttribute() {
-		return attribute;
+		this.extendedType = extendedType;
 	}
 
 	public Object getValue() {
@@ -62,6 +60,10 @@ public class ParameterBinding {
 		return statementPosition == EXCLUDED_POSITION;
 	}
 
+	public ExtendedType getExtendedType() {
+		return extendedType;
+	}
+
 	/**
 	 * Marks the binding object as excluded for the current iteration.
 	 */
@@ -77,5 +79,21 @@ public class ParameterBinding {
 	public void include(int statementPosition, Object value) {
 		this.statementPosition = statementPosition;
 		this.value = value;
+	}
+
+	public Integer getType() {
+		return type;
+	}
+
+	public void setType(Integer type) {
+		this.type = type;
+	}
+
+	public int getScale() {
+		return scale;
+	}
+
+	public void setScale(int scale) {
+		this.scale = scale;
 	}
 }

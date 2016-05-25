@@ -22,7 +22,7 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M3-SNAPSHOT</version>
+		<version>4.0.M4-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-server</artifactId>
 	<name>Cayenne Server</name>
@@ -151,7 +151,13 @@
     		<artifactId>slf4j-simple</artifactId>
     		<scope>test</scope>
 		</dependency>
-    </dependencies>
+		<dependency>
+			<groupId>xmlunit</groupId>
+			<artifactId>xmlunit</artifactId>
+			<version>1.5</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 	<build>
 		<resources>
 			<resource>

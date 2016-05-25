@@ -18,6 +18,7 @@
  ****************************************************************/
 package org.apache.cayenne.configuration;
 
+import org.apache.cayenne.dbimport.ReverseEngineering;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
@@ -29,7 +30,7 @@ import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.ObjRelationship;
 import org.apache.cayenne.map.Procedure;
 import org.apache.cayenne.map.ProcedureParameter;
-import org.apache.cayenne.query.Query;
+import org.apache.cayenne.map.QueryDescriptor;
 
 /**
  * A visitor interface for implementing operations on different types of
@@ -65,5 +66,7 @@ public interface ConfigurationNodeVisitor<T> {
 
     T visitProcedureParameter(ProcedureParameter parameter);
 
-    T visitQuery(Query query);
+    T visitQuery(QueryDescriptor query);
+
+    T visitReverseEngineering(ReverseEngineering reverseEngineering);
 }

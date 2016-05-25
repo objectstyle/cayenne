@@ -39,6 +39,8 @@ import org.apache.cayenne.exp.ExpressionException;
 import org.apache.cayenne.exp.parser.ASTPath;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.Entity;
+import org.apache.cayenne.map.QueryDescriptor;
+import org.apache.cayenne.map.SelectQueryDescriptor;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.util.CellRenderers;
@@ -48,9 +50,7 @@ import org.apache.cayenne.modeler.util.ProjectUtil;
 import org.apache.cayenne.modeler.util.TextAdapter;
 import org.apache.cayenne.modeler.util.ValidatorTextAdapter;
 import org.apache.cayenne.modeler.util.combo.AutoCompletion;
-import org.apache.cayenne.query.AbstractQuery;
-import org.apache.cayenne.query.Query;
-import org.apache.cayenne.query.SelectQuery;
+import org.apache.cayenne.query.*;
 import org.apache.cayenne.util.CayenneMapEntry;
 import org.apache.cayenne.util.Util;
 import org.apache.cayenne.validation.ValidationException;
@@ -144,9 +144,9 @@ public class SelectQueryMainTab extends JPanel {
         distinct.addActionListener(new ActionListener() {
 
             public void actionPerformed(ActionEvent event) {
-                SelectQuery query = getQuery();
+                QueryDescriptor query = getQuery();
                 if (query != null) {
-                    query.setDistinct(distinct.isSelected());
+                    query.setProperty(SelectQuery.DISTINCT_PROPERTY, Boolean.toString(distinct.isSelected()));
                     mediator.fireQueryEvent(new QueryEvent(this, query));
                 }
             }
@@ -159,18 +159,18 @@ public class SelectQueryMainTab extends JPanel {
      * query is changed.
      */
     void initFromModel() {
-        Query query = mediator.getCurrentQuery();
+        QueryDescriptor descriptor = mediator.getCurrentQuery();
 
-        if (!(query instanceof SelectQuery)) {
+        if (descriptor == null || !QueryDescriptor.SELECT_QUERY.equals(descriptor.getType())) {
             setVisible(false);
             return;
         }
 
-        SelectQuery selectQuery = (SelectQuery) query;
+        SelectQueryDescriptor query = (SelectQueryDescriptor) descriptor;
 
         name.setText(query.getName());
-        distinct.setSelected(selectQuery.isDistinct());
-        qualifier.setText(selectQuery.getQualifier() != null ? selectQuery
+        distinct.setSelected(Boolean.valueOf(query.getProperties().get(SelectQuery.DISTINCT_PROPERTY)));
+        qualifier.setText(query.getQualifier() != null ? query
                 .getQualifier()
                 .toString() : null);
 
@@ -190,17 +190,17 @@ public class SelectQueryMainTab extends JPanel {
         }
 
         DefaultComboBoxModel model = new DefaultComboBoxModel(roots);
-        model.setSelectedItem(selectQuery.getRoot());
+        model.setSelectedItem(query.getRoot());
         queryRoot.setModel(model);
 
-        properties.initFromModel(selectQuery);
+        properties.initFromModel(query);
 
         setVisible(true);
     }
 
-    protected SelectQuery getQuery() {
-        return (mediator.getCurrentQuery() instanceof SelectQuery)
-                ? (SelectQuery) mediator.getCurrentQuery()
+    protected SelectQueryDescriptor getQuery() {
+        return QueryDescriptor.SELECT_QUERY.equals(mediator.getCurrentQuery().getType())
+                ? (SelectQueryDescriptor) mediator.getCurrentQuery()
                 : null;
     }
 
@@ -230,7 +230,7 @@ public class SelectQueryMainTab extends JPanel {
      */
     Expression createQualifier(String text) throws ValidationException
     {
-        SelectQuery query = getQuery();
+        SelectQueryDescriptor query = getQuery();
         if (query == null) {
             return null;
         }
@@ -267,7 +267,7 @@ public class SelectQueryMainTab extends JPanel {
             newName = null;
         }
 
-        AbstractQuery query = getQuery();
+        QueryDescriptor query = getQuery();
 
         if (query == null) {
             return;
@@ -282,7 +282,7 @@ public class SelectQueryMainTab extends JPanel {
         }
 
         DataMap map = mediator.getCurrentDataMap();
-        Query matchingQuery = map.getQuery(newName);
+        QueryDescriptor matchingQuery = map.getQueryDescriptor(newName);
 
         if (matchingQuery == null) {
             // completely new name, set new name for entity
@@ -343,7 +343,7 @@ public class SelectQueryMainTab extends JPanel {
         boolean needChangeName;
 
         public void actionPerformed(ActionEvent ae) {
-            SelectQuery query = getQuery();
+            QueryDescriptor query = getQuery();
             if (query != null) {
                 Entity root = (Entity) queryRoot.getModel().getSelectedItem();
 
@@ -360,7 +360,7 @@ public class SelectQueryMainTab extends JPanel {
                         DataMap map = mediator.getCurrentDataMap();
                         long postfix = 1;
                         
-                        while (map.getQuery(newName) != null) {
+                        while (map.getQueryDescriptor(newName) != null) {
                             newName = newPrefix + (postfix++);
                         }
                         
@@ -374,7 +374,7 @@ public class SelectQueryMainTab extends JPanel {
             //reset new name tracking
             newName = null;
             
-            SelectQuery query = getQuery();
+            QueryDescriptor query = getQuery();
             if (query != null) {
                 needChangeName = hasDefaultName(query);
             }
@@ -398,7 +398,7 @@ public class SelectQueryMainTab extends JPanel {
          * 
          * We cannot follow user input because tab might be opened many times
          */
-        boolean hasDefaultName(SelectQuery query) {
+        boolean hasDefaultName(QueryDescriptor query) {
             String prefix = query.getRoot() == null ? "UntitledQuery" :
                 CellRenderers.asString(query.getRoot()) + "Query";
             

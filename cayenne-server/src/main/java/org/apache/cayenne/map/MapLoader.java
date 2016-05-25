@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.cayenne.CayenneRuntimeException;
+import org.apache.cayenne.dbimport.*;
 import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.util.Util;
@@ -44,6 +45,12 @@ public class MapLoader extends DefaultHandler {
 	final static String _2_0_PACKAGE_PREFIX = "org.apache.cayenne.";
 
 	public static final String DATA_MAP_TAG = "data-map";
+
+	/**
+	 * @since 4.0
+	 */
+	public static final String REVERSE_ENGINEERING = "reverse-engineering-config";
+
 	public static final String PROPERTY_TAG = "property";
 
 	/**
@@ -143,8 +150,9 @@ public class MapLoader extends DefaultHandler {
 	private ObjRelationship objRelationship;
 	private DbAttribute attrib;
 	private Procedure procedure;
-	private QueryLoader queryBuilder;
+	private QueryDescriptorLoader queryBuilder;
 	private String sqlKey;
+	private ReverseEngineering reverseEngineering;
 
 	private String descending;
 	private String ignoreCase;
@@ -169,6 +177,15 @@ public class MapLoader extends DefaultHandler {
 			}
 		});
 
+		startTagOpMap.put(REVERSE_ENGINEERING, new StartClosure() {
+
+			@Override
+			void execute(Attributes attributes) throws SAXException {
+				processStartReverseEngineering(attributes);
+			}
+		});
+
+		
 		startTagOpMap.put(DB_ENTITY_TAG, new StartClosure() {
 
 			@Override
@@ -561,6 +578,13 @@ public class MapLoader extends DefaultHandler {
 		});
 	}
 
+	private void processStartReverseEngineering(Attributes attributes) {
+		reverseEngineering = new ReverseEngineering();
+		reverseEngineering.setName(attributes.getValue("", "name"));
+
+		dataMap.setReverseEngineering(reverseEngineering);
+	}
+	
 	private void processStartDataMap(Attributes attributes) {
 		this.mapVersion = attributes.getValue("", "project-version");
 	}
@@ -1024,27 +1048,11 @@ public class MapLoader extends DefaultHandler {
 			throw new SAXException("MapLoader::processStartQuery(), no query name.");
 		}
 
-		String builder = attributes.getValue("", "factory");
+		this.queryBuilder = new QueryDescriptorLoader();
 
-		if (builder == null) {
-			builder = SelectQueryBuilder.class.getName();
-		} else {
-			// TODO: this is a hack to migrate between 1.1M6 and 1.1M7...
-			// remove this at some point
-			if (builder.equals("org.objectstyle.cayenne.query.SelectQueryBuilder")) {
-				builder = SelectQueryBuilder.class.getName();
-			}
-			// upgrade from v. <= 1.2
-			else {
-				builder = convertClassNameFromV1_2(builder);
-			}
-		}
+		String type = attributes.getValue("", "type");
 
-		try {
-			queryBuilder = (QueryLoader) Class.forName(builder).newInstance();
-		} catch (Exception ex) {
-			throw new SAXException("MapLoader::processStartQuery(), invalid query builder: " + builder);
-		}
+		queryBuilder.setQueryType(type);
 
 		String rootType = attributes.getValue("", "root");
 		String rootName = attributes.getValue("", "root-name");
@@ -1103,7 +1111,7 @@ public class MapLoader extends DefaultHandler {
 	}
 
 	private void processEndQuery() {
-		dataMap.addQuery(queryBuilder.getQuery());
+		dataMap.addQueryDescriptor(queryBuilder.buildQueryDescriptor());
 		queryBuilder = null;
 	}
 

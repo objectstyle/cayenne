@@ -45,16 +45,15 @@ import javax.swing.tree.TreeModel;
 
 import org.apache.cayenne.configuration.event.QueryEvent;
 import org.apache.cayenne.map.Entity;
+import org.apache.cayenne.map.QueryDescriptor;
+import org.apache.cayenne.map.SelectQueryDescriptor;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.util.EntityTreeModel;
 import org.apache.cayenne.modeler.util.ModelerUtil;
 import org.apache.cayenne.modeler.util.MultiColumnBrowser;
 import org.apache.cayenne.modeler.util.UIUtil;
-import org.apache.cayenne.query.Ordering;
-import org.apache.cayenne.query.Query;
-import org.apache.cayenne.query.SelectQuery;
-import org.apache.cayenne.query.SortOrder;
+import org.apache.cayenne.query.*;
 import org.apache.cayenne.util.CayenneMapEntry;
 
 /**
@@ -77,7 +76,7 @@ public class SelectQueryOrderingTab extends JPanel implements PropertyChangeList
     static final String PLACEHOLDER_PANEL = "placeholder";
 
     protected ProjectController mediator;
-    protected SelectQuery<?> selectQuery;
+    protected SelectQueryDescriptor selectQuery;
 
     protected MultiColumnBrowser browser;
     protected JTable table;
@@ -133,19 +132,19 @@ public class SelectQueryOrderingTab extends JPanel implements PropertyChangeList
     }
 
     protected void initFromModel() {
-        Query query = mediator.getCurrentQuery();
+        QueryDescriptor query = mediator.getCurrentQuery();
 
-        if (!(query instanceof SelectQuery)) {
+        if (query == null || !QueryDescriptor.SELECT_QUERY.equals(query.getType())) {
             processInvalidModel("Unknown query.");
             return;
         }
 
-        if (!(((SelectQuery<?>) query).getRoot() instanceof Entity)) {
+        if (!(query.getRoot() instanceof Entity)) {
             processInvalidModel("SelectQuery has no root set.");
             return;
         }
 
-        this.selectQuery = (SelectQuery<?>) query;
+        this.selectQuery = (SelectQueryDescriptor) query;
         browser.setModel(createBrowserModel((Entity) selectQuery.getRoot()));
         table.setModel(createTableModel());
 

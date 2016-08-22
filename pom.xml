@@ -948,8 +948,13 @@
 			<name>Cayenne Unofficial Releases @ ObjectStyle</name>
 			<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
 		</repository>
+		<snapshotRepository>
+			<id>cayenne-unofficial-snapshots</id>
+			<name>Cayenne Unofficial Snapshots @ ObjectStyle</name>
+			<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial-snapshots/</url>
+		</snapshotRepository>
 	</distributionManagement>
-
+	
 	<profiles>
         <profile>
             <id>code-quality</id>

@@ -16,18 +16,34 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.test.junit;
+package org.apache.cayenne.crypto.transformer.value;
 
-import java.math.BigDecimal;
+import java.math.BigInteger;
 
-import junit.framework.Assert;
+/**
+ * Converts between {@link java.math.BigInteger} and byte[]
+ *
+ * @since 4.0
+ */
+public class BigIntegerConverter implements BytesConverter<BigInteger> {
 
-public class AssertExtras {
+    public static final BytesConverter<BigInteger> INSTANCE = new BigIntegerConverter();
 
-    public static void assertEquals(BigDecimal d1, Object d2, double delta) {
-        Assert.assertNotNull(d2);
-        Assert.assertTrue("d2: " + d2.getClass().getName(), d2 instanceof BigDecimal);
-        BigDecimal d3 = d1.subtract((BigDecimal) d2);
-        Assert.assertTrue(Math.abs(d3.doubleValue()) < delta);
+    static BigInteger getBigInteger(byte[] bytes) {
+        return new BigInteger(bytes);
+    }
+
+    static byte[] getBytes(BigInteger bigInt) {
+        return bigInt.toByteArray();
+    }
+
+    @Override
+    public BigInteger fromBytes(byte[] bytes) {
+        return getBigInteger(bytes);
+    }
+
+    @Override
+    public byte[] toBytes(BigInteger value) {
+        return getBytes(value);
     }
 }

@@ -20,6 +20,7 @@
 package org.apache.cayenne.query;
 
 import org.apache.cayenne.rop.ROPSerializationService;
+import org.apache.cayenne.rop.protostuff.ProtostuffProperties;
 import org.apache.cayenne.rop.protostuff.ProtostuffROPSerializationService;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,15 +31,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-public class PrefetchTreeNodeSchemaTest {
+public class PrefetchTreeNodeSchemaTest extends ProtostuffProperties {
 
-    private ROPSerializationService clientService;
-    private ROPSerializationService serverService;
+    private ROPSerializationService serializationService;
 
     @Before
     public void setUp() throws Exception {
-        clientService = new ProtostuffROPSerializationService();
-        serverService = new ProtostuffROPSerializationService();
+        serializationService = new ProtostuffROPSerializationService();
     }
 
     @Test
@@ -47,8 +46,8 @@ public class PrefetchTreeNodeSchemaTest {
         PrefetchTreeNode child = new PrefetchTreeNode(parent, "child");
         parent.addChild(child);
 
-        byte[] data = clientService.serialize(parent);
-        PrefetchTreeNode parent0 = serverService.deserialize(data, PrefetchTreeNode.class);
+        byte[] data = serializationService.serialize(parent);
+        PrefetchTreeNode parent0 = serializationService.deserialize(data, PrefetchTreeNode.class);
 
         assertNotNull(parent0);
         assertTrue(parent0.hasChildren());

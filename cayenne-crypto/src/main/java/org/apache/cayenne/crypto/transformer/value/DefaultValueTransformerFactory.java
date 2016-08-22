@@ -18,15 +18,6 @@
  ****************************************************************/
 package org.apache.cayenne.crypto.transformer.value;
 
-import java.security.Key;
-import java.sql.Types;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import org.apache.cayenne.crypto.key.KeySource;
 import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.di.Inject;
@@ -36,190 +27,252 @@ import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.security.Key;
+import java.sql.Types;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 /**
  * A {@link ValueTransformerFactory} that creates encryptors/decryptors that are
  * taking advantage of the JCE (Java Cryptography Extension) ciphers.
- * 
+ *
  * @since 4.0
  */
 public class DefaultValueTransformerFactory implements ValueTransformerFactory {
 
-	private final Key defaultKey;
+    private final Key defaultKey;
 
-	private final Map<String, BytesConverter> objectToBytes;
-	private final Map<Integer, BytesConverter> dbToBytes;
+    private final Map<String, BytesConverter<?>> objectToBytes;
+    private final Map<Integer, BytesConverter<?>> dbToBytes;
 
-	private final Map<String, BytesConverter> bytesToObject;
-	private final Map<Integer, BytesConverter> bytesToDb;
+    private final Map<String, BytesConverter<?>> bytesToObject;
+    private final Map<Integer, BytesConverter<?>> bytesToDb;
 
-	private final ConcurrentMap<DbAttribute, ValueEncryptor> encryptors;
-	private final ConcurrentMap<DbAttribute, ValueDecryptor> decryptors;
+    private final ConcurrentMap<DbAttribute, ValueEncryptor> encryptors;
+    private final ConcurrentMap<DbAttribute, ValueDecryptor> decryptors;
 
-	public DefaultValueTransformerFactory(@Inject KeySource keySource) {
-		this.defaultKey = keySource.getKey(keySource.getDefaultKeyAlias());
+    public DefaultValueTransformerFactory(@Inject KeySource keySource) {
+        this.defaultKey = keySource.getKey(keySource.getDefaultKeyAlias());
 
-		this.encryptors = new ConcurrentHashMap<DbAttribute, ValueEncryptor>();
-		this.decryptors = new ConcurrentHashMap<DbAttribute, ValueDecryptor>();
+        this.encryptors = new ConcurrentHashMap<DbAttribute, ValueEncryptor>();
+        this.decryptors = new ConcurrentHashMap<DbAttribute, ValueDecryptor>();
 
-		this.objectToBytes = createObjectToBytesConverters();
-		this.dbToBytes = createDbToBytesConverters();
-		this.bytesToObject = createBytesToObjectConverters();
-		this.bytesToDb = createBytesToDbConverters();
-	}
+        this.objectToBytes = createObjectToBytesConverters();
+        this.dbToBytes = createDbToBytesConverters();
+        this.bytesToObject = createBytesToObjectConverters();
+        this.bytesToDb = createBytesToDbConverters();
+    }
 
-	@Override
-	public ValueDecryptor decryptor(DbAttribute a) {
-		ValueDecryptor e = decryptors.get(a);
+    @Override
+    public ValueDecryptor decryptor(DbAttribute a) {
+        ValueDecryptor e = decryptors.get(a);
 
-		if (e == null) {
+        if (e == null) {
 
-			ValueDecryptor newTransformer = createDecryptor(a);
-			ValueDecryptor oldTransformer = decryptors.putIfAbsent(a, newTransformer);
+            ValueDecryptor newTransformer = createDecryptor(a);
+            ValueDecryptor oldTransformer = decryptors.putIfAbsent(a, newTransformer);
 
-			e = oldTransformer != null ? oldTransformer : newTransformer;
-		}
+            e = oldTransformer != null ? oldTransformer : newTransformer;
+        }
 
-		return e;
-	}
+        return e;
+    }
 
-	@Override
-	public ValueEncryptor encryptor(DbAttribute a) {
-		ValueEncryptor e = encryptors.get(a);
+    @Override
+    public ValueEncryptor encryptor(DbAttribute a) {
+        ValueEncryptor e = encryptors.get(a);
 
-		if (e == null) {
+        if (e == null) {
 
-			ValueEncryptor newTransformer = createEncryptor(a);
-			ValueEncryptor oldTransformer = encryptors.putIfAbsent(a, newTransformer);
+            ValueEncryptor newTransformer = createEncryptor(a);
+            ValueEncryptor oldTransformer = encryptors.putIfAbsent(a, newTransformer);
 
-			e = oldTransformer != null ? oldTransformer : newTransformer;
-		}
+            e = oldTransformer != null ? oldTransformer : newTransformer;
+        }
 
-		return e;
-	}
+        return e;
+    }
 
-	protected Map<Integer, BytesConverter> createDbToBytesConverters() {
-		Map<Integer, BytesConverter> map = new HashMap<Integer, BytesConverter>();
+    protected Map<Integer, BytesConverter<?>> createDbToBytesConverters() {
+        Map<Integer, BytesConverter<?>> map = new HashMap<>();
 
-		map.put(Types.BINARY, BytesToBytesConverter.INSTANCE);
-		map.put(Types.BLOB, BytesToBytesConverter.INSTANCE);
-		map.put(Types.VARBINARY, BytesToBytesConverter.INSTANCE);
-		map.put(Types.LONGVARBINARY, BytesToBytesConverter.INSTANCE);
+        map.put(Types.BINARY, BytesToBytesConverter.INSTANCE);
+        map.put(Types.BLOB, BytesToBytesConverter.INSTANCE);
+        map.put(Types.VARBINARY, BytesToBytesConverter.INSTANCE);
+        map.put(Types.LONGVARBINARY, BytesToBytesConverter.INSTANCE);
 
-		map.put(Types.CHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.NCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.CLOB, Base64StringConverter.INSTANCE);
-		map.put(Types.NCLOB, Base64StringConverter.INSTANCE);
-		map.put(Types.LONGVARCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.LONGNVARCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.VARCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.NVARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.CHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.NCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.CLOB, Base64StringConverter.INSTANCE);
+        map.put(Types.NCLOB, Base64StringConverter.INSTANCE);
+        map.put(Types.LONGVARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.LONGNVARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.VARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.NVARCHAR, Base64StringConverter.INSTANCE);
 
-		return map;
-	}
+        return map;
+    }
 
-	protected Map<Integer, BytesConverter> createBytesToDbConverters() {
-		Map<Integer, BytesConverter> map = new HashMap<Integer, BytesConverter>();
+    protected Map<Integer, BytesConverter<?>> createBytesToDbConverters() {
+        Map<Integer, BytesConverter<?>> map = new HashMap<>();
 
-		map.put(Types.BINARY, BytesToBytesConverter.INSTANCE);
-		map.put(Types.BLOB, BytesToBytesConverter.INSTANCE);
-		map.put(Types.VARBINARY, BytesToBytesConverter.INSTANCE);
-		map.put(Types.LONGVARBINARY, BytesToBytesConverter.INSTANCE);
+        map.put(Types.BINARY, BytesToBytesConverter.INSTANCE);
+        map.put(Types.BLOB, BytesToBytesConverter.INSTANCE);
+        map.put(Types.VARBINARY, BytesToBytesConverter.INSTANCE);
+        map.put(Types.LONGVARBINARY, BytesToBytesConverter.INSTANCE);
 
-		map.put(Types.CHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.NCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.CLOB, Base64StringConverter.INSTANCE);
-		map.put(Types.NCLOB, Base64StringConverter.INSTANCE);
-		map.put(Types.LONGVARCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.LONGNVARCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.VARCHAR, Base64StringConverter.INSTANCE);
-		map.put(Types.NVARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.CHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.NCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.CLOB, Base64StringConverter.INSTANCE);
+        map.put(Types.NCLOB, Base64StringConverter.INSTANCE);
+        map.put(Types.LONGVARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.LONGNVARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.VARCHAR, Base64StringConverter.INSTANCE);
+        map.put(Types.NVARCHAR, Base64StringConverter.INSTANCE);
 
-		return map;
-	}
+        return map;
+    }
 
-	protected Map<String, BytesConverter> createObjectToBytesConverters() {
-		Map<String, BytesConverter> map = new HashMap<>();
+    protected Map<String, BytesConverter<?>> createObjectToBytesConverters() {
+        Map<String, BytesConverter<?>> map = new HashMap<>();
 
-		map.put("byte[]", BytesToBytesConverter.INSTANCE);
-		map.put(String.class.getName(), Utf8StringConverter.INSTANCE);
+        map.put("byte[]", BytesToBytesConverter.INSTANCE);
+        map.put(String.class.getName(), Utf8StringConverter.INSTANCE);
 
-		return map;
-	}
+        map.put(Double.class.getName(), DoubleConverter.INSTANCE);
+        map.put(Double.TYPE.getName(), DoubleConverter.INSTANCE);
 
-	protected Map<String, BytesConverter> createBytesToObjectConverters() {
+        map.put(Float.class.getName(), FloatConverter.INSTANCE);
+        map.put(Float.TYPE.getName(), FloatConverter.INSTANCE);
 
-		Map<String, BytesConverter> map = new HashMap<>();
+        map.put(Long.class.getName(), LongConverter.INSTANCE);
+        map.put(Long.TYPE.getName(), LongConverter.INSTANCE);
 
-		map.put("byte[]", BytesToBytesConverter.INSTANCE);
-		map.put(String.class.getName(), Utf8StringConverter.INSTANCE);
+        map.put(Integer.class.getName(), IntegerConverter.INSTANCE);
+        map.put(Integer.TYPE.getName(), IntegerConverter.INSTANCE);
 
-		return map;
-	}
+        map.put(Short.class.getName(), ShortConverter.INSTANCE);
+        map.put(Short.TYPE.getName(), ShortConverter.INSTANCE);
 
-	protected ValueEncryptor createEncryptor(DbAttribute a) {
+        map.put(Byte.class.getName(), ByteConverter.INSTANCE);
+        map.put(Byte.TYPE.getName(), ByteConverter.INSTANCE);
 
-		String type = getJavaType(a);
+        map.put(Boolean.class.getName(), BooleanConverter.INSTANCE);
+        map.put(Boolean.TYPE.getName(), BooleanConverter.INSTANCE);
 
-		BytesConverter toBytes = objectToBytes.get(type);
-		if (toBytes == null) {
-			throw new IllegalArgumentException("The type " + type + " for attribute " + a
-					+ " has no object-to-bytes conversion");
-		}
+        map.put(Date.class.getName(), UtilDateConverter.INSTANCE);
+        map.put(BigInteger.class.getName(), BigIntegerConverter.INSTANCE);
+        map.put(BigDecimal.class.getName(), BigDecimalConverter.INSTANCE);
 
-		BytesConverter fromBytes = bytesToDb.get(a.getType());
-		if (fromBytes == null) {
-			throw new IllegalArgumentException("The type " + TypesMapping.getSqlNameByType(a.getType())
-					+ " for attribute " + a + " has no bytes-to-db conversion");
-		}
+        return map;
+    }
 
-		return new DefaultValueEncryptor(toBytes, fromBytes);
-	}
+    protected Map<String, BytesConverter<?>> createBytesToObjectConverters() {
 
-	protected ValueDecryptor createDecryptor(DbAttribute a) {
+        Map<String, BytesConverter<?>> map = new HashMap<>();
 
-		BytesConverter toBytes = dbToBytes.get(a.getType());
-		if (toBytes == null) {
-			throw new IllegalArgumentException("The type " + TypesMapping.getSqlNameByType(a.getType())
-					+ " for attribute " + a + " has no db-to-bytes conversion");
-		}
+        map.put("byte[]", BytesToBytesConverter.INSTANCE);
+        map.put(String.class.getName(), Utf8StringConverter.INSTANCE);
+        
+        map.put(Double.class.getName(), DoubleConverter.INSTANCE);
+        map.put(Double.TYPE.getName(), DoubleConverter.INSTANCE);
 
-		String type = getJavaType(a);
-		BytesConverter fromBytes = bytesToObject.get(type);
-		if (fromBytes == null) {
-			throw new IllegalArgumentException("The type " + type + " for attribute " + a
-					+ " has no bytes-to-object conversion");
-		}
+        map.put(Float.class.getName(), FloatConverter.INSTANCE);
+        map.put(Float.TYPE.getName(), FloatConverter.INSTANCE);
 
-		return new DefaultValueDecryptor(toBytes, fromBytes, defaultKey);
-	}
+        map.put(Long.class.getName(), LongConverter.INSTANCE);
+        map.put(Long.TYPE.getName(), LongConverter.INSTANCE);
 
-	// TODO: calculating Java type of ObjAttribute may become unneeded per
-	// CAY-1752, as DbAttribute will have it.
-	protected String getJavaType(DbAttribute a) {
+        map.put(Integer.class.getName(), IntegerConverter.INSTANCE);
+        map.put(Integer.TYPE.getName(), IntegerConverter.INSTANCE);
 
-		DbEntity dbEntity = a.getEntity();
-		DataMap dataMap = dbEntity.getDataMap();
-		Collection<ObjEntity> objEntities = dataMap.getMappedEntities(dbEntity);
+        map.put(Short.class.getName(), ShortConverter.INSTANCE);
+        map.put(Short.TYPE.getName(), ShortConverter.INSTANCE);
 
-		if (objEntities.size() != 1) {
-			return TypesMapping.getJavaBySqlType(a.getType());
-		}
+        map.put(Byte.class.getName(), ByteConverter.INSTANCE);
+        map.put(Byte.TYPE.getName(), ByteConverter.INSTANCE);
 
-		Collection<String> javaTypes = new HashSet<String>();
-		ObjEntity objEntity = objEntities.iterator().next();
-		for (ObjAttribute oa : objEntity.getAttributes()) {
+        map.put(Boolean.class.getName(), BooleanConverter.INSTANCE);
+        map.put(Boolean.TYPE.getName(), BooleanConverter.INSTANCE);
 
-			// TODO: this won't pick up flattened attributes
-			if (a.getName().equals(oa.getDbAttributePath())) {
-				javaTypes.add(oa.getType());
-			}
-		}
+        map.put(Date.class.getName(), UtilDateConverter.INSTANCE);
+        map.put(BigInteger.class.getName(), BigIntegerConverter.INSTANCE);
+        map.put(BigDecimal.class.getName(), BigDecimalConverter.INSTANCE);
 
-		if (javaTypes.size() != 1) {
-			return TypesMapping.getJavaBySqlType(a.getType());
-		}
+        return map;
+    }
 
-		return javaTypes.iterator().next();
-	}
+    protected ValueEncryptor createEncryptor(DbAttribute a) {
+
+        String type = getJavaType(a);
+
+        BytesConverter<?> toBytes = objectToBytes.get(type);
+        if (toBytes == null) {
+            throw new IllegalArgumentException("The type " + type + " for attribute " + a
+                    + " has no object-to-bytes conversion");
+        }
+
+        BytesConverter<?> fromBytes = bytesToDb.get(a.getType());
+        if (fromBytes == null) {
+            throw new IllegalArgumentException("The type " + TypesMapping.getSqlNameByType(a.getType())
+                    + " for attribute " + a + " has no bytes-to-db conversion");
+        }
+
+        return new DefaultValueEncryptor(toBytes, fromBytes);
+    }
+
+    protected ValueDecryptor createDecryptor(DbAttribute a) {
+
+        BytesConverter<?> toBytes = dbToBytes.get(a.getType());
+        if (toBytes == null) {
+            throw new IllegalArgumentException("The type " + TypesMapping.getSqlNameByType(a.getType())
+                    + " for attribute " + a + " has no db-to-bytes conversion");
+        }
+
+        String type = getJavaType(a);
+        BytesConverter<?> fromBytes = bytesToObject.get(type);
+        if (fromBytes == null) {
+            throw new IllegalArgumentException("The type " + type + " for attribute " + a
+                    + " has no bytes-to-object conversion");
+        }
+
+        return new DefaultValueDecryptor(toBytes, fromBytes, defaultKey);
+    }
+
+    // TODO: calculating Java type of ObjAttribute may become unneeded per
+    // CAY-1752, as DbAttribute will have it.
+    protected String getJavaType(DbAttribute a) {
+
+        DbEntity dbEntity = a.getEntity();
+        DataMap dataMap = dbEntity.getDataMap();
+        Collection<ObjEntity> objEntities = dataMap.getMappedEntities(dbEntity);
+
+        if (objEntities.size() != 1) {
+            return TypesMapping.getJavaBySqlType(a.getType());
+        }
+
+        Collection<String> javaTypes = new HashSet<String>();
+        ObjEntity objEntity = objEntities.iterator().next();
+        for (ObjAttribute oa : objEntity.getAttributes()) {
+
+            // TODO: this won't pick up flattened attributes
+            if (a.getName().equals(oa.getDbAttributePath())) {
+                javaTypes.add(oa.getType());
+            }
+        }
+
+        if (javaTypes.size() != 1) {
+            return TypesMapping.getJavaBySqlType(a.getType());
+        }
+
+        return javaTypes.iterator().next();
+    }
 
 }

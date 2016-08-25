@@ -16,25 +16,18 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.crypto.transformer.value;
+package org.apache.cayenne.di.mock;
 
-import javax.xml.bind.DatatypeConverter;
+import org.apache.cayenne.di.Inject;
+import org.apache.cayenne.di.Provider;
 
-/**
- * @since 4.0
- */
-public class Base64StringConverter implements BytesConverter<String> {
+public class MockInterface1_Decorator5 implements MockInterface1 {
 
-    public static final BytesConverter<String> INSTANCE = new Base64StringConverter();
-
-    @Override
-    public byte[] toBytes(String value) {
-        return DatatypeConverter.parseBase64Binary(value);
-    }
+    @Inject
+    private Provider<MockInterface1> delegate;
 
     @Override
-    public String fromBytes(byte[] bytes) {
-        return DatatypeConverter.printBase64Binary(bytes);
+    public String getName() {
+        return "[5" + delegate.get().getName() + "5]";
     }
-
 }

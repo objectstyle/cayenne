@@ -29,6 +29,7 @@ CAY-2102 EJBQL: db: path not supported in select columns
 CAY-2103 cayenne-crypto: support for mapping non-String and non-binary types
 CAY-2106 cayenne-crypto: allow DI contribution of type converters inside ValueTransformerFactory
 CAY-2107 cayenne-crypto: Lazy initialization of crypto subsystem
+CAY-2111 Unbind transaction object from the current thread for iterated queries
 
 Bug Fixes:
 
@@ -46,6 +47,7 @@ CAY-2097 NullPointerException while updating relationships for entities with ver
 CAY-2101 DataContext.currentSnapshot() doesn't set snapshot entity name
 CAY-2105 Add missing elements to the reverseEngineering.xsd
 CAY-2108 cayenne-di: StackOverflow for decorator that takes Provider of the delegate
+CAY-2110 Obfuscated exception when processing iterated results
 
 ----------------------------------
 Release: 4.0.M3

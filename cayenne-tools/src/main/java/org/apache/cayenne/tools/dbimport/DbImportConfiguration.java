@@ -19,28 +19,25 @@
 package org.apache.cayenne.tools.dbimport;
 
 import org.apache.cayenne.CayenneRuntimeException;
-import org.apache.cayenne.access.DbLoader;
-import org.apache.cayenne.access.loader.DbLoaderConfiguration;
-import org.apache.cayenne.access.DbLoaderDelegate;
-import org.apache.cayenne.access.loader.DefaultDbLoaderDelegate;
-import org.apache.cayenne.access.loader.LoggingDbLoaderDelegate;
-import org.apache.cayenne.access.loader.NameFilter;
-import org.apache.cayenne.access.loader.filters.CatalogFilter;
-import org.apache.cayenne.access.loader.filters.FiltersConfig;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.conn.DataSourceInfo;
 import org.apache.cayenne.dba.DbAdapter;
+import org.apache.cayenne.dbsync.filter.NameFilter;
+import org.apache.cayenne.dbsync.filter.NamePatternMatcher;
+import org.apache.cayenne.dbsync.merge.DefaultModelMergeDelegate;
+import org.apache.cayenne.dbsync.merge.ModelMergeDelegate;
+import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
+import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
+import org.apache.cayenne.dbsync.reverse.db.DbLoader;
+import org.apache.cayenne.dbsync.reverse.db.DbLoaderConfiguration;
+import org.apache.cayenne.dbsync.reverse.db.DbLoaderDelegate;
+import org.apache.cayenne.dbsync.reverse.db.DefaultDbLoaderDelegate;
+import org.apache.cayenne.dbsync.reverse.db.LoggingDbLoaderDelegate;
+import org.apache.cayenne.dbsync.reverse.filters.CatalogFilter;
+import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
 import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.EntityResolver;
-import org.apache.cayenne.map.naming.LegacyNameGenerator;
-import org.apache.cayenne.map.naming.ObjectNameGenerator;
-import org.apache.cayenne.merge.DbMergerConfig;
-import org.apache.cayenne.merge.DefaultModelMergeDelegate;
-import org.apache.cayenne.merge.ModelMergeDelegate;
 import org.apache.cayenne.resource.URLResource;
-import org.apache.cayenne.access.loader.NamePatternMatcher;
-import org.apache.cayenne.util.EntityMergeSupport;
 import org.apache.commons.logging.Log;
 
 import java.io.File;
@@ -48,9 +45,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.sql.Connection;
 import java.util.Collections;
-import java.util.List;
-
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import java.util.regex.Pattern;
 
 /**
  * @since 4.0
@@ -58,42 +53,29 @@ import static org.apache.commons.lang.StringUtils.isNotEmpty;
 public class DbImportConfiguration {
 
     private static final String DATA_MAP_LOCATION_SUFFIX = ".map.xml";
-
+    private final DataSourceInfo dataSourceInfo = new DataSourceInfo();
+    /**
+     * DB schema to use for DB importing.
+     */
+    private final DbLoaderConfiguration dbLoaderConfiguration = new DbLoaderConfiguration();
     /**
      * DataMap XML file to use as a base for DB importing.
      */
     private File dataMapFile;
-
     /**
      * A default package for ObjEntity Java classes.
      */
     private String defaultPackage;
-
-    /**
-     * Indicates that the old mapping should be completely removed and replaced
-     * with the new data based on reverse engineering.
-     */
-    private boolean overwrite;
-
     private String meaningfulPkTables;
-
     /**
      * Java class implementing org.apache.cayenne.dba.DbAdapter. This attribute
      * is optional, the default is AutoAdapter, i.e. Cayenne would try to guess
      * the DB type.
      */
     private String adapter;
-
     private boolean usePrimitives;
-
     private Log logger;
-
-    private final DataSourceInfo dataSourceInfo = new DataSourceInfo();
-
-    /**
-     * DB schema to use for DB importing.
-     */
-    private final DbLoaderConfiguration dbLoaderConfiguration = new DbLoaderConfiguration();
+    private String namingStrategy;
 
     public Log getLogger() {
         return logger;
@@ -119,20 +101,12 @@ public class DbImportConfiguration {
         this.defaultPackage = defaultPackage;
     }
 
-    public boolean isOverwrite() {
-        return overwrite;
-    }
-
-    public void setOverwrite(boolean overwrite) {
-        this.overwrite = overwrite;
-    }
-
     public String getNamingStrategy() {
-        return dbLoaderConfiguration.getNamingStrategy();
+        return namingStrategy;
     }
 
     public void setNamingStrategy(String namingStrategy) {
-        dbLoaderConfiguration.setNamingStrategy(namingStrategy);
+        this.namingStrategy = namingStrategy;
     }
 
     public String getAdapter() {
@@ -166,72 +140,73 @@ public class DbImportConfiguration {
 
     public DbLoader createLoader(DbAdapter adapter, Connection connection, DbLoaderDelegate loaderDelegate)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-
-        final NameFilter meaningfulPkFilter = NamePatternMatcher.build(logger, getMeaningfulPkTables(),
-                getMeaningfulPkTables() != null ? null : "*");
-
-        DbLoader loader = new DbLoader(connection, adapter, loaderDelegate) {
-
-            @Override
-            protected EntityMergeSupport createEntityMerger(DataMap map) {
-                EntityMergeSupport emSupport = new EntityMergeSupport(map, getNameGenerator(), true) {
-
-                    @Override
-                    protected boolean removePK(DbEntity dbEntity) {
-                        return !meaningfulPkFilter.isIncluded(dbEntity.getName());
-                    }
-                };
-
-                emSupport.setUsePrimitives(DbImportConfiguration.this.isUsePrimitives());
-                return emSupport;
-            }
-        };
-
-        // TODO: load via DI AdhocObjectFactory
-        loader.setNameGenerator(getNameGenerator());
-
-        return loader;
+        return new DbLoader(connection, adapter, loaderDelegate, getNameGenerator());
     }
 
-    public ObjectNameGenerator getNameGenerator() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-        String namingStrategy = getNamingStrategy();
-        if (namingStrategy != null) {
-            return (ObjectNameGenerator) Class.forName(namingStrategy).newInstance();
+    public NameFilter getMeaningfulPKFilter() {
+
+        if (meaningfulPkTables == null) {
+            return NamePatternMatcher.EXCLUDE_ALL;
         }
 
-        return new LegacyNameGenerator(); // TODO
+        // TODO: this filter can't handle table names with comma in them
+        String[] patternStrings = meaningfulPkTables.split(",");
+        Pattern[] patterns = new Pattern[patternStrings.length];
+        for (int i = 0; i < patterns.length; i++) {
+            patterns[i] = Pattern.compile(patternStrings[i]);
+        }
+
+        return new NamePatternMatcher(patterns, new Pattern[0]);
     }
 
-    public void setDriver(String jdbcDriver) {
-        dataSourceInfo.setJdbcDriver(jdbcDriver);
+    public ObjectNameGenerator getNameGenerator() {
+
+        // TODO: load via DI AdhocObjectFactory
+
+        // TODO: not a singleton; called from different places...
+
+        String namingStrategy = getNamingStrategy();
+        if (namingStrategy != null) {
+            try {
+                return (ObjectNameGenerator) Class.forName(namingStrategy).newInstance();
+            } catch (Exception e) {
+                throw new CayenneRuntimeException("Error creating name generator: " + namingStrategy, e);
+            }
+        }
+
+        return new DefaultObjectNameGenerator();
     }
 
     public String getDriver() {
         return dataSourceInfo.getJdbcDriver();
     }
 
-    public void setPassword(String password) {
-        dataSourceInfo.setPassword(password);
+    public void setDriver(String jdbcDriver) {
+        dataSourceInfo.setJdbcDriver(jdbcDriver);
     }
 
     public String getPassword() {
         return dataSourceInfo.getPassword();
     }
 
-    public void setUsername(String userName) {
-        dataSourceInfo.setUserName(userName);
+    public void setPassword(String password) {
+        dataSourceInfo.setPassword(password);
     }
 
     public String getUsername() {
         return dataSourceInfo.getUserName();
     }
 
-    public void setUrl(String dataSourceUrl) {
-        dataSourceInfo.setDataSourceUrl(dataSourceUrl);
+    public void setUsername(String userName) {
+        dataSourceInfo.setUserName(userName);
     }
 
     public String getUrl() {
         return dataSourceInfo.getDataSourceUrl();
+    }
+
+    public void setUrl(String dataSourceUrl) {
+        dataSourceInfo.setDataSourceUrl(dataSourceUrl);
     }
 
     public DataNodeDescriptor createDataNodeDescriptor() {
@@ -247,10 +222,12 @@ public class DbImportConfiguration {
             throw new NullPointerException("Null DataMap File.");
         }
 
-        return initializeDataMap(new DataMap());
+        DataMap dataMap = new DataMap();
+        initializeDataMap(dataMap);
+        return dataMap;
     }
 
-    public DataMap initializeDataMap(DataMap dataMap) throws MalformedURLException {
+    protected void initializeDataMap(DataMap dataMap) throws MalformedURLException {
         dataMap.setName(getDataMapName());
         dataMap.setConfigurationSource(new URLResource(dataMapFile.toURI().toURL()));
         dataMap.setNamespace(new EntityResolver(Collections.singleton(dataMap)));
@@ -260,17 +237,17 @@ public class DbImportConfiguration {
         // do not override default package of existing DataMap unless it is
         // explicitly requested by the plugin caller
         String defaultPackage = getDefaultPackage();
-        if (isNotEmpty(defaultPackage)) {
+        if (defaultPackage != null && defaultPackage.length() > 0) {
             dataMap.setDefaultPackage(defaultPackage);
         }
 
-        CatalogFilter[] catalogs = dbLoaderConfiguration.getFiltersConfig().catalogs;
+        CatalogFilter[] catalogs = dbLoaderConfiguration.getFiltersConfig().getCatalogs();
         if (catalogs.length > 0) {
             // do not override default catalog of existing DataMap unless it is
             // explicitly requested by the plugin caller, and the provided catalog is
             // not a pattern
             String catalog = catalogs[0].name;
-            if (isNotEmpty(catalog) && catalog.indexOf('%') < 0) {
+            if (catalog != null && catalog.length() > 0 && catalog.indexOf('%') < 0) {
                 dataMap.setDefaultCatalog(catalog);
             }
 
@@ -278,12 +255,10 @@ public class DbImportConfiguration {
             // explicitly requested by the plugin caller, and the provided schema is
             // not a pattern
             String schema = catalogs[0].schemas[0].name;
-            if (isNotEmpty(schema) && schema.indexOf('%') < 0) {
+            if (schema != null && schema.length() > 0 && schema.indexOf('%') < 0) {
                 dataMap.setDefaultSchema(schema);
             }
         }
-
-        return dataMap;
     }
 
     public String getDataMapName() {
@@ -339,13 +314,5 @@ public class DbImportConfiguration {
 
     public void setTableTypes(String[] tableTypes) {
         dbLoaderConfiguration.setTableTypes(tableTypes);
-    }
-
-    public DbMergerConfig getDbMergerConfig() {
-        return new DbMergerConfig(
-                getDbLoaderConfig().getFiltersConfig(),
-                getDbLoaderConfig().getSkipRelationshipsLoading(),
-                getDbLoaderConfig().getSkipPrimaryKeyLoading()
-        );
     }
 }

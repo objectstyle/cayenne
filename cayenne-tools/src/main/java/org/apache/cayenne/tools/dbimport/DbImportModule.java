@@ -29,14 +29,14 @@ import org.apache.cayenne.tools.configuration.ToolsModule;
 
 /**
  * A DI module that bootstraps {@link DbImportAction}. Should be used in
- * conjunction with {@link ToolsModule}.
- * 
+ * conjunction with {@link ToolsModule} and {@link org.apache.cayenne.dbsync.CayenneDbSyncModule}.
+ *
  * @since 4.0
  */
 public class DbImportModule implements Module {
 
     public void configure(Binder binder) {
-        binder.bind(DbImportAction.class).to(DbImportActionDefault.class);
+        binder.bind(DbImportAction.class).to(DefaultDbImportAction.class);
         binder.bind(ProjectSaver.class).to(FileProjectSaver.class);
         binder.bind(ConfigurationNameMapper.class).to(DefaultConfigurationNameMapper.class);
         binder.bind(MapLoader.class).to(MapLoader.class);

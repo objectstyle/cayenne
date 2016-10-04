@@ -19,43 +19,33 @@
 
 package org.apache.cayenne.modeler.action;
 
-import java.awt.event.ActionEvent;
-import java.sql.Connection;
-
-import javax.swing.SwingUtilities;
-
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.configuration.event.DataMapEvent;
-import org.apache.cayenne.dba.DbAdapter;
+import org.apache.cayenne.dbsync.naming.NameBuilder;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.event.MapEvent;
-import org.apache.cayenne.map.naming.DefaultUniqueNameGenerator;
-import org.apache.cayenne.map.naming.NameCheckers;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.CayenneModelerController;
 import org.apache.cayenne.modeler.ProjectController;
-import org.apache.cayenne.modeler.dialog.db.ReverseEngineeringController;
-import org.apache.cayenne.modeler.dialog.db.DbLoaderHelper;
-import org.apache.cayenne.modeler.dialog.db.ReverseEngineeringScrollPane;
-import org.apache.cayenne.modeler.pref.DBConnectionInfo;
 import org.apache.cayenne.modeler.util.CayenneAction;
+
+import java.awt.event.ActionEvent;
 
 /**
  * Action that imports database structure into a DataMap.
  */
 public class ReverseEngineeringAction extends CayenneAction {
 
-    public static String getActionName() {
-        return "Reengineer Database Schema";
-    }
-
     public ReverseEngineeringAction(Application application) {
         super(getActionName(), application);
     }
 
+    public static String getActionName() {
+        return "Reengineer Database Schema";
+    }
+
     /**
-     * Connects to DB and delegates processing to DbLoaderController, starting it
-     * asynchronously.
+     * Connects to DB and delegates processing to DbLoaderController, starting it asynchronously.
      */
     @Override
     public void performAction(ActionEvent event) {
@@ -63,8 +53,10 @@ public class ReverseEngineeringAction extends CayenneAction {
         DataMap dataMap = projectController.getCurrentDataMap();
         DataChannelDescriptor dataChannelDescriptor = projectController.getCurrentDataChanel();
         if (dataMap == null) {
-            dataMap = new DataMap(DefaultUniqueNameGenerator.generate(NameCheckers.dataMap));
-            dataMap.setName(DefaultUniqueNameGenerator.generate(NameCheckers.dataMap, projectController.getProject().getRootNode()));
+            dataMap = new DataMap();
+            dataMap.setName(NameBuilder
+                    .builder(dataMap, dataChannelDescriptor)
+                    .name());
             dataChannelDescriptor.getDataMaps().add(dataMap);
             getProjectController().fireDataMapEvent(new DataMapEvent(this, dataMap, MapEvent.ADD));
         }

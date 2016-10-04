@@ -18,27 +18,24 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.action;
 
-import java.awt.event.ActionEvent;
-
+import org.apache.cayenne.dbsync.naming.NameBuilder;
 import org.apache.cayenne.map.CallbackMap;
 import org.apache.cayenne.map.LifecycleEvent;
 import org.apache.cayenne.map.event.MapEvent;
-import org.apache.cayenne.map.naming.DefaultUniqueNameGenerator;
-import org.apache.cayenne.map.naming.NameCheckers;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.editor.CallbackType;
 import org.apache.cayenne.modeler.event.CallbackMethodEvent;
 import org.apache.cayenne.modeler.undo.CreateCallbackMethodUndoableEdit;
 import org.apache.cayenne.modeler.util.CayenneAction;
-import org.apache.cayenne.map.naming.NameConverter;
+import org.apache.cayenne.util.Util;
+
+import java.awt.event.ActionEvent;
 
 /**
  * Action class for creating callback methods on ObjEntity
- *
- * @version 1.0 Oct 30, 2007
  */
 public class CreateCallbackMethodAction extends CayenneAction {
-    
+
     /**
      * unique action name
      */
@@ -46,12 +43,25 @@ public class CreateCallbackMethodAction extends CayenneAction {
 
     /**
      * Constructor.
-     * 
-     * @param actionName unique action name
+     *
+     * @param actionName  unique action name
      * @param application Application instance
      */
     public CreateCallbackMethodAction(String actionName, Application application) {
         super(actionName, application);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param application Application instance
+     */
+    public CreateCallbackMethodAction(Application application) {
+        super(ACTION_NAME, application);
+    }
+
+    public static String getActionName() {
+        return ACTION_NAME;
     }
 
     /**
@@ -60,7 +70,7 @@ public class CreateCallbackMethodAction extends CayenneAction {
     public CallbackMap getCallbackMap() {
         return getProjectController().getCurrentObjEntity().getCallbackMap();
     }
-    
+
     /**
      * @return icon file name for button
      */
@@ -70,15 +80,16 @@ public class CreateCallbackMethodAction extends CayenneAction {
 
     /**
      * performs adding new callback method
-     * 
+     *
      * @param e event
      */
     public final void performAction(ActionEvent e) {
         CallbackType callbackType = getProjectController().getCurrentCallbackType();
 
-        // generate methodName
-        String methodNamePrefix = toMethodName(callbackType.getType());
-        String methodName = DefaultUniqueNameGenerator.generate(NameCheckers.objCallbackMethod, getProjectController().getCurrentObjEntity(), methodNamePrefix);
+        String methodName = NameBuilder
+                .builderForCallbackMethod(getProjectController().getCurrentObjEntity())
+                .baseName(toMethodName(callbackType.getType()))
+                .name();
 
         createCallbackMethod(callbackType, methodName);
         application.getUndoManager().addEdit(
@@ -102,20 +113,7 @@ public class CreateCallbackMethodAction extends CayenneAction {
     }
 
     private String toMethodName(LifecycleEvent event) {
-        return "on" + NameConverter.underscoredToJava(event.name(), true);
-    }
-    
-    public static String getActionName() {
-        return ACTION_NAME;
-    }
-    
-    /**
-     * Constructor.
-     *
-     * @param application Application instance
-     */
-    public CreateCallbackMethodAction(Application application) {
-        super(ACTION_NAME, application);
+        return "on" + Util.underscoredToJava(event.name(), true);
     }
 }
 

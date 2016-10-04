@@ -18,11 +18,6 @@
  ****************************************************************/
 package org.apache.cayenne.tools;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-
-import org.apache.cayenne.access.loader.filters.OldFilterConfigBridge;
 import org.apache.cayenne.configuration.ConfigurationNameMapper;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.configuration.XMLDataMapLoader;
@@ -30,11 +25,22 @@ import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.DbAdapterFactory;
 import org.apache.cayenne.conn.DataSourceInfo;
 import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.dbimport.*;
+import org.apache.cayenne.dbimport.Catalog;
+import org.apache.cayenne.dbimport.DefaultReverseEngineeringLoader;
+import org.apache.cayenne.dbimport.ExcludeColumn;
+import org.apache.cayenne.dbimport.ExcludeProcedure;
+import org.apache.cayenne.dbimport.ExcludeTable;
+import org.apache.cayenne.dbimport.IncludeColumn;
+import org.apache.cayenne.dbimport.IncludeProcedure;
+import org.apache.cayenne.dbimport.IncludeTable;
+import org.apache.cayenne.dbimport.ReverseEngineering;
+import org.apache.cayenne.dbimport.Schema;
+import org.apache.cayenne.dbsync.CayenneDbSyncModule;
+import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.map.naming.DefaultNameGenerator;
+import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
 import org.apache.cayenne.resource.Resource;
 import org.apache.cayenne.resource.URLResource;
 import org.apache.cayenne.tools.configuration.ToolsModule;
@@ -48,29 +54,85 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 
 import javax.sql.DataSource;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class DbImporterTask extends Task {
 
     private final DbImportConfiguration config;
-
-    private final ReverseEngineering reverseEngineering = new ReverseEngineering();
-    private boolean isReverseEngineeringDefined = false;
-
-    private final OldFilterConfigBridge filterBuilder = new OldFilterConfigBridge();
+    private ReverseEngineering reverseEngineering;
+    private boolean isReverseEngineeringDefined;
 
     public DbImporterTask() {
-        config = new DbImportConfiguration();
-        config.setOverwrite(true);
-        config.setUsePrimitives(true);
-        config.setNamingStrategy(DefaultNameGenerator.class.getName());
+        this.config = new DbImportConfiguration();
+        this.config.setUsePrimitives(true);
+        this.config.setNamingStrategy(DefaultObjectNameGenerator.class.getName());
+
+        // reverse engineering config is flattened into task...
+        this.reverseEngineering = new ReverseEngineering();
+    }
+
+    public void addIncludeColumn(IncludeColumn includeColumn) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addIncludeColumn(includeColumn);
+    }
+
+    public void addExcludeColumn(ExcludeColumn excludeColumn) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addExcludeColumn(excludeColumn);
+    }
+
+    public void addIncludeTable(IncludeTable includeTable) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addIncludeTable(includeTable);
+    }
+
+    public void addExcludeTable(ExcludeTable excludeTable) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addExcludeTable(excludeTable);
+    }
+
+    public void addIncludeProcedure(IncludeProcedure includeProcedure) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addIncludeProcedure(includeProcedure);
+    }
+
+    public void addExcludeProcedure(ExcludeProcedure excludeProcedure) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addExcludeProcedure(excludeProcedure);
+    }
+
+    public void setSkipRelationshipsLoading(boolean skipRelationshipsLoading) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.setSkipRelationshipsLoading(skipRelationshipsLoading);
+    }
+
+    public void setSkipPrimaryKeyLoading(boolean skipPrimaryKeyLoading) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.setSkipPrimaryKeyLoading(skipPrimaryKeyLoading);
+    }
+
+    public void addConfiguredTableType(AntTableType type) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addTableType(type.getName());
+    }
+
+    public void addConfiguredSchema(Schema schema) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addSchema(schema);
+    }
+
+    public void addCatalog(Catalog catalog) {
+        isReverseEngineeringDefined = true;
+        reverseEngineering.addCatalog(catalog);
     }
 
     @Override
     public void execute() {
+
         File dataMapFile = config.getDataMapFile();
-        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering)
-                .add(filterBuilder)
-                .filtersConfig());
+        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
 
         validateAttributes();
 
@@ -80,8 +142,9 @@ public class DbImporterTask extends Task {
         config.setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
         config.setTableTypes(reverseEngineering.getTableTypes());
 
+        // TODO: get rid of this fork...
         if (isReverseEngineeringDefined) {
-            Injector injector = DIBootstrap.createInjector(new ToolsModule(logger), new DbImportModule());
+            Injector injector = DIBootstrap.createInjector(new CayenneDbSyncModule(), new ToolsModule(logger), new DbImportModule());
 
             validateDbImportConfiguration(config, injector);
 
@@ -110,7 +173,7 @@ public class DbImporterTask extends Task {
                     XMLDataMapLoader xmlDataMapLoader = new XMLDataMapLoader();
                     DataMap dataMap = xmlDataMapLoader.load(resource);
                     if (dataMap.getReverseEngineering() != null) {
-                        Injector injector = DIBootstrap.createInjector(new ToolsModule(logger), new DbImportModule());
+                        Injector injector = DIBootstrap.createInjector(new CayenneDbSyncModule(), new ToolsModule(logger), new DbImportModule());
                         try {
                             ConfigurationNameMapper nameMapper = injector.getInstance(ConfigurationNameMapper.class);
                             String reverseEngineeringLocation = nameMapper.configurationLocation(ReverseEngineering.class, dataMap.getReverseEngineering().getName());
@@ -123,7 +186,7 @@ public class DbImporterTask extends Task {
                             dataMap.setReverseEngineering(reverseEngineering);
 
                             FiltersConfigBuilder filtersConfigBuilder = new FiltersConfigBuilder(dataMap.getReverseEngineering());
-                            config.getDbLoaderConfig().setFiltersConfig(filtersConfigBuilder.filtersConfig());
+                            config.getDbLoaderConfig().setFiltersConfig(filtersConfigBuilder.build());
                             validateDbImportConfiguration(config, injector);
                             injector.getInstance(DbImportAction.class).execute(config);
                         } catch (Exception ex) {
@@ -198,58 +261,8 @@ public class DbImporterTask extends Task {
     /**
      * @since 4.0
      */
-    public void setOverwrite(boolean overwrite) {
-        config.setOverwrite(overwrite);
-    }
-
-    /**
-     * @deprecated since 4.0 use {@link #setSchema(String)}
-     */
-    @Deprecated
-    public void setSchemaName(String schemaName) {
-        isReverseEngineeringDefined = true;
-        this.setSchema(schemaName);
-    }
-
-    /**
-     * @since 4.0
-     */
-    public void setSchema(String schema) {
-        isReverseEngineeringDefined = true;
-        filterBuilder.schema(schema);
-    }
-
-    /**
-     * @since 4.0
-     */
     public void setDefaultPackage(String defaultPackage) {
         config.setDefaultPackage(defaultPackage);
-    }
-
-    public void setTablePattern(String tablePattern) {
-        isReverseEngineeringDefined = true;
-        filterBuilder.includeTables(tablePattern);
-    }
-
-    public void setImportProcedures(boolean importProcedures) {
-        isReverseEngineeringDefined = true;
-        filterBuilder.setProceduresFilters(importProcedures);
-    }
-
-    public void setProcedurePattern(String procedurePattern) {
-        isReverseEngineeringDefined = true;
-        filterBuilder.includeProcedures(procedurePattern);
-    }
-
-    /**
-     * @deprecated since 4.0 use {@link #setMeaningfulPkTables(String)}
-     */
-    public void setMeaningfulPk(boolean meaningfulPk) {
-        log("'meaningfulPk' property is deprecated. Use 'meaningfulPkTables' pattern instead", Project.MSG_WARN);
-
-        if (meaningfulPk) {
-            setMeaningfulPkTables("*");
-        }
     }
 
     /**
@@ -271,10 +284,6 @@ public class DbImporterTask extends Task {
         config.setDriver(driver);
     }
 
-    public void setMap(File map) {
-        config.setDataMapFile(map);
-    }
-
     public void setPassword(String password) {
         config.setPassword(password);
     }
@@ -287,83 +296,16 @@ public class DbImporterTask extends Task {
         config.setUsername(username);
     }
 
-    /**
-     * @since 4.0
-     */
-    public void setIncludeTables(String includeTables) {
-        isReverseEngineeringDefined = true;
-        filterBuilder.includeTables(includeTables);
-    }
-
-    /**
-     * @since 4.0
-     */
-    public void setExcludeTables(String excludeTables) {
-        isReverseEngineeringDefined = true;
-        filterBuilder.excludeTables(excludeTables);
-    }
-
-    /**
-     * @since 4.0
-     */
-    public void setUsePrimitives(boolean usePrimitives) {
-        config.setUsePrimitives(usePrimitives);
-    }
-
-    public void setSkipRelationshipsLoading(Boolean skipRelationshipsLoading) {
-        reverseEngineering.setSkipRelationshipsLoading(skipRelationshipsLoading);
-    }
-
-    public void addConfiguredIncludeColumn(IncludeColumn includeColumn) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addIncludeColumn(includeColumn);
-    }
-
-    public void addConfiguredExcludeColumn(ExcludeColumn excludeColumn) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addExcludeColumn(excludeColumn);
-    }
-
-    public void addConfiguredIncludeTable(IncludeTable includeTable) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addIncludeTable(includeTable);
-    }
-
-    public void addConfiguredExcludeTable(ExcludeTable excludeTable) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addExcludeTable(excludeTable);
-    }
-
-    public void addConfiguredIncludeProcedure(IncludeProcedure includeProcedure) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addIncludeProcedure(includeProcedure);
-    }
-
-    public void addConfiguredExcludeProcedure(ExcludeProcedure excludeProcedure) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addExcludeProcedure(excludeProcedure);
-    }
-
-    public void addConfiguredSchema(Schema schema) {
-        reverseEngineering.addSchema(schema);
-    }
-
-    public void addConfiguredCatalog(Catalog catalog) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addCatalog(catalog);
-    }
-
-    public void addConfiguredTableType(AntNestedElement type) {
-        isReverseEngineeringDefined = true;
-        reverseEngineering.addTableType(type.getName());
-    }
-
     public ReverseEngineering getReverseEngineering() {
         return reverseEngineering;
     }
 
     public File getMap() {
         return config.getDataMapFile();
+    }
+
+    public void setMap(File map) {
+        config.setDataMapFile(map);
     }
 
     public DbImportConfiguration toParameters() {

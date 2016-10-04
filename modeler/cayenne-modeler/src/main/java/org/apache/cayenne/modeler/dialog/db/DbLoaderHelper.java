@@ -20,12 +20,15 @@
 package org.apache.cayenne.modeler.dialog.db;
 
 import org.apache.cayenne.CayenneRuntimeException;
-import org.apache.cayenne.access.DbLoader;
-import org.apache.cayenne.access.loader.DefaultDbLoaderDelegate;
+import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.dbimport.FiltersConfigBuilder;
 import org.apache.cayenne.dbimport.ReverseEngineering;
+import org.apache.cayenne.dbsync.CayenneDbSyncModule;
+import org.apache.cayenne.dbsync.naming.NameBuilder;
+import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
+import org.apache.cayenne.dbsync.reverse.db.DbLoader;
+import org.apache.cayenne.dbsync.reverse.db.DefaultDbLoaderDelegate;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.map.DataMap;
@@ -34,8 +37,6 @@ import org.apache.cayenne.map.DbRelationship;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.event.EntityEvent;
 import org.apache.cayenne.map.event.MapEvent;
-import org.apache.cayenne.map.naming.DefaultUniqueNameGenerator;
-import org.apache.cayenne.map.naming.NameCheckers;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.pref.DBConnectionInfo;
@@ -47,9 +48,7 @@ import org.apache.cayenne.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -62,12 +61,11 @@ import java.util.List;
  */
 public class DbLoaderHelper {
 
-    private static Log logObj = LogFactory.getLog(DbLoaderHelper.class);
-
     // TODO: this is a temp hack... need to delegate to DbAdapter, or
-    // configurable in
-    // preferences...
+    // configurable in preferences...
     private static final Collection<String> EXCLUDED_TABLES = Arrays.asList("AUTO_PK_SUPPORT", "auto_pk_support");
+
+    private static Log LOGGER = LogFactory.getLog(DbLoaderHelper.class);
 
     protected boolean stoppingReverseEngineering;
     protected boolean existingMap;
@@ -94,7 +92,7 @@ public class DbLoaderHelper {
         try {
             this.dbCatalog = connection.getCatalog();
         } catch (SQLException e) {
-            logObj.warn("Error getting catalog.", e);
+            LOGGER.warn("Error getting catalog.", e);
         }
         this.adapter = adapter;
         this.reverseEngineering = reverseEngineering;
@@ -108,7 +106,7 @@ public class DbLoaderHelper {
         try {
             this.dbCatalog = connection.getCatalog();
         } catch (SQLException e) {
-            logObj.warn("Error getting catalog.", e);
+            LOGGER.warn("Error getting catalog.", e);
         }
         try {
             this.loader = config.createLoader(adapter, connection, new LoaderDelegate());
@@ -117,12 +115,12 @@ public class DbLoaderHelper {
         }
     }
 
-    public void setStoppingReverseEngineering(boolean stopReverseEngineering) {
-        this.stoppingReverseEngineering = stopReverseEngineering;
-    }
-
     public boolean isStoppingReverseEngineering() {
         return stoppingReverseEngineering;
+    }
+
+    public void setStoppingReverseEngineering(boolean stopReverseEngineering) {
+        this.stoppingReverseEngineering = stopReverseEngineering;
     }
 
     public DataMap getDataMap() {
@@ -155,16 +153,12 @@ public class DbLoaderHelper {
             return;
         }
 
-        this.loader.setCreatingMeaningfulPK(true);
-
         LongRunningTask loadDataMapTask = new LoadDataMapTask(Application.getFrame(), "Reengineering DB");
         loadDataMapTask.startAndWait();
-
     }
 
     protected void processException(final Throwable th, final String message) {
-        logObj.info("Exception on reverse engineering", Util.unwindException(th));
-        cleanup();
+        LOGGER.info("Exception on reverse engineering", Util.unwindException(th));
         SwingUtilities.invokeLater(new Runnable() {
 
             public void run() {
@@ -174,15 +168,12 @@ public class DbLoaderHelper {
         });
     }
 
-    protected void cleanup() {
-        loadStatusNote = "Closing connection...";
-        try {
-            if (loader.getConnection() != null) {
-                loader.getConnection().close();
-            }
-        } catch (SQLException e) {
-            logObj.warn("Error closing connection.", e);
-        }
+    protected ProjectController getMediator() {
+        return mediator;
+    }
+
+    protected DbLoader getLoader() {
+        return loader;
     }
 
     private final class LoaderDelegate extends DefaultDbLoaderDelegate {
@@ -306,7 +297,7 @@ public class DbLoaderHelper {
             loadStatusNote = "Loading available schemas...";
 
             try {
-                schemas = loader.getSchemas();
+                schemas = loader.loadSchemas();
             } catch (Throwable th) {
                 processException(th, "Error Loading Schemas");
             }
@@ -324,13 +315,12 @@ public class DbLoaderHelper {
             loadStatusNote = "Loading available catalogs...";
 
             try {
-                catalogs = loader.getCatalogs();
+                catalogs = loader.loadCatalogs();
             } catch (Throwable th) {
                 processException(th, "Error Loading Catalogs");
             }
         }
     }
-
 
     public final class LoadDataMapTask extends DbLoaderTask {
 
@@ -347,8 +337,11 @@ public class DbLoaderHelper {
             DbLoaderHelper.this.existingMap = dataMap != null;
 
             if (!existingMap) {
-                dataMap = new DataMap(DefaultUniqueNameGenerator.generate(NameCheckers.dataMap));
-                dataMap.setName(DefaultUniqueNameGenerator.generate(NameCheckers.dataMap, mediator.getProject().getRootNode()));
+
+                ConfigurationNode root = mediator.getProject().getRootNode();
+
+                dataMap = new DataMap();
+                dataMap.setName(NameBuilder.builder(dataMap, root).name());
             }
 
             if (isCanceled()) {
@@ -363,7 +356,7 @@ public class DbLoaderHelper {
                     reverseEngineering.setConfigurationSource(dataMap.getReverseEngineering().getConfigurationSource());
                 }
             } else {
-                reverseEngineering.setName(DefaultUniqueNameGenerator.generate(NameCheckers.reverseEngineering, dataChannelDescriptor));
+                reverseEngineering.setName(NameBuilder.builder(reverseEngineering, dataChannelDescriptor).name());
             }
 
             if (dataMap.getConfigurationSource() != null) {
@@ -371,11 +364,14 @@ public class DbLoaderHelper {
             }
 
             FiltersConfigBuilder filtersConfigBuilder = new FiltersConfigBuilder(reverseEngineering);
-            config.getDbLoaderConfig().setFiltersConfig(filtersConfigBuilder.filtersConfig());
+            config.getDbLoaderConfig().setFiltersConfig(filtersConfigBuilder.build());
 
 
-            DbImportActionModeler importAction = new DbImportActionModeler(logObj, DbLoaderHelper.this);
-            Injector injector = DIBootstrap.createInjector(new ToolsModule(logObj), new DbImportModule());
+            ModelerDbImportAction importAction = new ModelerDbImportAction(LOGGER, DbLoaderHelper.this);
+
+            // TODO: we can keep all these things in the Modeler Injector instead of creating a new one?
+            // we already have CayenneDbSyncModule in there
+            Injector injector = DIBootstrap.createInjector(new CayenneDbSyncModule(), new ToolsModule(LOGGER), new DbImportModule());
             injector.injectMembers(importAction);
             try {
                 importAction.execute(config);
@@ -386,12 +382,4 @@ public class DbLoaderHelper {
         }
     }
 
-    protected ProjectController getMediator() {
-        return mediator;
-    }
-
-    protected DbLoader getLoader() {
-        return loader;
-    }
-	
 }

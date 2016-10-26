@@ -18,36 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.project.upgrade.v7;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathFactory;
-
 import org.apache.cayenne.configuration.ConfigurationNameMapper;
 import org.apache.cayenne.configuration.DataMapLoader;
 import org.apache.cayenne.configuration.DefaultConfigurationNameMapper;
 import org.apache.cayenne.configuration.XMLDataMapLoader;
 import org.apache.cayenne.configuration.server.JNDIDataSourceFactory;
 import org.apache.cayenne.configuration.server.XMLPoolingDataSourceFactory;
-import org.apache.cayenne.di.AdhocObjectFactory;
-import org.apache.cayenne.di.Binder;
-import org.apache.cayenne.di.ClassLoaderManager;
-import org.apache.cayenne.di.DIBootstrap;
-import org.apache.cayenne.di.Injector;
-import org.apache.cayenne.di.Module;
+import org.apache.cayenne.di.*;
 import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
 import org.apache.cayenne.project.FileProjectSaver;
@@ -63,6 +40,17 @@ import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathFactory;
+import java.io.File;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.*;
 
 public class ProjectUpgrader_V7Test extends Project2Case {
 
@@ -95,7 +83,6 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 		assertNotNull(md);
 
 		assertSame(UpgradeType.UPGRADE_NEEDED, md.getUpgradeType());
-		// assertEquals("6", md.getIntermediateUpgradeVersion());
 		assertNull(md.getIntermediateUpgradeVersion());
 		assertEquals("3.0.0.1", md.getProjectVersion());
 		assertEquals("7", md.getSupportedVersion());
@@ -274,7 +261,7 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
 		assertEquals("", xpath.evaluate("/domain/@name", document));
-		assertEquals("8", xpath.evaluate("/domain/@project-version", document));
+		assertEquals("9", xpath.evaluate("/domain/@project-version", document));
 
 		NodeList maps = (NodeList) xpath.evaluate("/domain/map", document, XPathConstants.NODESET);
 		assertNotNull(maps);
@@ -316,7 +303,7 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
 		assertEquals("", xpath.evaluate("/domain/@name", document));
-		assertEquals("8", xpath.evaluate("/domain/@project-version", document));
+		assertEquals("9", xpath.evaluate("/domain/@project-version", document));
 
 		NodeList maps = (NodeList) xpath.evaluate("/domain/map", document, XPathConstants.NODESET);
 		assertNotNull(maps);
@@ -350,14 +337,14 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/data-map/@project-version", document));
+		assertEquals("9", xpath.evaluate("/data-map/@project-version", document));
 	}
 
 	private void assertPerformUpgrade_3_0_0_1_d1Map2(File file) throws Exception {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/data-map/@project-version", document));
+		assertEquals("9", xpath.evaluate("/data-map/@project-version", document));
 	}
 
 	@Test
@@ -408,7 +395,7 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/data-map/@project-version", document));
+		assertEquals("9", xpath.evaluate("/data-map/@project-version", document));
 
 		NodeList maps = (NodeList) xpath.evaluate("/data-map/obj-entity/entity-listener", document,
 				XPathConstants.NODESET);
@@ -420,14 +407,14 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/domain/@project-version", document));
+		assertEquals("9", xpath.evaluate("/domain/@project-version", document));
 	}
 
 	private void assertPerformUpgradeMap2(File file) throws Exception {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/data-map/@project-version", document));
+		assertEquals("9", xpath.evaluate("/data-map/@project-version", document));
 	}
 
 	@Test
@@ -483,7 +470,7 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/data-map/@project-version", document));
+		assertEquals("9", xpath.evaluate("/data-map/@project-version", document));
 
 		String xpathValue = "/data-map/obj-entity[@name='GreatArtist']/obj-attribute";
 		XPathExpression expr = xpath.compile(xpathValue);
@@ -496,7 +483,7 @@ public class ProjectUpgrader_V7Test extends Project2Case {
 		Document document = toDOMTree(file);
 
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		assertEquals("8", xpath.evaluate("/data-map/@project-version", document));
+		assertEquals("9", xpath.evaluate("/data-map/@project-version", document));
 
 		String xpath_1 = "/data-map/obj-entity[@name='House']/obj-attribute/@name";
 		String xpath_2 = "/data-map/obj-entity[@name='Penthouse']/obj-attribute/@name";

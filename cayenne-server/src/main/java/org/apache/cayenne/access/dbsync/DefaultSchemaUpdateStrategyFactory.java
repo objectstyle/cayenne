@@ -1,5 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
+ *    Licensed to the Apache Software Foundation (ASF) under one
  *    or more contributor license agreements.  See the NOTICE file
  *    distributed with this work for additional information
  *    regarding copyright ownership.  The ASF licenses this file
@@ -16,31 +16,32 @@
  *    specific language governing permissions and limitations
  *    under the License.
  */
-package org.apache.cayenne.modeler.dialog.db;
+package org.apache.cayenne.access.dbsync;
 
-import org.apache.cayenne.modeler.dialog.db.model.DbModel;
+import org.apache.cayenne.configuration.DataNodeDescriptor;
+import org.apache.cayenne.di.AdhocObjectFactory;
+import org.apache.cayenne.di.Inject;
 
 /**
  * @since 4.0
  */
-public class DataMapViewModel {
+public class DefaultSchemaUpdateStrategyFactory implements SchemaUpdateStrategyFactory {
 
-    private String reverseEngineeringText;
-    private DbModel reverseEngineeringTree;
+    @Inject
+    protected AdhocObjectFactory objectFactory;
 
-    public String getReverseEngineeringText() {
-        return reverseEngineeringText;
+    @Override
+    public SchemaUpdateStrategy create(DataNodeDescriptor nodeDescriptor) {
+        String type = nodeDescriptor.getSchemaUpdateStrategyType();
+
+        if (type == null) {
+            return createDefaultStrategy();
+        }
+
+        return objectFactory.newInstance(SchemaUpdateStrategy.class, type);
     }
 
-    public void setReverseEngineeringText(String reverseEngineeringText) {
-        this.reverseEngineeringText = reverseEngineeringText;
-    }
-
-    public DbModel getReverseEngineeringTree() {
-        return reverseEngineeringTree;
-    }
-
-    public void setReverseEngineeringTree(DbModel reverseEngineeringTree) {
-        this.reverseEngineeringTree = reverseEngineeringTree;
+    protected SchemaUpdateStrategy createDefaultStrategy() {
+        return new SkipSchemaUpdateStrategy();
     }
 }

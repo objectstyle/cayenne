@@ -62,7 +62,7 @@ public class FileProjectSaver implements ProjectSaver {
 	}
 
 	public String getSupportedVersion() {
-		return "8";
+		return "9";
 	}
 
 	public void save(Project project) {
@@ -206,6 +206,10 @@ public class FileProjectSaver implements ProjectSaver {
 		for (SaveUnit unit : units) {
 
 			File targetFile = unit.targetFile;
+
+			// Per CAY-2119, this is an ugly hack to force Windows to unlock the file that was previously locked by
+			// our process. Without it, the delete operation downstream would fail
+			System.gc();
 
 			if (targetFile.exists()) {
 				if (!targetFile.delete()) {

@@ -16,27 +16,29 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.project.validation;
+package org.apache.cayenne.project.upgrade.v9;
 
-import org.apache.cayenne.dbimport.ReverseEngineering;
-import org.apache.cayenne.util.Util;
-import org.apache.cayenne.validation.ValidationResult;
+
+import org.apache.cayenne.di.Inject;
+import org.apache.cayenne.di.Injector;
+import org.apache.cayenne.project.upgrade.ProjectUpgrader;
+import org.apache.cayenne.project.upgrade.UpgradeHandler;
+import org.apache.cayenne.resource.Resource;
 
 /**
- * @since 4.0
+ * A ProjectUpgrader that handles project upgrades from version 4.0.M4 and 8
+ * to version 9.
  */
-public class ReverseEngineeringValidator extends ConfigurationNodeValidator{
-    void validate(ReverseEngineering reverseEngineering, ValidationResult validationResult) {
-        validateName(reverseEngineering, validationResult);
+public class ProjectUpgrader_V9 implements ProjectUpgrader {
+
+    @Inject
+    protected Injector injector;
+
+    @Override
+    public UpgradeHandler getUpgradeHandler(Resource projectSource) {
+        UpgradeHandler_V9 handler = new UpgradeHandler_V9(projectSource);
+        injector.injectMembers(handler);
+        return handler;
     }
 
-    void validateName(ReverseEngineering reverseEngineering, ValidationResult validationResult) {
-        String name = reverseEngineering.getName();
-
-        // Must have name
-        if (Util.isEmptyString(name)) {
-            addFailure(validationResult, reverseEngineering, "Unnamed ReverseEngineering");
-            return;
-        }
-    }
 }

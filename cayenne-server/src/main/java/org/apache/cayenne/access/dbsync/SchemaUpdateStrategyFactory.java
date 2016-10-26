@@ -1,5 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
+ *    Licensed to the Apache Software Foundation (ASF) under one
  *    or more contributor license agreements.  See the NOTICE file
  *    distributed with this work for additional information
  *    regarding copyright ownership.  The ASF licenses this file
@@ -16,15 +16,16 @@
  *    specific language governing permissions and limitations
  *    under the License.
  */
-package org.apache.cayenne.modeler.dialog.db.model;
+package org.apache.cayenne.access.dbsync;
+
+import org.apache.cayenne.configuration.DataNodeDescriptor;
 
 /**
+ * A factory for {@link SchemaUpdateStrategy} instances.
+ *
  * @since 4.0
  */
-public class DbCatalog extends DbElement {
+public interface SchemaUpdateStrategyFactory {
 
-    public DbCatalog(String name) {
-        super(name);
-    }
-
+    SchemaUpdateStrategy create(DataNodeDescriptor nodeDescriptor);
 }

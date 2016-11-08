@@ -36,6 +36,11 @@ CAY-2114 cdbimport: object layer settings are not respected
 CAY-2115 DbLoader - allow loading DataMap without Obj layer
 CAY-2116 Split schema synchronization code in a separate module
 CAY-2118 cdbimport: drop support for the old style of table filtering
+CAY-2129 Modeler: reengineer dialog improvements
+CAY-2130 Stripping common name prefixes on reverse engineering
+CAY-2132 Adding SybaseSelectTranslator to support TOP/DISTINCT TOP in limited queries
+CAY-2133 ObjectNameGenerator refactoring - unifying relationship name generation
+CAY-2135 cdbimport: reset DbEntity catalogs / schemas to DataMap defaults
 
 Bug Fixes:
 
@@ -57,6 +62,9 @@ CAY-2110 Obfuscated exception when processing iterated results
 CAY-2119 ProjectUpgrader test failure (Windows)
 CAY-2122 Vertical Inheritance: Cannot Insert Record For Implementing Class with Attribute And Relationship
 CAY-2125 SchemaUpdateStrategy doesn't work with multiple DataNodes
+CAY-2126 Modeler cannot upgrade project from v7 to v9
+CAY-2128 Modeler stored procedures are not imported
+CAY-2131 Modeler NullPointerException in reverse engineering when importing different catalogs in one datamap
 
 ----------------------------------
 Release: 4.0.M3

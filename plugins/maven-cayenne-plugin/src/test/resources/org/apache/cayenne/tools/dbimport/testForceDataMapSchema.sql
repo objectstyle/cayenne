@@ -18,19 +18,23 @@
 CREATE SCHEMA schema_01;
 SET SCHEMA schema_01;
 
-CREATE TABLE schema_01.new_table (
+CREATE TABLE schema_01.Parent (
   id INTEGER NOT NULL,
-  COL2 INTEGER,
-  PRIMARY KEY (id)
- );
+  COL2 CHAR(25),
+  COL3 DECIMAL(10,2),
+  COL4 VARCHAR(25),
+  COL5 DATE,
 
-CREATE TABLE schema_01.existing_table (
-  id INTEGER NOT NULL,
-  COL2 INTEGER,
-  PRIMARY KEY (id)
- );
+  PRIMARY KEY (id),
+  UNIQUE (COL3)
+);
 
-CREATE TABLE schema_01.xyz_prefixed_new_table (
+CREATE TABLE schema_01.Child (
   id INTEGER NOT NULL,
+  Parent_id CHAR(25),
+  COL3 DECIMAL(10,2),
+  COL4 VARCHAR(25),
+  COL5 DATE,
+
   PRIMARY KEY (id)
- );
+);

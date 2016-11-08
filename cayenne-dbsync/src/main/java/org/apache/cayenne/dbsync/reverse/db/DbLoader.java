@@ -31,7 +31,6 @@ import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.DbJoin;
 import org.apache.cayenne.map.DbRelationship;
-import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.Procedure;
 import org.apache.cayenne.map.ProcedureParameter;
 import org.apache.cayenne.util.EqualsBuilder;
@@ -43,7 +42,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +63,7 @@ public class DbLoader {
     private final Connection connection;
     private final DbAdapter adapter;
     private final DbLoaderDelegate delegate;
-    private ObjectNameGenerator nameGenerator;
+    private final ObjectNameGenerator nameGenerator;
     private DatabaseMetaData metaData;
 
     public DbLoader(Connection connection, DbAdapter adapter, DbLoaderDelegate delegate, ObjectNameGenerator nameGenerator) {
@@ -99,6 +97,31 @@ public class DbLoader {
     }
 
     /**
+     * Retrieves catalogs for a given connection.
+     *
+     * @return List with the catalog names; empty list if none found.
+     */
+    // using a static method for catalog loading as we don't need a full DbLoader for this operation
+    public static List<String> loadCatalogs(Connection connection) throws SQLException {
+        try (ResultSet rs = connection.getMetaData().getCatalogs()) {
+            return getStrings(rs);
+        }
+    }
+
+    /**
+     * Retrieves the schemas for the given connection.
+     *
+     * @return List with the schema names; empty list if none found.
+     */
+    // using a static method for catalog loading as we don't need a full DbLoader for this operation
+    public static List<String> loadSchemas(Connection connection) throws SQLException {
+
+        try (ResultSet rs = connection.getMetaData().getSchemas()) {
+            return getStrings(rs);
+        }
+    }
+
+    /**
      * Returns DatabaseMetaData object associated with this DbLoader.
      */
     private DatabaseMetaData getMetaData() throws SQLException {
@@ -106,49 +129,6 @@ public class DbLoader {
             metaData = connection.getMetaData();
         }
         return metaData;
-    }
-
-    /**
-     * Check if database support schemas.
-     */
-    protected boolean supportSchemas() throws SQLException {
-        if (metaData == null) {
-            metaData = connection.getMetaData();
-        }
-        return metaData.supportsSchemasInTableDefinitions();
-    }
-
-    /**
-     * Check if database support catalogs.
-     */
-    protected boolean supportCatalogs() throws SQLException {
-        if (metaData == null) {
-            metaData = connection.getMetaData();
-        }
-        return metaData.supportsCatalogsInTableDefinitions();
-    }
-
-    /**
-     * Retrieves catalogs for the database associated with this DbLoader.
-     *
-     * @return List with the catalog names, empty Array if none found.
-     */
-    public List<String> loadCatalogs() throws SQLException {
-        try (ResultSet rs = getMetaData().getCatalogs()) {
-            return getStrings(rs);
-        }
-    }
-
-    /**
-     * Retrieves the schemas for the database.
-     *
-     * @return List with the schema names, empty Array if none found.
-     */
-    public List<String> loadSchemas() throws SQLException {
-
-        try (ResultSet rs = getMetaData().getSchemas()) {
-            return getStrings(rs);
-        }
     }
 
     protected void loadDbRelationships(DbLoaderConfiguration config, String catalog, String schema,
@@ -187,24 +167,20 @@ public class DbLoader {
                 continue;
             }
 
-            if (!new EqualsBuilder().append(pkEntity.getCatalog(), key.pkCatalog)
-                    .append(pkEntity.getSchema(), key.pkSchema).append(fkEntity.getCatalog(), key.fkCatalog)
-                    .append(fkEntity.getSchema(), key.fkSchema).isEquals()) {
+            if (!new EqualsBuilder().append(pkEntity.getCatalog(), key.getPkCatalog())
+                    .append(pkEntity.getSchema(), key.getPkSchema()).append(fkEntity.getCatalog(), key.getFkCatalog())
+                    .append(fkEntity.getSchema(), key.getFkSchema()).isEquals()) {
 
                 LOGGER.info("Skip relation: '" + key + "' because it related to objects from other catalog/schema");
-                LOGGER.info("     relation primary key: '" + key.pkCatalog + "." + key.pkSchema + "'");
+                LOGGER.info("     relation primary key: '" + key.getPkCatalog() + "." + key.getPkSchema() + "'");
                 LOGGER.info("       primary key entity: '" + pkEntity.getCatalog() + "." + pkEntity.getSchema() + "'");
-                LOGGER.info("     relation foreign key: '" + key.fkCatalog + "." + key.fkSchema + "'");
+                LOGGER.info("     relation foreign key: '" + key.getFkCatalog() + "." + key.getFkSchema() + "'");
                 LOGGER.info("       foreign key entity: '" + fkEntity.getCatalog() + "." + fkEntity.getSchema() + "'");
                 continue;
             }
 
             // forwardRelationship is a reference from table with primary key
             DbRelationship forwardRelationship = new DbRelationship();
-            forwardRelationship.setName(NameBuilder
-                    .builder(forwardRelationship, pkEntity)
-                    .baseName(nameGenerator.dbRelationshipName(key, true))
-                    .name());
 
             forwardRelationship.setSourceEntity(pkEntity);
             forwardRelationship.setTargetEntityName(fkEntity);
@@ -215,10 +191,7 @@ public class DbLoader {
             // TODO: dirty and non-transparent... using DbRelationshipDetected for the benefit of the merge package.
             // This info is available from joins....
             DbRelationshipDetected reverseRelationship = new DbRelationshipDetected();
-            reverseRelationship.setName(NameBuilder
-                    .builder(reverseRelationship, fkEntity)
-                    .baseName(nameGenerator.dbRelationshipName(key, false))
-                    .name());
+
 
             reverseRelationship.setFkName(key.getFKName());
             reverseRelationship.setSourceEntity(fkEntity);
@@ -235,10 +208,16 @@ public class DbLoader {
 
             forwardRelationship.setToMany(!isOneToOne);
 
-            // TODO: can we avoid resetting the name twice? Do we need a placeholder name above?
+            // set relationship names only after their joins are ready ... generator logic is based on relationship
+            // state...
             forwardRelationship.setName(NameBuilder
                     .builder(forwardRelationship, pkEntity)
-                    .baseName(nameGenerator.dbRelationshipName(key, !isOneToOne))
+                    .baseName(nameGenerator.relationshipName(forwardRelationship))
+                    .name());
+
+            reverseRelationship.setName(NameBuilder
+                    .builder(reverseRelationship, fkEntity)
+                    .baseName(nameGenerator.relationshipName(reverseRelationship))
                     .name());
 
             if (delegate.dbRelationshipLoaded(fkEntity, reverseRelationship)) {
@@ -299,9 +278,8 @@ public class DbLoader {
                 rs = getMetaData().getExportedKeys(catalog, schema, dbEntity.getName());
             } catch (SQLException cay182Ex) {
                 // Sybase-specific - the line above blows on VIEWS, see CAY-182.
-                LOGGER.info(
-                        "Error getting relationships for '" + catalog + "." + schema + "', ignoring. "
-                                + cay182Ex.getMessage(), cay182Ex);
+                LOGGER.info("Error getting relationships for '" + catalog + "." + schema + "', ignoring. "
+                        + cay182Ex.getMessage(), cay182Ex);
                 return new HashMap<>();
             }
 
@@ -338,15 +316,6 @@ public class DbLoader {
 
     private void skipRelationLog(ExportedKey key, String tableName) {
         LOGGER.info("Skip relation: '" + key + "' because table '" + tableName + "' not found");
-    }
-
-    private void fireObjEntitiesAddedEvents(Collection<ObjEntity> loadedObjEntities) {
-        for (ObjEntity curEntity : loadedObjEntities) {
-            // notify delegate
-            if (delegate != null) {
-                delegate.objEntityAdded(curEntity);
-            }
-        }
     }
 
     protected String[] getTableTypes(DbLoaderConfiguration config) {
@@ -446,10 +415,10 @@ public class DbLoader {
 
         try (ResultSet columnsRS = getMetaData().getProcedureColumns(catalog, schema, null, null);) {
             while (columnsRS.next()) {
-
-                String s = columnsRS.getString("PROCEDURE_SCHEM");
+                String procSchema = columnsRS.getString("PROCEDURE_SCHEM");
+                String procCatalog = columnsRS.getString("PROCEDURE_CAT");
                 String name = columnsRS.getString("PROCEDURE_NAME");
-                String key = (s == null ? "" : s + '.') + name;
+                String key = Procedure.generateFullyQualifiedName(procCatalog, procSchema, name);
                 Procedure procedure = procedures.get(key);
                 if (procedure == null) {
                     continue;

@@ -16,23 +16,37 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.dbsync.merge.factory;
+package org.apache.cayenne.dba.sybase;
 
-import org.apache.cayenne.dba.PerAdapterProvider;
-import org.apache.cayenne.dbsync.DbSyncModule;
-import org.apache.cayenne.di.Inject;
+import org.apache.cayenne.access.translator.select.DefaultSelectTranslator;
+import org.apache.cayenne.dba.DbAdapter;
+import org.apache.cayenne.map.EntityResolver;
+import org.apache.cayenne.query.Query;
 
-import java.util.Map;
+public class SybaseSelectTranslator extends DefaultSelectTranslator {
+	/**
+	 * @since 4.0
+	 */
+	public SybaseSelectTranslator(Query query, DbAdapter adapter, EntityResolver entityResolver) {
+		super(query, adapter, entityResolver);
+	}
 
-/**
- * @since 4.0
- */
-public class MergerTokenFactoryProvider extends PerAdapterProvider<MergerTokenFactory> {
+	@Override
+	protected void appendLimitAndOffsetClauses(StringBuilder buffer) {
 
-    public MergerTokenFactoryProvider(
-            @Inject(DbSyncModule.MERGER_FACTORIES_MAP) Map<String, MergerTokenFactory> perAdapterValues,
-            @Inject MergerTokenFactory defaultValue) {
+		int limit = queryMetadata.getFetchLimit();
+		int offset = queryMetadata.getFetchOffset();
 
-        super(perAdapterValues, defaultValue);
-    }
+		if (limit > 0) {
+			String sql = buffer.toString();
+
+			// If contains distinct insert top limit after
+			if (sql.startsWith("SELECT DISTINCT ")) {
+				buffer.replace(0, 15, "SELECT DISTINCT TOP " + (offset + limit));
+
+			} else {
+				buffer.replace(0, 6, "SELECT TOP " + (offset + limit));
+			}
+		}
+	}
 }

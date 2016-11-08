@@ -18,21 +18,15 @@
  ****************************************************************/
 package org.apache.cayenne.tools;
 
-import org.apache.cayenne.configuration.ConfigurationNameMapper;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
-import org.apache.cayenne.configuration.XMLDataMapLoader;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.DbAdapterFactory;
 import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.dbimport.DefaultReverseEngineeringLoader;
 import org.apache.cayenne.dbimport.ReverseEngineering;
-import org.apache.cayenne.dbsync.CayenneDbSyncModule;
+import org.apache.cayenne.dbsync.DbSyncModule;
 import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
-import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.resource.Resource;
-import org.apache.cayenne.resource.URLResource;
 import org.apache.cayenne.tools.configuration.ToolsModule;
 import org.apache.cayenne.tools.dbimport.DbImportAction;
 import org.apache.cayenne.tools.dbimport.DbImportConfiguration;
@@ -45,8 +39,6 @@ import org.apache.maven.plugin.MojoFailureException;
 
 import javax.sql.DataSource;
 import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
 
 /**
  * Maven mojo to reverse engineer datamap from DB.
@@ -84,6 +76,16 @@ public class DbImporterMojo extends AbstractMojo {
      * @required
      */
     private String driver;
+
+    /**
+     * @parameter forceDataMapCatalog="forceDataMapCatalog"  default-value="false"
+     */
+    private boolean forceDataMapCatalog;
+
+    /**
+     * @parameter forceDataMapSchema="forceDataMapSchema"  default-value="false"
+     */
+    private boolean forceDataMapSchema;
 
     /**
      * DataMap XML file to use as a base for DB importing.
@@ -126,6 +128,13 @@ public class DbImporterMojo extends AbstractMojo {
      */
     private ReverseEngineering reverseEngineering = new ReverseEngineering();
 
+    /**
+     * A regular expression that should match the part of the table name to strip before generating DB names.
+     *
+     * @parameter stripFromTableNames="stripFromTableNames"
+     * default-value=""
+     */
+    private String stripFromTableNames;
 
     /**
      * JDBC connection URL of a target database.
@@ -153,9 +162,8 @@ public class DbImporterMojo extends AbstractMojo {
 
         Log logger = new MavenLogger(this);
 
-        DbImportConfiguration config = toParameters();
-        config.setLogger(logger);
-        Injector injector = DIBootstrap.createInjector(new CayenneDbSyncModule(), new ToolsModule(logger), new DbImportModule());
+        DbImportConfiguration config = createConfig(logger);
+        Injector injector = DIBootstrap.createInjector(new DbSyncModule(), new ToolsModule(logger), new DbImportModule());
 
         validateDbImportConfiguration(config, injector);
 
@@ -196,23 +204,27 @@ public class DbImporterMojo extends AbstractMojo {
         }
     }
 
-    DbImportConfiguration toParameters() {
+    DbImportConfiguration createConfig(Log logger) {
 
         DbImportConfiguration config = new DbImportConfiguration();
         config.setAdapter(adapter);
         config.setDefaultPackage(defaultPackage);
         config.setDriver(driver);
-        config.setDataMapFile(map);
+        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
+        config.setForceDataMapCatalog(forceDataMapCatalog);
+        config.setForceDataMapSchema(forceDataMapSchema);
+        config.setLogger(logger);
         config.setMeaningfulPkTables(meaningfulPkTables);
         config.setNamingStrategy(namingStrategy);
         config.setPassword(password);
+        config.setSkipRelationshipsLoading(reverseEngineering.getSkipRelationshipsLoading());
+        config.setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
+        config.setStripFromTableNames(stripFromTableNames);
+        config.setTableTypes(reverseEngineering.getTableTypes());
+        config.setTargetDataMap(map);
         config.setUrl(url);
         config.setUsername(username);
         config.setUsePrimitives(usePrimitives);
-        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
-        config.setSkipRelationshipsLoading(reverseEngineering.getSkipRelationshipsLoading());
-        config.setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
-        config.setTableTypes(reverseEngineering.getTableTypes());
 
         return config;
     }

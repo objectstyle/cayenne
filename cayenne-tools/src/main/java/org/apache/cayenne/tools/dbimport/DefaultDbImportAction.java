@@ -36,12 +36,18 @@ import org.apache.cayenne.dbsync.merge.factory.MergerTokenFactoryProvider;
 import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
 import org.apache.cayenne.dbsync.reverse.db.DbLoader;
 import org.apache.cayenne.dbsync.reverse.db.DbLoaderConfiguration;
+import org.apache.cayenne.dbsync.reverse.db.DbLoaderDelegate;
+import org.apache.cayenne.dbsync.reverse.filters.CatalogFilter;
+import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
+import org.apache.cayenne.dbsync.reverse.filters.PatternFilter;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.map.DataMap;
+import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.MapLoader;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.ObjRelationship;
+import org.apache.cayenne.map.Procedure;
 import org.apache.cayenne.project.Project;
 import org.apache.cayenne.project.ProjectSaver;
 import org.apache.cayenne.resource.URLResource;
@@ -63,8 +69,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * A thin wrapper around {@link DbLoader} that encapsulates DB import logic for
- * the benefit of Ant and Maven db importers.
+ * A default implementation of {@link DbImportAction} that can load DB schema and merge it to a new or an existing
+ * DataMap.
  *
  * @since 4.0
  */
@@ -110,6 +116,32 @@ public class DefaultDbImportAction implements DbImportAction {
         return reverse;
     }
 
+    /**
+     * Flattens many-to-many relationships in the generated model.
+     */
+    protected static void flattenManyToManyRelationships(DataMap map, Collection<ObjEntity> loadedObjEntities,
+                                                         ObjectNameGenerator objectNameGenerator) {
+        if (loadedObjEntities.isEmpty()) {
+            return;
+        }
+        Collection<ObjEntity> entitiesForDelete = new LinkedList<>();
+
+        for (ObjEntity curEntity : loadedObjEntities) {
+            ManyToManyCandidateEntity entity = ManyToManyCandidateEntity.build(curEntity);
+
+            if (entity != null) {
+                entity.optimizeRelationships(objectNameGenerator);
+                entitiesForDelete.add(curEntity);
+            }
+        }
+
+        // remove needed entities
+        for (ObjEntity curDeleteEntity : entitiesForDelete) {
+            map.removeObjEntity(curDeleteEntity.getName(), true);
+        }
+        loadedObjEntities.removeAll(entitiesForDelete);
+    }
+
     @Override
     public void execute(DbImportConfiguration config) throws Exception {
 
@@ -122,28 +154,27 @@ public class DefaultDbImportAction implements DbImportAction {
         DataNodeDescriptor dataNodeDescriptor = config.createDataNodeDescriptor();
         DataSource dataSource = dataSourceFactory.getDataSource(dataNodeDescriptor);
         DbAdapter adapter = adapterFactory.createAdapter(dataNodeDescriptor, dataSource);
+        ObjectNameGenerator objectNameGenerator = config.createNameGenerator();
 
-        DataMap loadedFomDb;
+        DataMap sourceDataMap;
         try (Connection connection = dataSource.getConnection()) {
-            loadedFomDb = load(config, adapter, connection);
+            sourceDataMap = load(config, adapter, connection, objectNameGenerator);
         }
 
-        if (loadedFomDb == null) {
-            logger.info("Nothing was loaded from db.");
-            return;
-        }
-
-        DataMap targetDataMap = loadExistingDataMap(config.getDataMapFile());
+        DataMap targetDataMap = existingTargetMap(config);
         if (targetDataMap == null) {
 
-            hasChanges = true;
-            File file = config.getDataMapFile();
-            logger.info("");
-            logger.info("Map file does not exist. Loaded db model will be saved into '"
-                    + (file == null ? "null" : file.getAbsolutePath() + "'"));
+            String path = config.getTargetDataMap() == null ? "null" : config.getTargetDataMap().getAbsolutePath() + "'";
 
-            targetDataMap = config.createDataMap();
+            logger.info("");
+            logger.info("Map file does not exist. Loaded db model will be saved into '" + path);
+
+            hasChanges = true;
+            targetDataMap = newTargetDataMap(config);
         }
+
+        // transform source DataMap before merging
+        transformSourceBeforeMerge(sourceDataMap, targetDataMap, config);
 
         MergerTokenFactory mergerTokenFactory = mergerTokenFactoryProvider.get(adapter);
 
@@ -153,19 +184,41 @@ public class DefaultDbImportAction implements DbImportAction {
                 .skipPKTokens(loaderConfig.isSkipPrimaryKeyLoading())
                 .skipRelationshipsTokens(loaderConfig.isSkipRelationshipsLoading())
                 .build()
-                .createMergeTokens(targetDataMap, loadedFomDb);
+                .createMergeTokens(targetDataMap, sourceDataMap);
 
         hasChanges |= syncDataMapProperties(targetDataMap, config);
         hasChanges |= applyTokens(config.createMergeDelegate(),
                 targetDataMap,
                 log(sort(reverse(mergerTokenFactory, tokens))),
-                config.getNameGenerator(),
-                config.getMeaningfulPKFilter(),
+                objectNameGenerator,
+                config.createMeaningfulPKFilter(),
                 config.isUsePrimitives());
+        hasChanges |= syncProcedures(targetDataMap, sourceDataMap, loaderConfig.getFiltersConfig());
 
         if (hasChanges) {
             saveLoaded(targetDataMap);
         }
+    }
+
+
+    protected void transformSourceBeforeMerge(DataMap sourceDataMap,
+                                              DataMap targetDataMap,
+                                              DbImportConfiguration configuration) {
+
+        if (configuration.isForceDataMapCatalog()) {
+            String catalog = targetDataMap.getDefaultCatalog();
+            for (DbEntity e : sourceDataMap.getDbEntities()) {
+                e.setCatalog(catalog);
+            }
+        }
+
+        if (configuration.isForceDataMapSchema()) {
+            String schema = targetDataMap.getDefaultSchema();
+            for (DbEntity e : sourceDataMap.getDbEntities()) {
+                e.setSchema(schema);
+            }
+        }
+
     }
 
     private boolean syncDataMapProperties(DataMap targetDataMap, DbImportConfiguration config) {
@@ -212,16 +265,57 @@ public class DefaultDbImportAction implements DbImportAction {
         return tokens;
     }
 
-    protected DataMap loadExistingDataMap(File dataMapFile) throws IOException {
-        if (dataMapFile != null && dataMapFile.exists() && dataMapFile.canRead()) {
-            DataMap dataMap = mapLoader.loadDataMap(new InputSource(dataMapFile.getCanonicalPath()));
+    protected DataMap existingTargetMap(DbImportConfiguration configuration) throws IOException {
+
+        File file = configuration.getTargetDataMap();
+        if (file != null && file.exists() && file.canRead()) {
+            DataMap dataMap = mapLoader.loadDataMap(new InputSource(file.getCanonicalPath()));
             dataMap.setNamespace(new EntityResolver(Collections.singleton(dataMap)));
-            dataMap.setConfigurationSource(new URLResource(dataMapFile.toURI().toURL()));
+            dataMap.setConfigurationSource(new URLResource(file.toURI().toURL()));
 
             return dataMap;
         }
 
         return null;
+    }
+
+    protected DataMap newTargetDataMap(DbImportConfiguration config) throws IOException {
+
+        DataMap dataMap = new DataMap();
+
+        dataMap.setName(config.getDataMapName());
+        dataMap.setConfigurationSource(new URLResource(config.getTargetDataMap().toURI().toURL()));
+        dataMap.setNamespace(new EntityResolver(Collections.singleton(dataMap)));
+
+        // update map defaults
+
+        // do not override default package of existing DataMap unless it is
+        // explicitly requested by the plugin caller
+        String defaultPackage = config.getDefaultPackage();
+        if (defaultPackage != null && defaultPackage.length() > 0) {
+            dataMap.setDefaultPackage(defaultPackage);
+        }
+
+        CatalogFilter[] catalogs = config.getDbLoaderConfig().getFiltersConfig().getCatalogs();
+        if (catalogs.length > 0) {
+            // do not override default catalog of existing DataMap unless it is
+            // explicitly requested by the plugin caller, and the provided catalog is
+            // not a pattern
+            String catalog = catalogs[0].name;
+            if (catalog != null && catalog.length() > 0 && catalog.indexOf('%') < 0) {
+                dataMap.setDefaultCatalog(catalog);
+            }
+
+            // do not override default schema of existing DataMap unless it is
+            // explicitly requested by the plugin caller, and the provided schema is
+            // not a pattern
+            String schema = catalogs[0].schemas[0].name;
+            if (schema != null && schema.length() > 0 && schema.indexOf('%') < 0) {
+                dataMap.setDefaultSchema(schema);
+            }
+        }
+
+        return dataMap;
     }
 
     private List<MergerToken> reverse(MergerTokenFactory mergerTokenFactory, Iterable<MergerToken> mergeTokens)
@@ -295,42 +389,54 @@ public class DefaultDbImportAction implements DbImportAction {
         return true;
     }
 
+    private boolean syncProcedures(DataMap targetDataMap, DataMap loadedDataMap, FiltersConfig filters) {
+        Collection<Procedure> procedures = loadedDataMap.getProcedures();
+        if (procedures.isEmpty()) {
+            return false;
+        }
+
+        boolean hasChanges = false;
+        for (Procedure procedure : procedures) {
+            PatternFilter proceduresFilter = filters.proceduresFilter(procedure.getCatalog(), procedure.getSchema());
+            if (proceduresFilter == null || !proceduresFilter.isIncluded(procedure.getName())) {
+                continue;
+            }
+
+            Procedure oldProcedure = targetDataMap.getProcedure(procedure.getName());
+            // maybe we need to compare oldProcedure's and procedure's fully qualified names?
+            if (oldProcedure != null) {
+                targetDataMap.removeProcedure(procedure.getName());
+                logger.info("Replace procedure " + procedure.getName());
+            } else {
+                logger.info("Add new procedure " + procedure.getName());
+            }
+            targetDataMap.addProcedure(procedure);
+            hasChanges = true;
+        }
+        return hasChanges;
+    }
+
     protected void saveLoaded(DataMap dataMap) throws FileNotFoundException {
         ConfigurationTree<DataMap> projectRoot = new ConfigurationTree<>(dataMap);
         Project project = new Project(projectRoot);
         projectSaver.save(project);
     }
 
-    protected DataMap load(DbImportConfiguration config, DbAdapter adapter, Connection connection) throws Exception {
-        DataMap dataMap = config.createDataMap();
-        DbLoader loader = config.createLoader(adapter, connection, config.createLoaderDelegate());
-        loader.load(dataMap, config.getDbLoaderConfig());
+    protected DataMap load(DbImportConfiguration config,
+                           DbAdapter adapter,
+                           Connection connection,
+                           ObjectNameGenerator objectNameGenerator) throws Exception {
+
+        DataMap dataMap = new DataMap("_import_source_");
+        createDbLoader(adapter, connection, config.createLoaderDelegate(), objectNameGenerator)
+                .load(dataMap, config.getDbLoaderConfig());
         return dataMap;
     }
 
-    /**
-     * Flattens many-to-many relationships in the generated model.
-     */
-    protected static void flattenManyToManyRelationships(DataMap map, Collection<ObjEntity> loadedObjEntities,
-                                                      ObjectNameGenerator objectNameGenerator) {
-        if (loadedObjEntities.isEmpty()) {
-            return;
-        }
-        Collection<ObjEntity> entitiesForDelete = new LinkedList<>();
-
-        for (ObjEntity curEntity : loadedObjEntities) {
-            ManyToManyCandidateEntity entity = ManyToManyCandidateEntity.build(curEntity);
-
-            if (entity != null) {
-                entity.optimizeRelationships(objectNameGenerator);
-                entitiesForDelete.add(curEntity);
-            }
-        }
-
-        // remove needed entities
-        for (ObjEntity curDeleteEntity : entitiesForDelete) {
-            map.removeObjEntity(curDeleteEntity.getName(), true);
-        }
-        loadedObjEntities.removeAll(entitiesForDelete);
+    protected DbLoader createDbLoader(DbAdapter adapter,
+                                      Connection connection,
+                                      DbLoaderDelegate dbLoaderDelegate,
+                                      ObjectNameGenerator objectNameGenerator) {
+        return new DbLoader(connection, adapter, dbLoaderDelegate, objectNameGenerator);
     }
 }

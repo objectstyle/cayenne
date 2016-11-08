@@ -16,23 +16,22 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.dbsync.merge.factory;
 
-import org.apache.cayenne.dba.PerAdapterProvider;
-import org.apache.cayenne.dbsync.DbSyncModule;
-import org.apache.cayenne.di.Inject;
+package org.apache.cayenne.modeler.event;
 
-import java.util.Map;
+import java.util.EventListener;
 
 /**
- * @since 4.0
+ * Data Source modification listener
  */
-public class MergerTokenFactoryProvider extends PerAdapterProvider<MergerTokenFactory> {
+public interface DataSourceModificationListener extends EventListener {
 
-    public MergerTokenFactoryProvider(
-            @Inject(DbSyncModule.MERGER_FACTORIES_MAP) Map<String, MergerTokenFactory> perAdapterValues,
-            @Inject MergerTokenFactory defaultValue) {
+    // change events not supported for now
+    // There is no good place to catch data source modification
+    //void callbackDataSourceChanged(DataSourceModificationEvent e);
 
-        super(perAdapterValues, defaultValue);
-    }
+    void callbackDataSourceAdded(DataSourceModificationEvent e);
+
+    void callbackDataSourceRemoved(DataSourceModificationEvent e);
+
 }

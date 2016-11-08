@@ -1,5 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
+ *    Licensed to the Apache Software Foundation (ASF) under one
  *    or more contributor license agreements.  See the NOTICE file
  *    distributed with this work for additional information
  *    regarding copyright ownership.  The ASF licenses this file
@@ -16,15 +16,14 @@
  *    specific language governing permissions and limitations
  *    under the License.
  */
-package org.apache.cayenne.tools.dbimport;
+package org.apache.cayenne.dbsync.naming;
 
 /**
- * An API of a strategy that can load DB schema and merge it to a new or an existing DataMap.
+ * An algorithm for "stemming" DbEntity names before they can be used for object name generation.
  *
  * @since 4.0
  */
-public interface DbImportAction {
-	
-    void execute(DbImportConfiguration config) throws Exception;
-	
+public interface DbEntityNameStemmer {
+
+    String stem(String dbEntityName);
 }

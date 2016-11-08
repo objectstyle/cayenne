@@ -26,25 +26,19 @@ import org.apache.cayenne.dbsync.filter.NameFilter;
 import org.apache.cayenne.dbsync.filter.NamePatternMatcher;
 import org.apache.cayenne.dbsync.merge.DefaultModelMergeDelegate;
 import org.apache.cayenne.dbsync.merge.ModelMergeDelegate;
+import org.apache.cayenne.dbsync.naming.DbEntityNameStemmer;
 import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
+import org.apache.cayenne.dbsync.naming.NoStemStemmer;
 import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
-import org.apache.cayenne.dbsync.reverse.db.DbLoader;
+import org.apache.cayenne.dbsync.naming.PatternStemmer;
 import org.apache.cayenne.dbsync.reverse.db.DbLoaderConfiguration;
 import org.apache.cayenne.dbsync.reverse.db.DbLoaderDelegate;
 import org.apache.cayenne.dbsync.reverse.db.DefaultDbLoaderDelegate;
 import org.apache.cayenne.dbsync.reverse.db.LoggingDbLoaderDelegate;
-import org.apache.cayenne.dbsync.reverse.filters.CatalogFilter;
 import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
-import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.map.EntityResolver;
-import org.apache.cayenne.resource.URLResource;
 import org.apache.commons.logging.Log;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.sql.Connection;
-import java.util.Collections;
 import java.util.regex.Pattern;
 
 /**
@@ -53,29 +47,32 @@ import java.util.regex.Pattern;
 public class DbImportConfiguration {
 
     private static final String DATA_MAP_LOCATION_SUFFIX = ".map.xml";
-    private final DataSourceInfo dataSourceInfo = new DataSourceInfo();
-    /**
-     * DB schema to use for DB importing.
-     */
-    private final DbLoaderConfiguration dbLoaderConfiguration = new DbLoaderConfiguration();
-    /**
-     * DataMap XML file to use as a base for DB importing.
-     */
-    private File dataMapFile;
-    /**
-     * A default package for ObjEntity Java classes.
-     */
+
+    private final DataSourceInfo dataSourceInfo;
+    private final DbLoaderConfiguration dbLoaderConfiguration;
+    private File targetDataMap;
     private String defaultPackage;
     private String meaningfulPkTables;
-    /**
-     * Java class implementing org.apache.cayenne.dba.DbAdapter. This attribute
-     * is optional, the default is AutoAdapter, i.e. Cayenne would try to guess
-     * the DB type.
-     */
     private String adapter;
     private boolean usePrimitives;
     private Log logger;
     private String namingStrategy;
+    private String stripFromTableNames;
+    private boolean forceDataMapCatalog;
+    private boolean forceDataMapSchema;
+
+    public DbImportConfiguration() {
+        this.dataSourceInfo = new DataSourceInfo();
+        this.dbLoaderConfiguration = new DbLoaderConfiguration();
+    }
+
+    public String getStripFromTableNames() {
+        return stripFromTableNames;
+    }
+
+    public void setStripFromTableNames(String stripFromTableNames) {
+        this.stripFromTableNames = stripFromTableNames;
+    }
 
     public Log getLogger() {
         return logger;
@@ -85,14 +82,20 @@ public class DbImportConfiguration {
         this.logger = logger;
     }
 
-    public File getDataMapFile() {
-        return dataMapFile;
+    /**
+     * Returns DataMap XML file representing the target of the DB import operation.
+     */
+    public File getTargetDataMap() {
+        return targetDataMap;
     }
 
-    public void setDataMapFile(File map) {
-        this.dataMapFile = map;
+    public void setTargetDataMap(File map) {
+        this.targetDataMap = map;
     }
 
+    /**
+     * Returns a default package for ObjEntity Java classes.
+     */
     public String getDefaultPackage() {
         return defaultPackage;
     }
@@ -109,6 +112,10 @@ public class DbImportConfiguration {
         this.namingStrategy = namingStrategy;
     }
 
+    /**
+     * Returns the name of a Java class implementing {@link DbAdapter}. This attribute is optional, the default is
+     * {@link org.apache.cayenne.dba.AutoAdapter}, i.e. Cayenne will try to guess the DB type.
+     */
     public String getAdapter() {
         return adapter;
     }
@@ -138,12 +145,7 @@ public class DbImportConfiguration {
         this.usePrimitives = usePrimitives;
     }
 
-    public DbLoader createLoader(DbAdapter adapter, Connection connection, DbLoaderDelegate loaderDelegate)
-            throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-        return new DbLoader(connection, adapter, loaderDelegate, getNameGenerator());
-    }
-
-    public NameFilter getMeaningfulPKFilter() {
+    public NameFilter createMeaningfulPKFilter() {
 
         if (meaningfulPkTables == null) {
             return NamePatternMatcher.EXCLUDE_ALL;
@@ -159,14 +161,15 @@ public class DbImportConfiguration {
         return new NamePatternMatcher(patterns, new Pattern[0]);
     }
 
-    public ObjectNameGenerator getNameGenerator() {
-
-        // TODO: load via DI AdhocObjectFactory
+    public ObjectNameGenerator createNameGenerator() {
 
         // TODO: not a singleton; called from different places...
 
+        // custom name generator
+        // TODO: support stemmer in non-standard generators...
+        // TODO: load via DI AdhocObjectFactory
         String namingStrategy = getNamingStrategy();
-        if (namingStrategy != null) {
+        if (namingStrategy != null && !namingStrategy.equals(DefaultObjectNameGenerator.class.getName())) {
             try {
                 return (ObjectNameGenerator) Class.forName(namingStrategy).newInstance();
             } catch (Exception e) {
@@ -174,7 +177,13 @@ public class DbImportConfiguration {
             }
         }
 
-        return new DefaultObjectNameGenerator();
+        return new DefaultObjectNameGenerator(createStemmer());
+    }
+
+    protected DbEntityNameStemmer createStemmer() {
+        return (stripFromTableNames == null || stripFromTableNames.length() == 0)
+                ? NoStemStemmer.getInstance()
+                : new PatternStemmer(stripFromTableNames, false);
     }
 
     public String getDriver() {
@@ -217,52 +226,8 @@ public class DbImportConfiguration {
         return nodeDescriptor;
     }
 
-    public DataMap createDataMap() throws IOException {
-        if (dataMapFile == null) {
-            throw new NullPointerException("Null DataMap File.");
-        }
-
-        DataMap dataMap = new DataMap();
-        initializeDataMap(dataMap);
-        return dataMap;
-    }
-
-    protected void initializeDataMap(DataMap dataMap) throws MalformedURLException {
-        dataMap.setName(getDataMapName());
-        dataMap.setConfigurationSource(new URLResource(dataMapFile.toURI().toURL()));
-        dataMap.setNamespace(new EntityResolver(Collections.singleton(dataMap)));
-
-        // update map defaults
-
-        // do not override default package of existing DataMap unless it is
-        // explicitly requested by the plugin caller
-        String defaultPackage = getDefaultPackage();
-        if (defaultPackage != null && defaultPackage.length() > 0) {
-            dataMap.setDefaultPackage(defaultPackage);
-        }
-
-        CatalogFilter[] catalogs = dbLoaderConfiguration.getFiltersConfig().getCatalogs();
-        if (catalogs.length > 0) {
-            // do not override default catalog of existing DataMap unless it is
-            // explicitly requested by the plugin caller, and the provided catalog is
-            // not a pattern
-            String catalog = catalogs[0].name;
-            if (catalog != null && catalog.length() > 0 && catalog.indexOf('%') < 0) {
-                dataMap.setDefaultCatalog(catalog);
-            }
-
-            // do not override default schema of existing DataMap unless it is
-            // explicitly requested by the plugin caller, and the provided schema is
-            // not a pattern
-            String schema = catalogs[0].schemas[0].name;
-            if (schema != null && schema.length() > 0 && schema.indexOf('%') < 0) {
-                dataMap.setDefaultSchema(schema);
-            }
-        }
-    }
-
     public String getDataMapName() {
-        String name = dataMapFile.getName();
+        String name = targetDataMap.getName();
         if (!name.endsWith(DATA_MAP_LOCATION_SUFFIX)) {
             throw new CayenneRuntimeException("DataMap file name must end with '%s': '%s'", DATA_MAP_LOCATION_SUFFIX,
                     name);
@@ -282,6 +247,9 @@ public class DbImportConfiguration {
         }
     }
 
+    /**
+     * Returns configuration that should be used for DB import stage when the schema is loaded from the database.
+     */
     public DbLoaderConfiguration getDbLoaderConfig() {
         return dbLoaderConfiguration;
     }
@@ -314,5 +282,21 @@ public class DbImportConfiguration {
 
     public void setTableTypes(String[] tableTypes) {
         dbLoaderConfiguration.setTableTypes(tableTypes);
+    }
+
+    public void setForceDataMapCatalog(boolean forceDataMapCatalog) {
+        this.forceDataMapCatalog = forceDataMapCatalog;
+    }
+
+    public boolean isForceDataMapCatalog() {
+        return forceDataMapCatalog;
+    }
+
+    public void setForceDataMapSchema(boolean forceDataMapSchema) {
+        this.forceDataMapSchema = forceDataMapSchema;
+    }
+
+    public boolean isForceDataMapSchema() {
+        return forceDataMapSchema;
     }
 }

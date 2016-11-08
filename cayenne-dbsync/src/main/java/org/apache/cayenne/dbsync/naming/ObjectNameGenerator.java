@@ -21,12 +21,11 @@ package org.apache.cayenne.dbsync.naming;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.DbRelationship;
-import org.apache.cayenne.dbsync.reverse.db.ExportedKey;
 
 /**
- * A strategy for creating names for object layer metadata artifacts based on their DB counterpart naming. Generated
- * names should normally be further cleaned by passing them through {@link org.apache.cayenne.dbsync.naming.NameBuilder},
- * that will resolve duplication conflicts.
+ * A strategy for creating names for object layer metadata artifacts based on their DB counterpart naming or structure.
+ * Generated names should normally be further cleaned by passing them through
+ * {@link org.apache.cayenne.dbsync.naming.NameBuilder}, that will resolve duplication conflicts.
  *
  * @since 4.0
  */
@@ -43,13 +42,13 @@ public interface ObjectNameGenerator {
     String objAttributeName(DbAttribute dbAttribute);
 
     /**
-     * Generates a name for DbRelationship derived from the DB foreign key name.
+     * Generates a String that can be used as a name of an ObjRelationship, derived from join semantics of a chain of
+     * connected DbRelationships.
+     * <p>The chain must contain at least one relationship. Though if we are dealing with a flattened
+     * relationship, more than one can be passed, in the same order as they are present in a flattened
+     * relationship.
+     * <p>Generated name can be used for DbRelationship itself (in which case the chain must have exactly one parameter).
      */
-    // TODO: the class is called Object* , but here it is generating a DB-layer name... Better naming?
-    String dbRelationshipName(ExportedKey key, boolean toMany);
+    String relationshipName(DbRelationship... relationshipChain);
 
-    /**
-     * Generates a name for ObjRelationship derived from DbRelationship name.
-     */
-    String objRelationshipName(DbRelationship dbRelationship);
 }

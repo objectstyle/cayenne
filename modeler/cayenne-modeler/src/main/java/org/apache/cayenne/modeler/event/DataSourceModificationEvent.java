@@ -16,23 +16,27 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.dbsync.merge.factory;
 
-import org.apache.cayenne.dba.PerAdapterProvider;
-import org.apache.cayenne.dbsync.DbSyncModule;
-import org.apache.cayenne.di.Inject;
+package org.apache.cayenne.modeler.event;
 
-import java.util.Map;
+import org.apache.cayenne.map.event.MapEvent;
 
-/**
- * @since 4.0
- */
-public class MergerTokenFactoryProvider extends PerAdapterProvider<MergerTokenFactory> {
+public class DataSourceModificationEvent extends MapEvent {
 
-    public MergerTokenFactoryProvider(
-            @Inject(DbSyncModule.MERGER_FACTORIES_MAP) Map<String, MergerTokenFactory> perAdapterValues,
-            @Inject MergerTokenFactory defaultValue) {
+    private final String dataSourceName;
 
-        super(perAdapterValues, defaultValue);
+    public DataSourceModificationEvent(Object source, String dataSourceName, int id) {
+        super(source);
+        this.dataSourceName = dataSourceName;
+        setId(id);
+    }
+
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    @Override
+    public String getNewName() {
+        return dataSourceName;
     }
 }

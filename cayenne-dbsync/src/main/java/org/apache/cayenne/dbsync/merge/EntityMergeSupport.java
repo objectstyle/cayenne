@@ -178,7 +178,7 @@ public class EntityMergeSupport {
     private boolean createObjRelationship(ObjEntity entity, DbRelationship dr, String targetEntityName) {
         ObjRelationship or = new ObjRelationship();
         or.setName(NameBuilder.builder(or, entity)
-                .baseName(nameGenerator.objRelationshipName(dr))
+                .baseName(nameGenerator.relationshipName(dr))
                 .name());
 
         or.addDbRelationship(dr);
@@ -439,13 +439,6 @@ public class EntityMergeSupport {
     }
 
     /**
-     * Returns registered listeners
-     */
-    public EntityMergeListener[] getEntityMergeListeners() {
-        return listeners.toArray(new EntityMergeListener[listeners.size()]);
-    }
-
-    /**
      * Notifies all listeners that an ObjAttribute was added
      */
     protected void fireAttributeAdded(ObjAttribute attr) {
@@ -461,19 +454,5 @@ public class EntityMergeSupport {
         for (EntityMergeListener listener : listeners) {
             listener.objRelationshipAdded(rel);
         }
-    }
-
-    /**
-     * @return a strategy for naming object layer artifacts based on their DB names.
-     */
-    public ObjectNameGenerator getNameGenerator() {
-        return nameGenerator;
-    }
-
-    /**
-     * @since 4.0
-     */
-    public boolean isUsingPrimitives() {
-        return usingPrimitives;
     }
 }

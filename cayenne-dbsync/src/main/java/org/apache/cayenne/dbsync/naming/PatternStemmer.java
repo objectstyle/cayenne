@@ -1,5 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
+ *    Licensed to the Apache Software Foundation (ASF) under one
  *    or more contributor license agreements.  See the NOTICE file
  *    distributed with this work for additional information
  *    regarding copyright ownership.  The ASF licenses this file
@@ -16,15 +16,31 @@
  *    specific language governing permissions and limitations
  *    under the License.
  */
-package org.apache.cayenne.tools.dbimport;
+package org.apache.cayenne.dbsync.naming;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * An API of a strategy that can load DB schema and merge it to a new or an existing DataMap.
- *
  * @since 4.0
  */
-public interface DbImportAction {
-	
-    void execute(DbImportConfiguration config) throws Exception;
-	
+public class PatternStemmer implements DbEntityNameStemmer {
+
+    private Pattern pattern;
+
+    public PatternStemmer(String stripPattern, boolean caseSensitive) {
+
+        int flags = 0;
+        if (!caseSensitive) {
+            flags = flags | Pattern.CASE_INSENSITIVE;
+        }
+
+        this.pattern = Pattern.compile(stripPattern, flags);
+    }
+
+    @Override
+    public String stem(String dbEntityName) {
+        Matcher m = pattern.matcher(dbEntityName);
+        return m.replaceAll("");
+    }
 }

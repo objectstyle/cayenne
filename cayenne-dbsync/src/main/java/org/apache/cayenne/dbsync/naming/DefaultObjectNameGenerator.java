@@ -18,77 +18,115 @@
  ****************************************************************/
 package org.apache.cayenne.dbsync.naming;
 
-import org.apache.cayenne.dbsync.reverse.db.ExportedKey;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.map.DbJoin;
 import org.apache.cayenne.map.DbRelationship;
 import org.apache.cayenne.util.Util;
 import org.jvnet.inflector.Noun;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
- * A strategy for generating names of entities, attributes etc.
- * 
+ * The default strategy for converting DB-layer to Object-layer names.
+ *
  * @since 4.0
  */
 public class DefaultObjectNameGenerator implements ObjectNameGenerator {
 
-	@Override
-	public String dbRelationshipName(ExportedKey key, boolean toMany) {
+    private DbEntityNameStemmer dbEntityNameStemmer;
 
-		String name;
+    public DefaultObjectNameGenerator(DbEntityNameStemmer dbEntityNameStemmer) {
+        this.dbEntityNameStemmer = dbEntityNameStemmer;
+    }
 
-		if (toMany) {
-			try {
-				/**
-				 * by default we use english language rules here. uppercase is
-				 * required for NameConverter to work properly
-				 */
-				name = Noun.pluralOf(key.getFKTableName().toLowerCase(), Locale.ENGLISH).toUpperCase();
-			} catch (Exception inflectorError) {
-				/**
-				 * seems that Inflector cannot be trusted. For instance, it
-				 * throws an exception when invoked for word "ADDRESS" (although
-				 * lower case works fine). To feel safe, we use superclass'
-				 * behavior if something's gone wrong
-				 */
-				return key.getFKTableName().toLowerCase();
-			}
-		} else {
-			String fkColName = key.getFKColumnName();
+    @Override
+    public String relationshipName(DbRelationship... relationshipChain) {
 
-			// trim "ID" in the end
-			if (fkColName == null) {
-				name = key.getPKTableName();
-			} else if (fkColName.toUpperCase().endsWith("_ID") && fkColName.length() > 3) {
-				name = fkColName.substring(0, fkColName.length() - 3);
-			} else if (fkColName.toUpperCase().endsWith("ID") && fkColName.length() > 2) {
-				name = fkColName.substring(0, fkColName.length() - 2);
-			} else {
-				/**
-				 * We don't want relationship to conflict with attribute, so
-				 * we'd better return superior value with 'to'
-				 */
-				name = key.getPKTableName();
-			}
-		}
+        if (relationshipChain == null || relationshipChain.length < 1) {
+            throw new IllegalArgumentException("At least on relationship is expected: " + relationshipChain);
+        }
 
-		return Util.underscoredToJava(name, false);
-	}
+        // ignore the name of DbRelationship itself (FWIW we may be generating a new name for it here)...
+        // generate the name based on join semantics...
 
-	@Override
-	public String objEntityName(DbEntity dbEntity) {
-		return Util.underscoredToJava(dbEntity.getName(), true);
-	}
+        String name = isToMany(relationshipChain)
+                ? toManyRelationshipName(relationshipChain)
+                : toOneRelationshipName(relationshipChain);
 
-	@Override
-	public String objAttributeName(DbAttribute attr) {
-		return Util.underscoredToJava(attr.getName(), false);
-	}
+        return Util.underscoredToJava(name, false);
+    }
 
-	@Override
-	public String objRelationshipName(DbRelationship dbRel) {
-		return Util.underscoredToJava(dbRel.getName(), false);
-	}
+    protected boolean isToMany(DbRelationship... relationshipChain) {
+
+        for (DbRelationship r : relationshipChain) {
+            if (r.isToMany()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected String stemmed(String dbEntityName) {
+        return dbEntityNameStemmer.stem(Objects.requireNonNull(dbEntityName));
+    }
+
+    protected String toManyRelationshipName(DbRelationship... relationshipChain) {
+
+        DbRelationship last = relationshipChain[relationshipChain.length - 1];
+
+        String baseName = stemmed(last.getTargetEntityName());
+
+        try {
+            // by default we use English rules here...
+            return Noun.pluralOf(baseName.toLowerCase(), Locale.ENGLISH);
+        } catch (Exception inflectorError) {
+            //  seems that Inflector cannot be trusted. For instance, it
+            // throws an exception when invoked for word "ADDRESS" (although
+            // lower case works fine). To feel safe, we use superclass'
+            // behavior if something's gone wrong
+            return baseName;
+        }
+    }
+
+    protected String toOneRelationshipName(DbRelationship... relationshipChain) {
+
+        DbRelationship first = relationshipChain[0];
+        DbRelationship last = relationshipChain[relationshipChain.length - 1];
+
+        List<DbJoin> joins = first.getJoins();
+        if (joins.isEmpty()) {
+            throw new IllegalArgumentException("No joins for relationship. Can't generate a name");
+        }
+
+        DbJoin join1 = joins.get(0);
+
+        // TODO: multi-join relationships
+
+        // return the name of the FK column sans ID
+        String fkColName = join1.getSourceName();
+        if (fkColName == null) {
+            return stemmed(last.getTargetEntityName());
+        } else if (fkColName.toUpperCase().endsWith("_ID") && fkColName.length() > 3) {
+            return fkColName.substring(0, fkColName.length() - 3);
+        } else if (fkColName.toUpperCase().endsWith("ID") && fkColName.length() > 2) {
+            return fkColName.substring(0, fkColName.length() - 2);
+        } else {
+            return stemmed(last.getTargetEntityName());
+        }
+    }
+
+    @Override
+    public String objEntityName(DbEntity dbEntity) {
+        String baseName = stemmed(dbEntity.getName());
+        return Util.underscoredToJava(baseName, true);
+    }
+
+    @Override
+    public String objAttributeName(DbAttribute attr) {
+        return Util.underscoredToJava(attr.getName(), false);
+    }
 }

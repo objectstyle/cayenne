@@ -16,20 +16,15 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.project.validation;
+package org.apache.cayenne.modeler.win;
 
-import org.apache.cayenne.project.validation.EJBQLStatementValidator.PositionException;
-import org.apache.cayenne.map.EJBQLQueryDescriptor;
-import org.apache.cayenne.validation.ValidationResult;
+import org.apache.cayenne.di.Binder;
+import org.apache.cayenne.di.Module;
+import org.apache.cayenne.modeler.init.platform.PlatformInitializer;
 
-class EJBQLQueryValidator extends ConfigurationNodeValidator {
+public class WinCayenneModelerModule implements Module {
 
-    void validate(EJBQLQueryDescriptor query, ValidationResult validationResult) {
-
-        PositionException message = new EJBQLStatementValidator().validateEJBQL(query);
-        if (message != null) {
-            addFailure(validationResult, query, "Error in EJBQL query '%s' syntax", query
-                    .getName());
-        }
+    public void configure(Binder binder) {
+        binder.bind(PlatformInitializer.class).to(WinPlatformInitializer.class);
     }
 }

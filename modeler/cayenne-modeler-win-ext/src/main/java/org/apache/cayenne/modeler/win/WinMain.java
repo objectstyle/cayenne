@@ -16,20 +16,35 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.project.validation;
+package org.apache.cayenne.modeler.win;
 
-import org.apache.cayenne.project.validation.EJBQLStatementValidator.PositionException;
-import org.apache.cayenne.map.EJBQLQueryDescriptor;
-import org.apache.cayenne.validation.ValidationResult;
+import org.apache.cayenne.di.Module;
+import org.apache.cayenne.modeler.Main;
 
-class EJBQLQueryValidator extends ConfigurationNodeValidator {
+import java.util.Collection;
 
-    void validate(EJBQLQueryDescriptor query, ValidationResult validationResult) {
+public class WinMain extends Main {
 
-        PositionException message = new EJBQLStatementValidator().validateEJBQL(query);
-        if (message != null) {
-            addFailure(validationResult, query, "Error in EJBQL query '%s' syntax", query
-                    .getName());
+    /**
+     * Main method that starts the CayenneModeler.
+     */
+    public static void main(String[] args) {
+        try {
+            new WinMain(args).launch();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
         }
+    }
+
+    protected WinMain(String[] args) {
+        super(args);
+    }
+
+    @Override
+    protected Collection<Module> appendModules(Collection<Module> modules) {
+        modules = super.appendModules(modules);
+        modules.add(new WinCayenneModelerModule());
+        return modules;
     }
 }

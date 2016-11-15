@@ -16,20 +16,28 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.project.validation;
+package org.apache.cayenne.modeler.win;
 
-import org.apache.cayenne.project.validation.EJBQLStatementValidator.PositionException;
-import org.apache.cayenne.map.EJBQLQueryDescriptor;
-import org.apache.cayenne.validation.ValidationResult;
+import com.jgoodies.looks.windows.WindowsLookAndFeel;
+import org.apache.cayenne.modeler.init.platform.PlatformInitializer;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-class EJBQLQueryValidator extends ConfigurationNodeValidator {
+import javax.swing.JFrame;
+import javax.swing.UIManager;
 
-    void validate(EJBQLQueryDescriptor query, ValidationResult validationResult) {
+public class WinPlatformInitializer implements PlatformInitializer {
 
-        PositionException message = new EJBQLStatementValidator().validateEJBQL(query);
-        if (message != null) {
-            addFailure(validationResult, query, "Error in EJBQL query '%s' syntax", query
-                    .getName());
+    private static Log logger = LogFactory.getLog(WinPlatformInitializer.class);
+
+    public void setupMenus(JFrame frame) {
+    }
+
+    public void initLookAndFeel() {
+        try {
+            UIManager.setLookAndFeel(WindowsLookAndFeel.class.getName());
+        } catch (Exception e) {
+            logger.warn("Error installing L&F: " + WindowsLookAndFeel.class.getName(), e);
         }
     }
 }

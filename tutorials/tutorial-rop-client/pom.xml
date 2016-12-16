@@ -18,11 +18,11 @@
 	<parent>
 		<groupId>org.apache.cayenne.tutorials</groupId>
 		<artifactId>cayenne-tutorials-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>tutorial-rop-client</artifactId>
-	<name>Cayenne ROP Client Tutorial</name>
+	<name>tutorial-rop-client: Cayenne ROP Client Tutorial</name>
 
 	<dependencies>
 		<dependency>

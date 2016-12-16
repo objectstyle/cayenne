@@ -18,11 +18,11 @@
     <parent>
         <artifactId>cayenne-tutorials-parent</artifactId>
         <groupId>org.apache.cayenne.tutorials</groupId>
-        <version>4.0.M4-SNAPSHOT</version>
+        <version>4.0.M5-SNAPSHOT</version>
     </parent>
 
     <artifactId>tutorial-rop-server-http2</artifactId>
-    <name>Cayenne ROP HTTP/2 Server Tutorial</name>
+    <name>tutorial-rop-server-http2: Cayenne ROP HTTP/2 Server Tutorial</name>
     <packaging>jar</packaging>
 
     <properties>

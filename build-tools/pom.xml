@@ -24,12 +24,12 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 
 	<groupId>org.apache.cayenne.build-tools</groupId>
 	<artifactId>build-tools-parent</artifactId>
-	<name>Cayenne Build Tools Parent</name>
+	<name>build-tools-parent: Cayenne Build Tools Parent</name>
 	<packaging>pom</packaging>
 
 	<modules>

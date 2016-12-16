@@ -14,11 +14,11 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-di</artifactId>
 	<packaging>jar</packaging>
-	<name>Cayenne Dependency Injection Container</name>
+	<name>cayenne-di: Cayenne Dependency Injection Container</name>
 	<description>Cayenne Dependency Injection Container</description>
 	<dependencies>
 		<dependency>

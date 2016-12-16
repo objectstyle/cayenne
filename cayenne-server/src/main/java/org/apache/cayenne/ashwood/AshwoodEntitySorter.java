@@ -19,14 +19,6 @@
 
 package org.apache.cayenne.ashwood;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.DataRow;
 import org.apache.cayenne.ObjectContext;
@@ -48,6 +40,14 @@ import org.apache.cayenne.map.ObjRelationship;
 import org.apache.cayenne.query.ObjectIdQuery;
 import org.apache.cayenne.reflect.ClassDescriptor;
 import org.apache.commons.collections.comparators.ReverseComparator;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Implements dependency sorting algorithms for ObjEntities, DbEntities and
@@ -339,6 +339,7 @@ public class AshwoodEntitySorter implements EntitySorter {
 
 	private final class ObjEntityComparator implements Comparator<ObjEntity> {
 
+		@Override
 		public int compare(ObjEntity o1, ObjEntity o2) {
 			if (o1 == o2)
 				return 0;
@@ -350,6 +351,7 @@ public class AshwoodEntitySorter implements EntitySorter {
 
 	private final class DbEntityComparator implements Comparator<DbEntity> {
 
+		@Override
 		public int compare(DbEntity t1, DbEntity t2) {
 
 			if (t1 == t2)
@@ -361,6 +363,15 @@ public class AshwoodEntitySorter implements EntitySorter {
 			else {
 				ComponentRecord rec1 = components.get(t1);
 				ComponentRecord rec2 = components.get(t2);
+
+				if(rec1 == null) {
+					throw new NullPointerException("No record for DbEntity: " + t1);
+				}
+
+				if(rec2 == null) {
+					throw new NullPointerException("No record for DbEntity: " + t2);
+				}
+
 				int index1 = rec1.index;
 				int index2 = rec2.index;
 

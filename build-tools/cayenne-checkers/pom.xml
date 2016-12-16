@@ -23,14 +23,14 @@
     <parent>
         <groupId>org.apache.cayenne.build-tools</groupId>
         <artifactId>build-tools-parent</artifactId>
-        <version>4.0.M4-SNAPSHOT</version>
+        <version>4.0.M5-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>cayenne-checkers</artifactId>
     <packaging>jar</packaging>
 
-    <name>Cayenne Code Checkers</name>
+    <name>cayenne-checkers: Cayenne Code Checkers</name>
 
     <build>
         <plugins>

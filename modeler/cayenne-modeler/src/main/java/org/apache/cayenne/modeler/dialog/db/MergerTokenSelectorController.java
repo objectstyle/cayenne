@@ -18,8 +18,9 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.dialog.db;
 
-import org.apache.cayenne.dbsync.merge.MergeDirection;
-import org.apache.cayenne.dbsync.merge.MergerToken;
+import org.apache.cayenne.dbsync.merge.context.MergeDirection;
+import org.apache.cayenne.dbsync.merge.token.MergerToken;
+import org.apache.cayenne.dbsync.merge.token.TokenComparator;
 import org.apache.cayenne.dbsync.merge.factory.MergerTokenFactory;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.util.CayenneController;
@@ -168,9 +169,7 @@ public class MergerTokenSelectorController extends CayenneController {
         TableColumn directionColumn = columnModel.getColumn(
                 MergerTokenTableModel.COL_DIRECTION);
         directionColumn.setCellEditor(new DefaultCellEditor(directionCombo));
-        
-        // TODO: correct width for the different columns
-        //view.getTokens().setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
         columnModel.getColumn(MergerTokenTableModel.COL_SELECT).setPreferredWidth(50);
         columnModel.getColumn(MergerTokenTableModel.COL_DIRECTION).setPreferredWidth(100);
         columnModel.getColumn(MergerTokenTableModel.COL_SELECT).setMaxWidth(50);
@@ -233,6 +232,7 @@ public class MergerTokenSelectorController extends CayenneController {
             }
         }
 
+        Collections.sort(selectableTokensList, new TokenComparator());
         AbstractTableModel model = (AbstractTableModel) view.getTokens().getModel();
         model.fireTableDataChanged();
     }

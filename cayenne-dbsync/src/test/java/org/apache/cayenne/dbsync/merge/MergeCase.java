@@ -22,13 +22,16 @@ import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.dba.DbAdapter;
+import org.apache.cayenne.dbsync.merge.context.MergerContext;
 import org.apache.cayenne.dbsync.merge.factory.MergerTokenFactory;
 import org.apache.cayenne.dbsync.merge.factory.MergerTokenFactoryProvider;
+import org.apache.cayenne.dbsync.merge.token.db.AbstractToDbToken;
+import org.apache.cayenne.dbsync.merge.token.MergerToken;
 import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
 import org.apache.cayenne.dbsync.naming.NoStemStemmer;
-import org.apache.cayenne.dbsync.reverse.db.DbLoader;
-import org.apache.cayenne.dbsync.reverse.db.DbLoaderConfiguration;
-import org.apache.cayenne.dbsync.reverse.db.LoggingDbLoaderDelegate;
+import org.apache.cayenne.dbsync.reverse.dbload.DbLoader;
+import org.apache.cayenne.dbsync.reverse.dbload.DbLoaderConfiguration;
+import org.apache.cayenne.dbsync.reverse.dbload.LoggingDbLoaderDelegate;
 import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
 import org.apache.cayenne.dbsync.reverse.filters.PatternFilter;
 import org.apache.cayenne.dbsync.reverse.filters.TableFilter;
@@ -96,31 +99,46 @@ public abstract class MergeCase extends DbSyncCase {
         assertTokensAndExecute(0, 0);
     }
 
-    protected DbMerger.Builder merger() {
-        return DbMerger.builder(mergerFactory());
+    protected DataMapMerger.Builder merger() {
+        return DataMapMerger.builder(mergerFactory());
     }
 
     protected List<MergerToken> createMergeTokens() {
+        return createMergeTokens("ARTIST|GALLERY|PAINTING|NEW_TABLE2?");
+    }
+
+    protected List<MergerToken> createMergeTokens(String tableFilterInclude) {
 
         FiltersConfig filters = FiltersConfig.create(null, null,
-                TableFilter.include("ARTIST|GALLERY|PAINTING|NEW_TABLE2?"), PatternFilter.INCLUDE_NOTHING);
+                TableFilter.include(tableFilterInclude), PatternFilter.INCLUDE_NOTHING);
 
         DbLoaderConfiguration loaderConfiguration = new DbLoaderConfiguration();
         loaderConfiguration.setFiltersConfig(filters);
 
-        DataMap dbImport = new DataMap();
+        DataMap dbImport;
         try (Connection conn = node.getDataSource().getConnection();) {
-            new DbLoader(conn,
-                    node.getAdapter(),
+            dbImport = new DbLoader(node.getAdapter(), conn,
+                    loaderConfiguration,
                     new LoggingDbLoaderDelegate(LogFactory.getLog(DbLoader.class)),
                     new DefaultObjectNameGenerator(NoStemStemmer.getInstance()))
-                    .load(dbImport, loaderConfiguration);
+                    .load();
 
         } catch (SQLException e) {
             throw new CayenneRuntimeException("Can't doLoad dataMap from db.", e);
         }
 
-        return merger().filters(filters).build().createMergeTokens(map, dbImport);
+        List<MergerToken> tokens = merger().filters(filters).build().createMergeTokens(map, dbImport);
+        return filterEmpty(tokens);
+    }
+
+    private List<MergerToken> filterEmpty(List<MergerToken> tokens) {
+        List<MergerToken> tokensOut = new ArrayList<>();
+        for(MergerToken token : tokens) {
+            if(!token.isEmpty()) {
+                tokensOut.add(token);
+            }
+        }
+        return tokensOut;
     }
 
     /**

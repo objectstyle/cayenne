@@ -24,11 +24,11 @@
 	<parent>
 		<groupId>org.apache.cayenne.modeler</groupId>
 		<artifactId>cayenne-modeler-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>cayenne-modeler</artifactId>
-	<name>Cayenne Modeler</name>
+	<name>cayenne-modeler: Cayenne Modeler Core</name>
 	<packaging>jar</packaging>
 
 	<dependencies>

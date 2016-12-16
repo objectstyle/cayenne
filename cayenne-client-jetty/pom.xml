@@ -15,11 +15,11 @@
     <parent>
         <artifactId>cayenne-parent</artifactId>
         <groupId>org.apache.cayenne</groupId>
-        <version>4.0.M4-SNAPSHOT</version>
+        <version>4.0.M5-SNAPSHOT</version>
     </parent>
 
     <artifactId>cayenne-client-jetty</artifactId>
-    <name>Cayenne ROP Client (Jetty)</name>
+    <name>cayenne-client-jetty: Cayenne ROP Client (Jetty)</name>
     <packaging>jar</packaging>
 
     <properties>

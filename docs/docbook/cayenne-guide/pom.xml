@@ -22,10 +22,10 @@
 	<parent>
 		<groupId>org.apache.cayenne.docs</groupId>
 		<artifactId>cayenne-docbook</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 	
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>cayenne-guide</artifactId>
-	<name>Docbook: Cayenne Guide</name>
+	<name>cayenne-guide: Docbook - Cayenne Guide</name>
 </project>

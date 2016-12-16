@@ -24,11 +24,11 @@
 	<parent>
 		<groupId>org.apache.cayenne.modeler</groupId>
 		<artifactId>cayenne-modeler-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>cayenne-modeler-generic-ext</artifactId>
-	<name>Cayenne Modeler Generic and Windows Extensions</name>
+	<name>cayenne-modeler-generic-ext: Modeler Generic Extensions</name>
 	<packaging>jar</packaging>
 
 	<dependencies>

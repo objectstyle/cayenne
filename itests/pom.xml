@@ -25,12 +25,12 @@
     <parent>
       <groupId>org.apache.cayenne</groupId>
       <artifactId>cayenne-parent</artifactId>
-      <version>4.0.M4-SNAPSHOT</version>
+      <version>4.0.M5-SNAPSHOT</version>
     </parent>
 
     <groupId>org.apache.cayenne.itests</groupId>
     <artifactId>cayenne-itests-parent</artifactId>
-    <name>Cayenne Integration Tests Parent</name>
+    <name>cayenne-itests-parent: Integration Tests Parent</name>
     <packaging>pom</packaging>
     
     <modules>

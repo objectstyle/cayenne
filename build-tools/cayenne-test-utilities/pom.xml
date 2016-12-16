@@ -24,12 +24,12 @@
 	<parent>
 		<groupId>org.apache.cayenne.build-tools</groupId>
 		<artifactId>build-tools-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 
 	<description>Common Unit Test Utilities</description>
 	<artifactId>cayenne-test-utilities</artifactId>
-	<name>Common Unit Test Utilities</name>
+	<name>cayenne-test-utilities: Common Unit Test Utilities</name>
 	<packaging>jar</packaging>
 
 	<dependencies>

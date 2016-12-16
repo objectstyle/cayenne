@@ -22,10 +22,10 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M4-SNAPSHOT</version>
+		<version>4.0.M5-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-server</artifactId>
-	<name>Cayenne Server</name>
+	<name>cayenne-server: Cayenne Server</name>
 	<description>Cayenne Server</description>
 	<packaging>jar</packaging>
 	

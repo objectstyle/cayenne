@@ -22,9 +22,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>cayenne-parent</artifactId>
 	<groupId>org.apache.cayenne</groupId>
-	<name>Cayenne</name>
+	<name>cayenne-parent: Top-level parent of Cayenne mdoules</name>
 
-	<version>4.0.M4-SNAPSHOT</version>
+	<version>4.0.M5-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<description>
@@ -890,12 +890,18 @@
 							<name>cayenneJdbcDriver</name>
 							<value>${cayenneJdbcDriver}</value>
 						</property>
+                        <org.slf4j.simpleLogger.defaultLogLevel>${cayenneLogLevel}</org.slf4j.simpleLogger.defaultLogLevel>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>
 			<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <org.slf4j.simpleLogger.defaultLogLevel>${cayenneLogLevel}</org.slf4j.simpleLogger.defaultLogLevel>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
 			<plugin>
 				<artifactId>maven-resources-plugin</artifactId>
@@ -1350,7 +1356,7 @@
 								<!-- ${db.host} and ${db.port} are dynamically set by docker-maven-plugin below -->
 								<cayenneAdapter>org.apache.cayenne.dba.mysql.MySQLAdapter</cayenneAdapter>
 								<cayenneJdbcUsername>root</cayenneJdbcUsername>
-								<cayenneJdbcPassword></cayenneJdbcPassword>
+								<cayenneJdbcPassword />
 								<cayenneJdbcUrl>jdbc:mysql://${db.host}:${db.port}/cayenne</cayenneJdbcUrl>
 								<cayenneJdbcDriver>com.mysql.jdbc.Driver</cayenneJdbcDriver>
 							</systemPropertyVariables>
@@ -1423,11 +1429,11 @@
 			</dependencies>
 		</profile>
 		<profile>
-			<id>postgres-docker</id>
+			<id>postgresdocker</id>
 			<activation>
 				<property>
 					<name>cayenneTestConnection</name>
-					<value>postgres-docker</value>
+					<value>postgresdocker</value>
 				</property>
 			</activation>
 			<dependencies>

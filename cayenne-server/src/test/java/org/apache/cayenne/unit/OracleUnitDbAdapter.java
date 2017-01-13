@@ -120,4 +120,19 @@ public class OracleUnitDbAdapter extends UnitDbAdapter {
             proc.setReturningValue(true);
         }
     }
+
+    @Override
+    public boolean onlyGenericDateType() {
+        return true;
+    }
+
+    @Override
+    public boolean onlyGenericNumberType() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsExpressionInHaving() {
+        return false;
+    }
 }

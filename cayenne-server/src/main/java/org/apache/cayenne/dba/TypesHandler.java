@@ -19,15 +19,6 @@
 
 package org.apache.cayenne.dba;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.util.Util;
 import org.xml.sax.Attributes;
@@ -36,6 +27,14 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
+import java.io.InputStream;
+import java.net.URL;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * TypesHandler provides JDBC-RDBMS types mapping. Loads types info from an XML
  * file.
@@ -43,7 +42,7 @@ import org.xml.sax.helpers.DefaultHandler;
  */
 public class TypesHandler {
 
-	private static Map<URL, TypesHandler> handlerMap = new HashMap<URL, TypesHandler>();
+	private static Map<URL, TypesHandler> handlerMap = new HashMap<>();
 
 	protected Map<Integer, String[]> typesMap;
 
@@ -96,8 +95,8 @@ public class TypesHandler {
 		private static final String DB_TYPE_TAG = "db-type";
 		private static final String NAME_ATTR = "name";
 
-		private Map<Integer, String[]> types = new HashMap<Integer, String[]>();
-		private List<String> currentTypes = new ArrayList<String>();
+		private Map<Integer, String[]> types = new HashMap<>();
+		private List<String> currentTypes = new ArrayList<>();
 		private int currentType = TypesMapping.NOT_DEFINED;
 
 		public Map<Integer, String[]> getTypes() {

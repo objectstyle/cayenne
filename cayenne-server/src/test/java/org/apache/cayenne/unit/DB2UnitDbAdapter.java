@@ -53,4 +53,19 @@ public class DB2UnitDbAdapter extends UnitDbAdapter {
     public boolean supportsStoredProcedures() {
         return false;
     }
+
+    @Override
+    public boolean supportsGeneratedKeysDrop() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsGeneratedKeysAdd() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsExpressionInHaving() {
+        return false;
+    }
 }

@@ -19,12 +19,6 @@
 
 package org.apache.cayenne.query;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.cayenne.DataRow;
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.ResultBatchIterator;
@@ -32,6 +26,7 @@ import org.apache.cayenne.ResultIterator;
 import org.apache.cayenne.ResultIteratorCallback;
 import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.exp.ExpressionFactory;
+import org.apache.cayenne.exp.Property;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.MapLoader;
@@ -39,6 +34,13 @@ import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.Procedure;
 import org.apache.cayenne.util.XMLEncoder;
 import org.apache.cayenne.util.XMLSerializable;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A query that selects persistent objects of a certain type or "raw data" (aka
@@ -56,6 +58,16 @@ public class SelectQuery<T> extends AbstractQuery implements ParameterizedQuery,
 	protected Expression qualifier;
 	protected List<Ordering> orderings;
 	protected boolean distinct;
+
+	/**
+	 * @since 4.0
+	 */
+	protected Collection<Property<?>> columns;
+
+	/**
+	 * @since 4.0
+	 */
+	protected Expression havingQualifier;
 
 	SelectQueryMetadata metaData = new SelectQueryMetadata();
 
@@ -802,7 +814,7 @@ public class SelectQuery<T> extends AbstractQuery implements ParameterizedQuery,
 	 */
 	List<Ordering> nonNullOrderings() {
 		if (orderings == null) {
-			orderings = new ArrayList<Ordering>(3);
+			orderings = new ArrayList<>(3);
 		}
 
 		return orderings;
@@ -852,5 +864,61 @@ public class SelectQuery<T> extends AbstractQuery implements ParameterizedQuery,
 	 */
 	public void orQualifier(Expression e) {
 		qualifier = (qualifier != null) ? qualifier.orExp(e) : e;
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	public void setColumns(Collection<Property<?>> columns) {
+		this.columns = columns;
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	public void setColumns(Property<?>... columns) {
+		if(columns == null || columns.length == 0) {
+			return;
+		}
+		setColumns(Arrays.asList(columns));
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	public Collection<Property<?>> getColumns() {
+		return columns;
+	}
+
+	/**
+	 * Sets new query HAVING qualifier.
+	 * @since 4.0
+	 */
+	public void setHavingQualifier(Expression qualifier) {
+		this.havingQualifier = qualifier;
+	}
+
+	/**
+	 * Returns query HAVING qualifier.
+	 * @since 4.0
+	 */
+	public Expression getHavingQualifier() {
+		return havingQualifier;
+	}
+
+	/**
+	 * Adds specified HAVING qualifier to the existing HAVING qualifier joining it using "AND".
+	 * @since 4.0
+	 */
+	public void andHavingQualifier(Expression e) {
+		havingQualifier = (havingQualifier != null) ? havingQualifier.andExp(e) : e;
+	}
+
+	/**
+	 * Adds specified HAVING qualifier to the existing HAVING qualifier joining it using "OR".
+	 * @since 4.0
+	 */
+	public void orHavingQualifier(Expression e) {
+		havingQualifier = (havingQualifier != null) ? havingQualifier.orExp(e) : e;
 	}
 }

@@ -30,7 +30,7 @@ import java.util.List;
 public class DropTableToDb extends AbstractToDbToken.Entity {
 
     public DropTableToDb(DbEntity entity) {
-        super("Drop Table", entity);
+        super("Drop Table", 30, entity);
     }
 
     @Override

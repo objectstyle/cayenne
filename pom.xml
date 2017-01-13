@@ -234,6 +234,16 @@
 			</roles>
 			<timezone>+3</timezone>
 		</developer>
+		<developer>
+			<id>ntimofeev</id>
+			<name>Nikita Timofeev</name>
+			<email>ntimofeev@apache.org</email>
+			<organization>ObjectStyle</organization>
+			<roles>
+				<role>Committer</role>
+			</roles>
+			<timezone>+3</timezone>
+		</developer>
 	</developers>
 	<licenses>
 		<license>
@@ -468,15 +478,15 @@
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
-				<groupId>hsqldb</groupId>
+				<groupId>org.hsqldb</groupId>
 				<artifactId>hsqldb</artifactId>
-				<version>1.8.0.4</version>
+				<version>2.3.4</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
             	<groupId>org.apache.derby</groupId>
             	<artifactId>derby</artifactId>
-            	<version>10.7.1.1</version>
+            	<version>10.12.1.1</version>
             	<scope>test</scope>
         	</dependency>
         	<dependency>
@@ -1220,9 +1230,9 @@
 			</activation>
 			<dependencies>
 				<dependency>
-					<groupId>hsqldb</groupId>
+					<groupId>org.hsqldb</groupId>
 					<artifactId>hsqldb</artifactId>
-					<version>1.8.0.4</version>
+					<version>2.3.4</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
@@ -1237,9 +1247,9 @@
 			</activation>
 			<dependencies>
 				<dependency>
-					<groupId>hsqldb</groupId>
+					<groupId>org.hsqldb</groupId>
 					<artifactId>hsqldb</artifactId>
-					<version>1.8.0.4</version>
+					<version>2.3.4</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
@@ -1255,8 +1265,8 @@
 			<dependencies>
 				<dependency>
 					<groupId>org.firebirdsql.jdbc</groupId>
-					<artifactId>jaybird-jdk16</artifactId>
-					<version>2.2.3</version>
+					<artifactId>jaybird-jdk17</artifactId>
+					<version>2.2.12</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
@@ -1356,8 +1366,8 @@
 								<!-- ${db.host} and ${db.port} are dynamically set by docker-maven-plugin below -->
 								<cayenneAdapter>org.apache.cayenne.dba.mysql.MySQLAdapter</cayenneAdapter>
 								<cayenneJdbcUsername>root</cayenneJdbcUsername>
-								<cayenneJdbcPassword />
-								<cayenneJdbcUrl>jdbc:mysql://${db.host}:${db.port}/cayenne</cayenneJdbcUrl>
+								<cayenneJdbcPassword></cayenneJdbcPassword>
+								<cayenneJdbcUrl>jdbc:mysql://${db.host}:${db.port}/cayenne?useUnicode=true&amp;characterEncoding=UTF-8&amp;generateSimpleParameterMetadata=true</cayenneJdbcUrl>
 								<cayenneJdbcDriver>com.mysql.jdbc.Driver</cayenneJdbcDriver>
 							</systemPropertyVariables>
 						</configuration>
@@ -1386,6 +1396,9 @@
 											<MYSQL_ALLOW_EMPTY_PASSWORD>yes</MYSQL_ALLOW_EMPTY_PASSWORD>
 											<MYSQL_DATABASE>cayenne</MYSQL_DATABASE>
 										</env>
+										<cmd>
+											--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+										</cmd>
 									</run>
 								</image>
 							</images>
@@ -1423,24 +1436,24 @@
 				<dependency>
 					<groupId>org.postgresql</groupId>
 					<artifactId>postgresql</artifactId>
-					<version>9.4.1209</version>
+					<version>9.4.1212.jre7</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
 		</profile>
 		<profile>
-			<id>postgresdocker</id>
+			<id>postgres-docker</id>
 			<activation>
 				<property>
 					<name>cayenneTestConnection</name>
-					<value>postgresdocker</value>
+					<value>postgres-docker</value>
 				</property>
 			</activation>
 			<dependencies>
 				<dependency>
 					<groupId>org.postgresql</groupId>
 					<artifactId>postgresql</artifactId>
-					<version>9.4.1209</version>
+					<version>9.4.1212.jre7</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
@@ -1514,9 +1527,9 @@
 			</activation>
 			<dependencies>
 				<dependency>
-					<groupId>com.microsoft</groupId>
-					<artifactId>sqlserver-driver</artifactId>
-					<version>4.0</version>
+					<groupId>com.microsoft.sqlserver</groupId>
+					<artifactId>mssql-jdbc</artifactId>
+					<version>6.1.0.jre7</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
@@ -1567,7 +1580,7 @@
 				<dependency>
 					<groupId>org.xerial</groupId>
 					<artifactId>sqlite-jdbc</artifactId>
-					<version>3.6.16</version>
+					<version>3.15.1</version>
 				</dependency>
 			</dependencies>
 		</profile>

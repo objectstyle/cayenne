@@ -19,14 +19,6 @@
 
 package org.apache.cayenne.access.translator.select;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.util.Date;
-import java.util.List;
-
 import org.apache.cayenne.access.DataContext;
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.access.jdbc.ColumnDescriptor;
@@ -49,6 +41,11 @@ import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
 import org.junit.Test;
+
+import java.util.Date;
+import java.util.List;
+
+import static org.junit.Assert.*;
 
 @UseServerRuntime(CayenneProjects.TESTMAP_PROJECT)
 public class DefaultSelectTranslatorIT extends ServerCase {
@@ -435,7 +432,7 @@ public class DefaultSelectTranslatorIT extends ServerCase {
 	public void testCreateSqlString10() throws Exception {
 		// query with to-many joint prefetches
 		SelectQuery q = new SelectQuery(Artist.class);
-		q.addPrefetch(Artist.PAINTING_ARRAY_PROPERTY).setSemantics(PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS);
+		q.addPrefetch(Artist.PAINTING_ARRAY.joint());
 
 		DefaultSelectTranslator transl = new DefaultSelectTranslator(q, dataNode.getAdapter(),
 				dataNode.getEntityResolver());
@@ -459,7 +456,7 @@ public class DefaultSelectTranslatorIT extends ServerCase {
 	public void testCreateSqlString11() throws Exception {
 		// query with joint prefetches and other joins
 		SelectQuery q = new SelectQuery(Artist.class, ExpressionFactory.exp("paintingArray.paintingTitle = 'a'"));
-		q.addPrefetch(Artist.PAINTING_ARRAY_PROPERTY).setSemantics(PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS);
+		q.addPrefetch(Artist.PAINTING_ARRAY.joint());
 
 		DefaultSelectTranslator transl = new DefaultSelectTranslator(q, dataNode.getAdapter(),
 				dataNode.getEntityResolver());
@@ -474,7 +471,7 @@ public class DefaultSelectTranslatorIT extends ServerCase {
 	public void testCreateSqlString12() throws Exception {
 		// query with to-one joint prefetches
 		SelectQuery q = new SelectQuery(Painting.class);
-		q.addPrefetch(Painting.TO_ARTIST_PROPERTY).setSemantics(PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS);
+		q.addPrefetch(Painting.TO_ARTIST.joint());
 
 		DefaultSelectTranslator transl = new DefaultSelectTranslator(q, dataNode.getAdapter(),
 				dataNode.getEntityResolver());
@@ -677,7 +674,7 @@ public class DefaultSelectTranslatorIT extends ServerCase {
 		// and with QuoteSqlIdentifiers = true
 		try {
 			SelectQuery q = new SelectQuery(Painting.class);
-			q.addPrefetch(Painting.TO_ARTIST_PROPERTY).setSemantics(PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS);
+			q.addPrefetch(Painting.TO_ARTIST.joint());
 
 			DbEntity entity = context.getEntityResolver().getDbEntity("PAINTING");
 			entity.getDataMap().setQuotingSQLIdentifiers(true);
@@ -757,7 +754,7 @@ public class DefaultSelectTranslatorIT extends ServerCase {
 	@Test
 	public void testBuildResultColumns2() throws Exception {
 		SelectQuery q = new SelectQuery(Painting.class);
-		q.addPrefetch(Painting.TO_ARTIST_PROPERTY).setSemantics(PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS);
+		q.addPrefetch(Painting.TO_ARTIST.joint());
 		DefaultSelectTranslator tr = new DefaultSelectTranslator(q, dataNode.getAdapter(), dataNode.getEntityResolver());
 
 		List<?> columns = tr.buildResultColumns();

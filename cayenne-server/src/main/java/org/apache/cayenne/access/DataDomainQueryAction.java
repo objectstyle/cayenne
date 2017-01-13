@@ -19,17 +19,6 @@
 
 package org.apache.cayenne.access;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.DataRow;
 import org.apache.cayenne.ObjectContext;
@@ -62,6 +51,17 @@ import org.apache.cayenne.util.GenericResponse;
 import org.apache.cayenne.util.ListResponse;
 import org.apache.cayenne.util.Util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Performs query routing and execution. During execution phase intercepts
  * callbacks to the OperationObserver, remapping results to the original
@@ -81,7 +81,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
 
     QueryResponse response;
     GenericResponse fullResponse;
-    Map prefetchResultsByPath;
+    Map<String, List> prefetchResultsByPath;
     Map<QueryEngine, Collection<Query>> queriesByNode;
     Map<Query, Query> queriesByExecutedQueries;
     boolean noObjectConversion;
@@ -237,7 +237,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
 
             // FK pointing to a unique field that is a 'fake' PK (CAY-1755)...
             // It is not sufficient to generate target ObjectId.
-            DbEntity targetEntity = (DbEntity) dbRelationship.getTargetEntity();
+            DbEntity targetEntity = dbRelationship.getTargetEntity();
             if (dbRelationship.getJoins().size() < targetEntity.getPrimaryKeys().size()) {
                 return !DONE;
             }
@@ -315,7 +315,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
             Collection<Persistent> objects = (Collection<Persistent>) refreshQuery.getObjects();
             if (objects != null && !objects.isEmpty()) {
 
-                Collection<ObjectId> ids = new ArrayList<ObjectId>(objects.size());
+                Collection<ObjectId> ids = new ArrayList<>(objects.size());
                 for (final Persistent object : objects) {
                     ids.add(object.getObjectId());
                 }
@@ -456,11 +456,9 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         this.queriesByNode = null;
         this.queriesByExecutedQueries = null;
 
-        // whether this is null or not will driver further decisions on how to
-        // process
-        // prefetched rows
-        this.prefetchResultsByPath = metadata.getPrefetchTree() != null && !metadata.isFetchingDataRows() ? new HashMap()
-                : null;
+        // whether this is null or not will driver further decisions on how to process prefetched rows
+        this.prefetchResultsByPath = metadata.getPrefetchTree() != null && !metadata.isFetchingDataRows() ?
+                new HashMap<String, List>() : null;
 
         // categorize queries by node and by "executable" query...
         query.route(this, domain.getEntityResolver(), null);
@@ -475,14 +473,15 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void interceptObjectConversion() {
 
         if (context != null && !metadata.isFetchingDataRows()) {
 
-            List<Object> mainRows = response.firstList();
+            List mainRows = response.firstList(); // List<DataRow> or List<Object[]>
             if (mainRows != null && !mainRows.isEmpty()) {
 
-                ObjectConversionStrategy converter;
+                ObjectConversionStrategy<?> converter;
 
                 List<Object> rsMapping = metadata.getResultSetMapping();
                 if (rsMapping == null) {
@@ -510,13 +509,13 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
 
         Collection<Query> queries = null;
         if (queriesByNode == null) {
-            queriesByNode = new HashMap<QueryEngine, Collection<Query>>();
+            queriesByNode = new HashMap<>();
         } else {
             queries = queriesByNode.get(engine);
         }
 
         if (queries == null) {
-            queries = new ArrayList<Query>(5);
+            queries = new ArrayList<>(5);
             queriesByNode.put(engine, queries);
         }
 
@@ -528,7 +527,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         if (substitutedQuery != null && substitutedQuery != query) {
 
             if (queriesByExecutedQueries == null) {
-                queriesByExecutedQueries = new HashMap<Query, Query>();
+                queriesByExecutedQueries = new HashMap<>();
             }
 
             queriesByExecutedQueries.put(query, substitutedQuery);
@@ -679,7 +678,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
 
             PrefetchProcessorNode node = toResultsTree(descriptor, prefetchTree, mainRows);
             List<Persistent> objects = node.getObjects();
-            updateResponse(mainRows, objects != null ? objects : new ArrayList<Persistent>(1));
+            updateResponse(mainRows, objects != null ? objects : new ArrayList<>(1));
 
             // apply POST_LOAD callback
             LifecycleCallbackRegistry callbackRegistry = context.getEntityResolver().getCallbackRegistry();
@@ -703,10 +702,9 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         protected PrefetchProcessorNode toResultsTree(ClassDescriptor descriptor, PrefetchTreeNode prefetchTree,
                 List<Object[]> rows, int position) {
 
-            int len = rows.size();
-            List<DataRow> rowsColumn = new ArrayList<DataRow>(len);
-            for (int i = 0; i < len; i++) {
-                rowsColumn.add((DataRow) rows.get(i)[position]);
+            List<DataRow> rowsColumn = new ArrayList<>(rows.size());
+            for (Object[] row : rows) {
+                rowsColumn.add((DataRow) row[position]);
             }
 
             if (prefetchTree != null) {
@@ -745,7 +743,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
             // no conversions needed for scalar positions; reuse Object[]'s to
             // fill them
             // with resolved objects
-            List<PrefetchProcessorNode> segmentNodes = new ArrayList<PrefetchProcessorNode>(width);
+            List<PrefetchProcessorNode> segmentNodes = new ArrayList<>(width);
             for (int i = 0; i < width; i++) {
 
                 if (rsMapping.get(i) instanceof EntityResultSegment) {
@@ -763,7 +761,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
                     }
                 }
             }
-            Set<List<?>> seen = new HashSet(mainRows.size());
+            Set<List<?>> seen = new HashSet<>(mainRows.size());
             Iterator<Object[]> it = mainRows.iterator();
             while (it.hasNext()) {
                 if (!seen.add(Arrays.asList(it.next()))) {

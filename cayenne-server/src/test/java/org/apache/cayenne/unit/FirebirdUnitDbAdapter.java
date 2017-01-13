@@ -26,20 +26,29 @@ public class FirebirdUnitDbAdapter extends UnitDbAdapter {
     public FirebirdUnitDbAdapter(DbAdapter adapter) {
         super(adapter);
     }
-    
+
+    @Override
     public boolean supportsBoolean() {
         return true;
     }
-    
+
+    @Override
     public boolean supportsLobs() {
         return true;
     }
-    
+
+    @Override
     public boolean supportsFKConstraints(DbEntity entity) {
         return !entity.getName().contains("CLOB");
     }
-    
+
+    @Override
     public boolean supportsBinaryPK() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsPKGeneratorConcurrency() {
         return false;
     }
 }

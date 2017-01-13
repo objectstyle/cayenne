@@ -19,24 +19,13 @@ public abstract class _Artist extends CayenneDataObject {
 
     private static final long serialVersionUID = 1L; 
 
-    @Deprecated
-    public static final String ARTIST_NAME_PROPERTY = "artistName";
-    @Deprecated
-    public static final String DATE_OF_BIRTH_PROPERTY = "dateOfBirth";
-    @Deprecated
-    public static final String ARTIST_EXHIBIT_ARRAY_PROPERTY = "artistExhibitArray";
-    @Deprecated
-    public static final String GROUP_ARRAY_PROPERTY = "groupArray";
-    @Deprecated
-    public static final String PAINTING_ARRAY_PROPERTY = "paintingArray";
-
     public static final String ARTIST_ID_PK_COLUMN = "ARTIST_ID";
 
-    public static final Property<String> ARTIST_NAME = new Property<String>("artistName");
-    public static final Property<Date> DATE_OF_BIRTH = new Property<Date>("dateOfBirth");
-    public static final Property<List<ArtistExhibit>> ARTIST_EXHIBIT_ARRAY = new Property<List<ArtistExhibit>>("artistExhibitArray");
-    public static final Property<List<ArtGroup>> GROUP_ARRAY = new Property<List<ArtGroup>>("groupArray");
-    public static final Property<List<Painting>> PAINTING_ARRAY = new Property<List<Painting>>("paintingArray");
+    public static final Property<String> ARTIST_NAME = Property.create("artistName", String.class);
+    public static final Property<Date> DATE_OF_BIRTH = Property.create("dateOfBirth", Date.class);
+    public static final Property<List<ArtistExhibit>> ARTIST_EXHIBIT_ARRAY = Property.create("artistExhibitArray", List.class);
+    public static final Property<List<ArtGroup>> GROUP_ARRAY = Property.create("groupArray", List.class);
+    public static final Property<List<Painting>> PAINTING_ARRAY = Property.create("paintingArray", List.class);
 
     public void setArtistName(String artistName) {
         writeProperty("artistName", artistName);

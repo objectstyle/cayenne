@@ -19,11 +19,6 @@
 
 package org.apache.cayenne.access;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.Fault;
 import org.apache.cayenne.ObjectId;
@@ -45,6 +40,11 @@ import org.apache.cayenne.reflect.PropertyVisitor;
 import org.apache.cayenne.reflect.ToManyProperty;
 import org.apache.cayenne.reflect.ToOneProperty;
 import org.apache.cayenne.util.Util;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A dynamic GraphDiff that represents a delta between object simple properties
@@ -213,7 +213,7 @@ class ObjectDiff extends NodeDiff {
                 if (relationship.isFlattened()) {
 
                     if (flatIds == null) {
-                        flatIds = new HashMap<ArcOperation, ArcOperation>();
+                        flatIds = new HashMap<>();
                     }
 
                     ArcOperation oldOp = flatIds.put(arcDiff, arcDiff);
@@ -239,7 +239,7 @@ class ObjectDiff extends NodeDiff {
             } else if (property instanceof ToOneProperty) {
 
                 if (currentArcSnapshot == null) {
-                    currentArcSnapshot = new HashMap<String, Object>();
+                    currentArcSnapshot = new HashMap<>();
                 }
 
                 currentArcSnapshot.put(arcId, targetId);
@@ -252,7 +252,7 @@ class ObjectDiff extends NodeDiff {
 
         if (addDiff) {
             if (otherDiffs == null) {
-                otherDiffs = new ArrayList<NodeDiff>(3);
+                otherDiffs = new ArrayList<>(3);
             }
 
             otherDiffs.add(diff);
@@ -277,7 +277,7 @@ class ObjectDiff extends NodeDiff {
         currentArcSnapshot.put(arcId, arcDiff.getTargetNodeId());
 
         if (phantomFks == null) {
-            phantomFks = new HashMap<ArcOperation, ArcOperation>();
+            phantomFks = new HashMap<>();
         }
 
         ArcOperation oldOp = phantomFks.put(arcDiff, arcDiff);

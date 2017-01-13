@@ -428,4 +428,5 @@ public class ObjectSelectTest {
 		assertSame(QueryCacheStrategy.SHARED_CACHE, q.getCacheStrategy());
 		assertNull(q.getCacheGroups());
 	}
+
 }

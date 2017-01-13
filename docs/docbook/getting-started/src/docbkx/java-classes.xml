@@ -40,7 +40,7 @@
                     selected before).</para>
             </listitem>
             <listitem>
-                <para>Click on "Entities" tab and check the "Check All Classes" checkbox (unless it
+                <para>Click on "Classes" tab and check the "Check All Classes" checkbox (unless it
                     is already checked and reads "Uncheck all Classes").</para>
             </listitem>
             <listitem>
@@ -74,7 +74,7 @@
             result, all the errors should disappear.</para>
         <para><inlinemediaobject>
                 <imageobject>
-                    <imagedata fileref="images/idea-generated-classes.png" scalefit="0" width="100%"/>
+                    <imagedata fileref="images/idea-generated-classes.png" scalefit="1" width="100%"/>
                 </imageobject>
             </inlinemediaobject></para>
         <para>Now let's check the entity class pairs. Each one is made of a superclass (e.g. Artist)

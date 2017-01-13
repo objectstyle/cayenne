@@ -29,7 +29,7 @@
         </para>
         <programlisting language="xml">
     &lt;reverseEngineering&gt;
-        &lt;skipRelationshipsLoading&gt;true&lt;skipRelationshipsLoading&gt;
+        &lt;skipRelationshipsLoading&gt;true&lt;/skipRelationshipsLoading&gt;
     &lt;/reverseEngineering&gt;</programlisting>
     </section>
     <section xml:id="skip-pk-loading">
@@ -40,7 +40,7 @@
         </para>
         <programlisting language="xml">
     &lt;reverseEngineering&gt;
-        &lt;skipPrimaryKeyLoading&gt;true&lt;skipPrimaryKeyLoading&gt;
+        &lt;skipPrimaryKeyLoading&gt;true&lt;/skipPrimaryKeyLoading&gt;
     &lt;/reverseEngineering&gt;</programlisting>
     </section>
     <section>

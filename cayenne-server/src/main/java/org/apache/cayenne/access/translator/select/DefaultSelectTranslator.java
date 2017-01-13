@@ -18,22 +18,17 @@
  ****************************************************************/
 package org.apache.cayenne.access.translator.select;
 
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.access.jdbc.ColumnDescriptor;
+import org.apache.cayenne.access.translator.DbAttributeBinding;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.QuotingStrategy;
+import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.exp.ExpressionFactory;
+import org.apache.cayenne.exp.Property;
+import org.apache.cayenne.exp.TraversalHelper;
+import org.apache.cayenne.exp.parser.ASTAggregateFunctionCall;
 import org.apache.cayenne.exp.parser.ASTDbPath;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.DbAttribute;
@@ -59,6 +54,17 @@ import org.apache.cayenne.reflect.ToOneProperty;
 import org.apache.cayenne.util.CayenneMapEntry;
 import org.apache.cayenne.util.EqualsBuilder;
 import org.apache.cayenne.util.HashCodeBuilder;
+
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @since 4.0
@@ -92,6 +98,13 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 	 */
 	boolean forcingDistinct;
 
+	/**
+	 * Does this SQL have any aggregate function
+	 */
+	boolean haveAggregate;
+	Map<ColumnDescriptor, List<DbAttributeBinding>> groupByColumns;
+
+
 	public DefaultSelectTranslator(Query query, DbAdapter adapter, EntityResolver entityResolver) {
 		super(query, adapter, entityResolver);
 	}
@@ -121,7 +134,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 		// build qualifier
 		QualifierTranslator qualifierTranslator = adapter.getQualifierTranslator(this);
-		StringBuilder qualifierBuffer = qualifierTranslator.appendPart(new StringBuilder());
+		StringBuilder whereQualifierBuffer = qualifierTranslator.appendPart(new StringBuilder());
 
 		// build ORDER BY
 		OrderingTranslator orderingTranslator = new OrderingTranslator(this);
@@ -149,7 +162,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		}
 
 		// convert ColumnDescriptors to column names
-		List<String> selectColumnExpList = new ArrayList<String>();
+		List<String> selectColumnExpList = new ArrayList<>();
 		for (ColumnDescriptor column : resultColumns) {
 			String fullName = strategy.quotedIdentifier(dataMap, column.getNamePrefix(), column.getName());
 			selectColumnExpList.add(fullName);
@@ -176,12 +189,29 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		joins.appendRootWithQuoteSqlIdentifiers(queryBuf, getQueryMetadata().getDbEntity());
 
 		joins.appendJoins(queryBuf);
-		joins.appendQualifier(qualifierBuffer, qualifierBuffer.length() == 0);
+		joins.appendQualifier(whereQualifierBuffer, whereQualifierBuffer.length() == 0);
 
 		// append qualifier
-		if (qualifierBuffer.length() > 0) {
+		if (whereQualifierBuffer.length() > 0) {
 			queryBuf.append(" WHERE ");
-			queryBuf.append(qualifierBuffer);
+			queryBuf.append(whereQualifierBuffer);
+		}
+
+		if(haveAggregate && !groupByColumns.isEmpty()) {
+			queryBuf.append(" GROUP BY ");
+			appendGroupByColumns(queryBuf, groupByColumns);
+		}
+
+		// append HAVING qualifier
+		QualifierTranslator havingQualifierTranslator = adapter.getQualifierTranslator(this);
+		Expression havingQualifier = ((SelectQuery)query).getHavingQualifier();
+		if(havingQualifier != null) {
+			havingQualifierTranslator.setQualifier(havingQualifier);
+			StringBuilder havingQualifierBuffer = havingQualifierTranslator.appendPart(new StringBuilder());
+			if(havingQualifierBuffer.length() > 0) {
+				queryBuf.append(" HAVING ");
+				queryBuf.append(havingQualifierBuffer);
+			}
 		}
 
 		// append prebuilt ordering
@@ -221,6 +251,36 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 			buffer.append(", ");
 			buffer.append(selectColumnExpList.get(i));
 		}
+	}
+
+	/**
+	 * Append columns to GROUP BY clause
+	 * @since 4.0
+	 */
+	protected void appendGroupByColumns(StringBuilder buffer, Map<ColumnDescriptor, List<DbAttributeBinding>>  groupByColumns) {
+		Iterator<Map.Entry<ColumnDescriptor, List<DbAttributeBinding>>> it = groupByColumns.entrySet().iterator();
+		Map.Entry<ColumnDescriptor, List<DbAttributeBinding>> entry = it.next();
+		appendGroupByColumn(buffer, entry);
+		while(it.hasNext()) {
+			entry = it.next();
+			buffer.append(", ");
+			appendGroupByColumn(buffer, entry);
+		}
+	}
+
+	/**
+	 * Append single column to GROUP BY clause
+	 * @since 4.0
+	 */
+	protected void appendGroupByColumn(StringBuilder buffer, Map.Entry<ColumnDescriptor, List<DbAttributeBinding>> entry) {
+		if(entry.getKey().getDataRowKey().equals(entry.getKey().getName())) {
+			buffer.append(entry.getKey().getName());
+            for (DbAttributeBinding binding : entry.getValue()) {
+                addToParamList(binding.getAttribute(), binding.getValue());
+            }
+        } else {
+            buffer.append(entry.getKey().getDataRowKey());
+        }
 	}
 
 	/**
@@ -285,12 +345,14 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 	protected List<ColumnDescriptor> buildResultColumns() {
 
-		this.defaultAttributesByColumn = new HashMap<ColumnDescriptor, ObjAttribute>();
+		this.defaultAttributesByColumn = new HashMap<>();
 
-		List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>();
+		List<ColumnDescriptor> columns = new ArrayList<>();
 		SelectQuery<?> query = getSelectQuery();
 
-		if (query.getRoot() instanceof DbEntity) {
+		if(query.getColumns() != null && !query.getColumns().isEmpty()) {
+			appendOverridedColumns(columns, query);
+		} else if (query.getRoot() instanceof DbEntity) {
 			appendDbEntityColumns(columns, query);
 		} else if (getQueryMetadata().getPageSize() > 0) {
 			appendIdColumns(columns, query);
@@ -301,9 +363,66 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		return columns;
 	}
 
+	/**
+	 * If query contains explicit column list, use only them
+	 */
+	<T> List<ColumnDescriptor> appendOverridedColumns(List<ColumnDescriptor> columns, SelectQuery<T> query) {
+		groupByColumns = new HashMap<>();
+
+		QualifierTranslator qualifierTranslator = adapter.getQualifierTranslator(this);
+		AccumulatingBindingListener bindingListener = new AccumulatingBindingListener();
+		setAddBindingListener(bindingListener);
+
+		for(Property<?> property : query.getColumns()) {
+			qualifierTranslator.setQualifier(property.getExpression());
+			StringBuilder builder = qualifierTranslator.appendPart(new StringBuilder());
+
+			int type = TypesMapping.getSqlTypeByJava(property.getType());
+
+			String alias = property.getAlias();
+			if(alias != null) {
+				builder.append(" AS ").append(alias);
+			}
+			ColumnDescriptor descriptor = new ColumnDescriptor(builder.toString(), type);
+			descriptor.setDataRowKey(alias);
+			columns.add(descriptor);
+
+			if(isAggregate(property)) {
+				haveAggregate = true;
+			} else {
+				groupByColumns.put(descriptor, bindingListener.getBindings());
+			}
+			bindingListener.reset();
+		}
+
+		setAddBindingListener(null);
+
+		if(!haveAggregate) {
+			// if no expression with aggregation function found, we don't need this information
+			groupByColumns.clear();
+		}
+
+		return columns;
+	}
+
+	private boolean isAggregate(Property<?> property) {
+		final boolean[] isAggregate = new boolean[1];
+		Expression exp = property.getExpression();
+		exp.traverse(new TraversalHelper() {
+			@Override
+			public void startNode(Expression node, Expression parentNode) {
+				if(node instanceof ASTAggregateFunctionCall) {
+					isAggregate[0] = true;
+				}
+			}
+		});
+
+		return isAggregate[0];
+	}
+
 	<T> List<ColumnDescriptor> appendDbEntityColumns(List<ColumnDescriptor> columns, SelectQuery<T> query) {
 
-		Set<ColumnTracker> attributes = new HashSet<ColumnTracker>();
+		Set<ColumnTracker> attributes = new HashSet<>();
 
 		DbEntity table = getQueryMetadata().getDbEntity();
 		for (DbAttribute dba : table.getAttributes()) {
@@ -430,7 +549,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 					if (relationship != null) {
 
 						String labelPrefix = pathExp.getPath();
-						DbEntity targetEntity = (DbEntity) relationship.getTargetEntity();
+						DbEntity targetEntity = relationship.getTargetEntity();
 
 						for (DbAttribute pk : targetEntity.getPrimaryKeys()) {
 
@@ -476,7 +595,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 				// go via target OE to make sure that Java types are mapped
 				// correctly...
 				ObjRelationship targetRel = (ObjRelationship) prefetchExp.evaluate(oe);
-				ObjEntity targetEntity = (ObjEntity) targetRel.getTargetEntity();
+				ObjEntity targetEntity = targetRel.getTargetEntity();
 
 				String labelPrefix = dbPrefetch.getPath();
 				for (ObjAttribute oa : targetEntity.getAttributes()) {
@@ -498,7 +617,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 				}
 
 				// append remaining target attributes such as keys
-				DbEntity targetDbEntity = (DbEntity) r.getTargetEntity();
+				DbEntity targetDbEntity = r.getTargetEntity();
 				for (DbAttribute attribute : targetDbEntity.getAttributes()) {
 					appendColumn(columns, null, attribute, attributes, labelPrefix + '.' + attribute.getName());
 				}
@@ -541,9 +660,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 			columns.add(column);
 
-			// TODO: andrus, 5/7/2006 - replace 'columns' collection with this
-			// map, as it
-			// is redundant
+			// TODO: andrus, 5/7/2006 - replace 'columns' collection with this map, as it is redundant
 			defaultAttributesByColumn.put(column, objAttribute);
 		} else if (objAttribute != null) {
 
@@ -552,7 +669,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 				if (attribute.getName().equals(column.getName())) {
 
 					if (attributeOverrides == null) {
-						attributeOverrides = new HashMap<ObjAttribute, ColumnDescriptor>();
+						attributeOverrides = new HashMap<>();
 					}
 
 					// kick out the original attribute
@@ -599,6 +716,21 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		return true;
 	}
 
+	@Override
+	public String getAliasForExpression(Expression exp) {
+		Collection<Property<?>> columns = ((SelectQuery<?>)query).getColumns();
+		if(columns == null) {
+			return null;
+		}
+		for(Property<?> property : columns) {
+			if(property.getExpression().equals(exp)) {
+				return property.getAlias();
+			}
+		}
+
+		return null;
+	}
+
 	static final class ColumnTracker {
 
 		private DbAttribute attribute;
@@ -626,4 +758,20 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 	}
 
+	static final class AccumulatingBindingListener implements AddBindingListener {
+		private List<DbAttributeBinding> bindings = new ArrayList<>();
+
+		@Override
+		public void onAdd(DbAttributeBinding binding) {
+			bindings.add(binding);
+		}
+
+		public void reset() {
+			bindings.clear();
+		}
+
+		public List<DbAttributeBinding> getBindings() {
+			return new ArrayList<>(bindings);
+		}
+	}
 }

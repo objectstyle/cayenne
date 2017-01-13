@@ -42,7 +42,7 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>hsqldb</groupId>
+			<groupId>org.hsqldb</groupId>
 			<artifactId>hsqldb</artifactId>
 			<scope>test</scope>
 		</dependency>
@@ -71,7 +71,7 @@
 	</dependencies>
 	<build>
 		<plugins>
-			<!-- This ensures LICESNE and NOTICE inclusion in all jars -->
+			<!-- This ensures LICENSE and NOTICE inclusion in all jars -->
             <plugin>
                 <artifactId>maven-remote-resources-plugin</artifactId>
                 <executions>

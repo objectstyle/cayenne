@@ -78,7 +78,7 @@ public class SchemaBuilder {
 			"relationships-collection-to-many.map.xml", "relationships-child-master.map.xml",
 			"relationships-clob.map.xml", "relationships-flattened.map.xml", "relationships-set-to-many.map.xml",
 			"relationships-to-many-fk.map.xml", "relationships-to-one-fk.map.xml", "return-types.map.xml",
-			"uuid.map.xml", "multi-tier.map.xml", "persistent.map.xml", "reflexive.map.xml", "delete-rules.map.xml",
+			"uuid.map.xml", "multi-tier.map.xml", "reflexive.map.xml", "delete-rules.map.xml",
             "lifecycle-callbacks-order.map.xml", "lifecycles.map.xml", "map-to-many.map.xml", "toone.map.xml", "meaningful-pk.map.xml",
 			"table-primitives.map.xml", "generic.map.xml", "map-db1.map.xml", "map-db2.map.xml", "embeddable.map.xml",
 			"qualified.map.xml", "quoted-identifiers.map.xml", "inheritance-single-table1.map.xml",
@@ -160,6 +160,7 @@ public class SchemaBuilder {
 		for (Procedure proc : map.getProcedures()) {
 			unitDbAdapter.tweakProcedure(proc);
 		}
+		filterDataMap(map);
 
 		node.addDataMap(map);
 
@@ -168,6 +169,37 @@ public class SchemaBuilder {
 		node.setBatchTranslatorFactory(new DefaultBatchTranslatorFactory());
 		node.setSelectTranslatorFactory(new DefaultSelectTranslatorFactory());
 		domain.addNode(node);
+	}
+
+	/**
+	 * Remote binary pk {@link DbEntity} for {@link DbAdapter} not supporting
+	 * that and so on.
+	 */
+	protected void filterDataMap(DataMap map) {
+		boolean supportsBinaryPK = unitDbAdapter.supportsBinaryPK();
+
+		if (supportsBinaryPK) {
+			return;
+		}
+
+		List<DbEntity> entitiesToRemove = new ArrayList<DbEntity>();
+
+		for (DbEntity ent : map.getDbEntities()) {
+			for (DbAttribute attr : ent.getAttributes()) {
+				// check for BIN PK or FK to BIN Pk
+				if (attr.getType() == Types.BINARY || attr.getType() == Types.VARBINARY
+						|| attr.getType() == Types.LONGVARBINARY) {
+					if (attr.isPrimaryKey() || attr.isForeignKey()) {
+						entitiesToRemove.add(ent);
+						break;
+					}
+				}
+			}
+		}
+
+		for (DbEntity e : entitiesToRemove) {
+			map.removeDbEntity(e.getName(), true);
+		}
 	}
 
 	/** Drops all test tables. */

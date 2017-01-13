@@ -19,14 +19,6 @@
 
 package org.apache.cayenne.wocompat;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.exp.ExpressionException;
 import org.apache.cayenne.exp.ExpressionFactory;
@@ -38,6 +30,14 @@ import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.ObjRelationship;
 import org.apache.cayenne.query.SelectQuery;
 import org.apache.cayenne.query.SortOrder;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A descriptor of SelectQuery loaded from EOModel. It is an informal
@@ -402,7 +402,7 @@ public class EOQuery<T> extends SelectQuery<T> {
 					// get the list of children
 					List children = (List) qualifierMap.get("qualifiers");
 					if (children != null) {
-						ArrayList<Expression> childExpressions = new ArrayList<Expression>();
+						ArrayList<Expression> childExpressions = new ArrayList<>();
 						// build an Expression for each child
 						Iterator<Map> it = children.iterator();
 						while (it.hasNext()) {
@@ -476,7 +476,7 @@ public class EOQuery<T> extends SelectQuery<T> {
 			// component is not,
 			// switch to db path..
 
-			Expression keyExp = Expression.fromString(key);
+			Expression keyExp = ExpressionFactory.exp(key);
 			try {
 				entity.lastPathComponent(keyExp, Collections.emptyMap());
 			} catch (ExpressionException e) {

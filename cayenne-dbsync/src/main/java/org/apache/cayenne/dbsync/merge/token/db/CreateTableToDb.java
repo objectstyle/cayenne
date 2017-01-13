@@ -35,12 +35,12 @@ import java.util.List;
 public class CreateTableToDb extends AbstractToDbToken.Entity {
 
     public CreateTableToDb(DbEntity entity) {
-        super("Create Table", entity);
+        super("Create Table", 40, entity);
     }
 
     @Override
     public List<String> createSql(DbAdapter adapter) {
-        List<String> sqls = new ArrayList<String>();
+        List<String> sqls = new ArrayList<>();
         if(needAutoPkSupport()) {
             sqls.addAll(adapter.getPkGenerator().createAutoPkStatements(
                     Collections.singletonList(getEntity())));

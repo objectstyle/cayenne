@@ -39,7 +39,7 @@ import java.util.List;
 public class DropColumnToModel extends AbstractToModelToken.EntityAndColumn {
 
     public DropColumnToModel(DbEntity entity, DbAttribute column) {
-        super("Drop Column", entity, column);
+        super("Drop Column", 25, entity, column);
     }
 
     @Override
@@ -52,7 +52,7 @@ public class DropColumnToModel extends AbstractToModelToken.EntityAndColumn {
 
         // remove relationships mapped to column. duplicate List to prevent
         // ConcurrentModificationException
-        List<DbRelationship> dbRelationships = new ArrayList<DbRelationship>(getEntity()
+        List<DbRelationship> dbRelationships = new ArrayList<>(getEntity()
                 .getRelationships());
         for (DbRelationship dbRelationship : dbRelationships) {
             for (DbJoin join : dbRelationship.getJoins()) {

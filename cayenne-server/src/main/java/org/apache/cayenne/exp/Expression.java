@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -151,6 +150,16 @@ public abstract class Expression implements Serializable, XMLSerializable {
 	 */
 	public static final int BITWISE_RIGHT_SHIFT = 44;
 
+	/**
+	 * @since 4.0
+	 */
+	public static final int FUNCTION_CALL = 45;
+
+	/**
+	 * @since 4.0
+	 */
+	public static final int ASTERISK = 46;
+
 	protected int type;
 
 	/**
@@ -220,6 +229,8 @@ public abstract class Expression implements Serializable, XMLSerializable {
 			return "NOT LIKE";
 		case NOT_LIKE_IGNORE_CASE:
 			return "NOT LIKE IGNORE CASE";
+		case FUNCTION_CALL:
+			return "FUNCTION_CALL";
 		default:
 			return "other";
 		}
@@ -569,7 +580,7 @@ public abstract class Expression implements Serializable, XMLSerializable {
 		for (int i = 0; i < count; i++) {
 			Object child = getOperand(i);
 
-			if (child instanceof Expression) {
+			if (child instanceof Expression && !(child instanceof ASTScalar)) {
 				Expression childExp = (Expression) child;
 				childExp.traverse(this, visitor);
 			} else {

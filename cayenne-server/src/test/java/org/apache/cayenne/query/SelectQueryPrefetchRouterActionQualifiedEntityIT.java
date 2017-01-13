@@ -19,11 +19,7 @@
 
 package org.apache.cayenne.query;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.exp.ExpressionFactory;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjEntity;
@@ -32,6 +28,9 @@ import org.apache.cayenne.testdo.inheritance_people.Employee;
 import org.apache.cayenne.testdo.inheritance_people.Manager;
 import org.apache.cayenne.unit.di.server.PeopleProjectCase;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 public class SelectQueryPrefetchRouterActionQualifiedEntityIT extends PeopleProjectCase {
 
@@ -43,7 +42,7 @@ public class SelectQueryPrefetchRouterActionQualifiedEntityIT extends PeopleProj
         ObjEntity departmentEntity = resolver.getObjEntity(Department.class);
         SelectQuery q = new SelectQuery(Employee.class, ExpressionFactory.matchExp("name", "abc"));
 
-        q.addPrefetch(Employee.TO_DEPARTMENT_PROPERTY);
+        q.addPrefetch(Employee.TO_DEPARTMENT.disjoint());
 
         SelectQueryPrefetchRouterAction action = new SelectQueryPrefetchRouterAction();
 
@@ -54,7 +53,7 @@ public class SelectQueryPrefetchRouterActionQualifiedEntityIT extends PeopleProj
         PrefetchSelectQuery prefetch = (PrefetchSelectQuery) router.getQueries().get(0);
 
         assertSame(departmentEntity, prefetch.getRoot());
-        assertEquals(Expression.fromString("db:employees.NAME = 'abc' " + "and (db:employees.PERSON_TYPE = 'EE' "
+        assertEquals(ExpressionFactory.exp("db:employees.NAME = 'abc' and (db:employees.PERSON_TYPE = 'EE' "
                 + "or db:employees.PERSON_TYPE = 'EM')"), prefetch.getQualifier());
     }
 
@@ -63,7 +62,7 @@ public class SelectQueryPrefetchRouterActionQualifiedEntityIT extends PeopleProj
         ObjEntity departmentEntity = resolver.getObjEntity(Department.class);
         SelectQuery q = new SelectQuery(Manager.class, ExpressionFactory.matchExp("name", "abc"));
 
-        q.addPrefetch(Employee.TO_DEPARTMENT_PROPERTY);
+        q.addPrefetch(Employee.TO_DEPARTMENT.disjoint());
 
         SelectQueryPrefetchRouterAction action = new SelectQueryPrefetchRouterAction();
 
@@ -73,7 +72,7 @@ public class SelectQueryPrefetchRouterActionQualifiedEntityIT extends PeopleProj
 
         PrefetchSelectQuery prefetch = (PrefetchSelectQuery) router.getQueries().get(0);
         assertSame(departmentEntity, prefetch.getRoot());
-        assertEquals(Expression.fromString("db:employees.NAME = 'abc' and db:employees.PERSON_TYPE = 'EM'"),
+        assertEquals(ExpressionFactory.exp("db:employees.NAME = 'abc' and db:employees.PERSON_TYPE = 'EM'"),
                 prefetch.getQualifier());
     }
 }

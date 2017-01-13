@@ -19,14 +19,6 @@
 
 package org.apache.cayenne.exp;
 
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.cayenne.Persistent;
 import org.apache.cayenne.exp.parser.ASTAdd;
 import org.apache.cayenne.exp.parser.ASTAnd;
@@ -69,9 +61,16 @@ import org.apache.cayenne.exp.parser.ParseException;
 import org.apache.cayenne.exp.parser.SimpleNode;
 import org.apache.cayenne.map.Entity;
 
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 /**
- * Helper class to build expressions. Alternatively expressions can be built
- * using {@link org.apache.cayenne.exp.Expression#fromString(String)} method.
+ * Helper class to build expressions.
  */
 public class ExpressionFactory {
 
@@ -213,7 +212,7 @@ public class ExpressionFactory {
 	 * join pair binary expressions.
 	 */
 	public static Expression matchAnyDbExp(Map<String, ?> map, int pairType) {
-		List<Expression> pairs = new ArrayList<Expression>(map.size());
+		List<Expression> pairs = new ArrayList<>(map.size());
 
 		for (Map.Entry<String, ?> entry : map.entrySet()) {
 			Expression exp = expressionOfType(pairType);
@@ -234,7 +233,7 @@ public class ExpressionFactory {
 	 * join pair binary expressions.
 	 */
 	public static Expression matchAllDbExp(Map<String, ?> map, int pairType) {
-		List<Expression> pairs = new ArrayList<Expression>(map.size());
+		List<Expression> pairs = new ArrayList<>(map.size());
 
 		for (Map.Entry<String, ?> entry : map.entrySet()) {
 			Expression exp = expressionOfType(pairType);
@@ -255,7 +254,7 @@ public class ExpressionFactory {
 	 * join pair binary expressions.
 	 */
 	public static Expression matchAnyExp(Map<String, ?> map, int pairType) {
-		List<Expression> pairs = new ArrayList<Expression>(map.size());
+		List<Expression> pairs = new ArrayList<>(map.size());
 
 		for (Map.Entry<String, ?> entry : map.entrySet()) {
 
@@ -310,7 +309,7 @@ public class ExpressionFactory {
 
 		int split = path.indexOf(SPLIT_SEPARATOR);
 
-		List<Expression> matches = new ArrayList<Expression>(values.length);
+		List<Expression> matches = new ArrayList<>(values.length);
 
 		if (split >= 0 && split < path.length() - 1) {
 
@@ -355,7 +354,7 @@ public class ExpressionFactory {
 	 * join pair binary expressions.
 	 */
 	public static Expression matchAllExp(Map<String, ?> map, int pairType) {
-		List<Expression> pairs = new ArrayList<Expression>(map.size());
+		List<Expression> pairs = new ArrayList<>(map.size());
 
 		for (Map.Entry<String, ?> entry : map.entrySet()) {
 
@@ -386,21 +385,54 @@ public class ExpressionFactory {
 	 * A convenience method to create an OBJ_PATH "equal to" expression.
 	 */
 	public static Expression matchExp(String pathSpec, Object value) {
-		return new ASTEqual(new ASTObjPath(pathSpec), value);
+		return matchExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#matchExp(String, Object)
+	 */
+	static Expression matchExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTEqual((SimpleNode)exp, value);
 	}
 
 	/**
 	 * A convenience method to create an OBJ_PATH "not equal to" expression.
 	 */
 	public static Expression noMatchExp(String pathSpec, Object value) {
-		return new ASTNotEqual(new ASTObjPath(pathSpec), value);
+		return noMatchExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#noMatchExp(String, Object)
+	 */
+	static Expression noMatchExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotEqual((SimpleNode)exp, value);
 	}
 
 	/**
 	 * A convenience method to create an OBJ_PATH "less than" expression.
 	 */
 	public static Expression lessExp(String pathSpec, Object value) {
-		return new ASTLess(new ASTObjPath(pathSpec), value);
+		return lessExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#lessExp(String, Object)
+	 */
+	static Expression lessExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTLess((SimpleNode)exp, value);
 	}
 
 	/**
@@ -417,7 +449,18 @@ public class ExpressionFactory {
 	 * expression.
 	 */
 	public static Expression lessOrEqualExp(String pathSpec, Object value) {
-		return new ASTLessOrEqual(new ASTObjPath(pathSpec), value);
+		return lessOrEqualExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#lessOrEqualExp(String, Object)
+	 */
+	static Expression lessOrEqualExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTLessOrEqual((SimpleNode)exp, value);
 	}
 
 	/**
@@ -434,7 +477,18 @@ public class ExpressionFactory {
 	 * A convenience method to create an OBJ_PATH "greater than" expression.
 	 */
 	public static Expression greaterExp(String pathSpec, Object value) {
-		return new ASTGreater(new ASTObjPath(pathSpec), value);
+		return greaterExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#greaterExp(String, Object)
+	 */
+	static Expression greaterExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTGreater((SimpleNode)exp, value);
 	}
 
 	/**
@@ -451,7 +505,18 @@ public class ExpressionFactory {
 	 * expression.
 	 */
 	public static Expression greaterOrEqualExp(String pathSpec, Object value) {
-		return new ASTGreaterOrEqual(new ASTObjPath(pathSpec), value);
+		return greaterOrEqualExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#greaterOrEqualExp(String, Object)
+	 */
+	static Expression greaterOrEqualExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTGreaterOrEqual((SimpleNode)exp, value);
 	}
 
 	/**
@@ -469,10 +534,21 @@ public class ExpressionFactory {
 	 * empty collection.
 	 */
 	public static Expression inExp(String pathSpec, Object... values) {
+		return inExp(new ASTObjPath(pathSpec), values);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#inExp(String, Object[])
+	 */
+	static Expression inExp(Expression exp, Object... values) {
 		if (values.length == 0) {
 			return new ASTFalse();
 		}
-		return new ASTIn(new ASTObjPath(pathSpec), new ASTList(values));
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTIn((SimpleNode)exp, new ASTList(values));
 	}
 
 	/**
@@ -491,10 +567,21 @@ public class ExpressionFactory {
 	 * empty collection.
 	 */
 	public static Expression inExp(String pathSpec, Collection<?> values) {
+		return inExp(new ASTObjPath(pathSpec), values);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#inExp(String, Collection)
+	 */
+	static Expression inExp(Expression exp, Collection<?> values) {
 		if (values.isEmpty()) {
 			return new ASTFalse();
 		}
-		return new ASTIn(new ASTObjPath(pathSpec), new ASTList(values));
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTIn((SimpleNode)exp, new ASTList(values));
 	}
 
 	/**
@@ -513,10 +600,21 @@ public class ExpressionFactory {
 	 * empty collection.
 	 */
 	public static Expression notInExp(String pathSpec, Collection<?> values) {
+		return notInExp(new ASTObjPath(pathSpec), values);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notInExp(String, Collection)
+	 */
+	static Expression notInExp(Expression exp, Collection<?> values) {
 		if (values.isEmpty()) {
-			return new ASTTrue();
+			return new ASTFalse();
 		}
-		return new ASTNotIn(new ASTObjPath(pathSpec), new ASTList(values));
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotIn((SimpleNode)exp, new ASTList(values));
 	}
 
 	/**
@@ -539,10 +637,21 @@ public class ExpressionFactory {
 	 * @since 1.0.6
 	 */
 	public static Expression notInExp(String pathSpec, Object... values) {
+		return notInExp(new ASTObjPath(pathSpec), values);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notInExp(String, Object[])
+	 */
+	static Expression notInExp(Expression exp, Object... values) {
 		if (values.length == 0) {
 			return new ASTTrue();
 		}
-		return new ASTNotIn(new ASTObjPath(pathSpec), new ASTList(values));
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotIn((SimpleNode)exp, new ASTList(values));
 	}
 
 	/**
@@ -562,7 +671,18 @@ public class ExpressionFactory {
 	 * A convenience shortcut for building BETWEEN expressions.
 	 */
 	public static Expression betweenExp(String pathSpec, Object value1, Object value2) {
-		return new ASTBetween(new ASTObjPath(pathSpec), value1, value2);
+		return betweenExp(new ASTObjPath(pathSpec), value1, value2);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#betweenExp(String, Object, Object)
+	 */
+	static Expression betweenExp(Expression exp, Object value1, Object value2) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTBetween((SimpleNode)exp, value1, value2);
 	}
 
 	/**
@@ -578,7 +698,18 @@ public class ExpressionFactory {
 	 * A convenience shortcut for building NOT_BETWEEN expressions.
 	 */
 	public static Expression notBetweenExp(String pathSpec, Object value1, Object value2) {
-		return new ASTNotBetween(new ASTObjPath(pathSpec), value1, value2);
+		return notBetweenExp(new ASTObjPath(pathSpec), value1, value2);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notBetweenExp(String, Object, Object)
+	 */
+	static Expression notBetweenExp(Expression exp, Object value1, Object value2) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotBetween((SimpleNode)exp, value1, value2);
 	}
 
 	/**
@@ -598,6 +729,14 @@ public class ExpressionFactory {
 	}
 
 	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#likeExp(String, Object)
+	 */
+	static Expression likeExp(Expression exp, Object value) {
+		return likeExpInternal(exp, value, (char) 0);
+	}
+
+	/**
 	 * <p>
 	 * A convenience shortcut for building LIKE expression.
 	 * </p>
@@ -613,8 +752,23 @@ public class ExpressionFactory {
 		return likeExpInternal(pathSpec, value, escapeChar);
 	}
 
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#likeExp(String, Object)
+	 */
+	static Expression likeExp(Expression exp, Object value, char escapeChar) {
+		return likeExpInternal(exp, value, escapeChar);
+	}
+
 	static ASTLike likeExpInternal(String pathSpec, Object value, char escapeChar) {
-		return new ASTLike(new ASTObjPath(pathSpec), value, escapeChar);
+		return likeExpInternal(new ASTObjPath(pathSpec), value, escapeChar);
+	}
+
+	static ASTLike likeExpInternal(Expression expression, Object value, char escapeChar) {
+		if(!(expression instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTLike((SimpleNode) expression, value, escapeChar);
 	}
 
 	/**
@@ -646,7 +800,18 @@ public class ExpressionFactory {
 	 * A convenience shortcut for building NOT_LIKE expression.
 	 */
 	public static Expression notLikeExp(String pathSpec, Object value) {
-		return new ASTNotLike(new ASTObjPath(pathSpec), value);
+		return notLikeExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notLikeExp(String, Object)
+	 */
+	static Expression notLikeExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotLike((SimpleNode)exp, value);
 	}
 
 	/**
@@ -662,7 +827,18 @@ public class ExpressionFactory {
 	 * @since 3.0.1
 	 */
 	public static Expression notLikeExp(String pathSpec, Object value, char escapeChar) {
-		return new ASTNotLike(new ASTObjPath(pathSpec), value, escapeChar);
+		return notLikeExp(new ASTObjPath(pathSpec), value, escapeChar);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notLikeExp(String, Object)
+	 */
+	static Expression notLikeExp(Expression exp, Object value, char escapeChar) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotLike((SimpleNode)exp, value, escapeChar);
 	}
 
 	/**
@@ -698,6 +874,14 @@ public class ExpressionFactory {
 	}
 
 	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#likeIgnoreCaseExp(String, Object)
+	 */
+	static Expression likeIgnoreCaseExp(Expression exp, Object value) {
+		return likeIgnoreCaseExp(exp, value, (char) 0);
+	}
+
+	/**
 	 * <p>
 	 * A convenience shortcut for building LIKE_IGNORE_CASE expression.
 	 * </p>
@@ -714,7 +898,14 @@ public class ExpressionFactory {
 	}
 
 	static ASTLikeIgnoreCase likeIgnoreCaseExpInternal(String pathSpec, Object value, char escapeChar) {
-		return new ASTLikeIgnoreCase(new ASTObjPath(pathSpec), value, escapeChar);
+		return likeIgnoreCaseExp(new ASTObjPath(pathSpec), value, escapeChar);
+	}
+
+	static ASTLikeIgnoreCase likeIgnoreCaseExp(Expression exp, Object value, char escapeChar) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTLikeIgnoreCase((SimpleNode) exp, value, escapeChar);
 	}
 
 	/**
@@ -746,7 +937,18 @@ public class ExpressionFactory {
 	 * A convenience shortcut for building NOT_LIKE_IGNORE_CASE expression.
 	 */
 	public static Expression notLikeIgnoreCaseExp(String pathSpec, Object value) {
-		return new ASTNotLikeIgnoreCase(new ASTObjPath(pathSpec), value);
+		return notLikeIgnoreCaseExp(new ASTObjPath(pathSpec), value);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notLikeIgnoreCaseExp(String, Object)
+	 */
+	static Expression notLikeIgnoreCaseExp(Expression exp, Object value) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotLikeIgnoreCase((SimpleNode)exp, value);
 	}
 
 	/**
@@ -762,7 +964,18 @@ public class ExpressionFactory {
 	 * @since 3.0.1
 	 */
 	public static Expression notLikeIgnoreCaseExp(String pathSpec, Object value, char escapeChar) {
-		return new ASTNotLikeIgnoreCase(new ASTObjPath(pathSpec), value, escapeChar);
+		return notLikeIgnoreCaseExp(new ASTObjPath(pathSpec), value, escapeChar);
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#notLikeIgnoreCaseExp(String, Object, char)
+	 */
+	static Expression notLikeIgnoreCaseExp(Expression exp, Object value, char escapeChar) {
+		if(!(exp instanceof SimpleNode)) {
+			throw new IllegalArgumentException("exp should be instance of SimpleNode");
+		}
+		return new ASTNotLikeIgnoreCase((SimpleNode)exp, value, escapeChar);
 	}
 
 	/**
@@ -802,6 +1015,16 @@ public class ExpressionFactory {
 	}
 
 	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#containsExp(String, String)
+	 */
+	static Expression containsExp(Expression exp, String value) {
+		ASTLike like = likeExpInternal(exp, value, (char) 0);
+		LikeExpressionHelper.toContains(like);
+		return like;
+	}
+
+	/**
 	 * @return An expression for a database "LIKE" query with the value
 	 *         converted to a pattern matching the beginning of the String.
 	 * @since 4.0
@@ -813,12 +1036,32 @@ public class ExpressionFactory {
 	}
 
 	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#startsWithExp(String, String)
+	 */
+	static Expression startsWithExp(Expression exp, String value) {
+		ASTLike like = likeExpInternal(exp, value, (char) 0);
+		LikeExpressionHelper.toStartsWith(like);
+		return like;
+	}
+
+	/**
 	 * @return An expression for a database "LIKE" query with the value
 	 *         converted to a pattern matching the beginning of the String.
 	 * @since 4.0
 	 */
 	public static Expression endsWithExp(String pathSpec, String value) {
 		ASTLike like = likeExpInternal(pathSpec, value, (char) 0);
+		LikeExpressionHelper.toEndsWith(like);
+		return like;
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#endsWithExp(String, String)
+	 */
+	static Expression endsWithExp(Expression exp, String value) {
+		ASTLike like = likeExpInternal(exp, value, (char) 0);
 		LikeExpressionHelper.toEndsWith(like);
 		return like;
 	}
@@ -836,6 +1079,16 @@ public class ExpressionFactory {
 	}
 
 	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#containsIgnoreCaseExp(String, String)
+	 */
+	static Expression containsIgnoreCaseExp(Expression exp, String value) {
+		ASTLikeIgnoreCase like = likeIgnoreCaseExp(exp, value, (char) 0);
+		LikeExpressionHelper.toContains(like);
+		return like;
+	}
+
+	/**
 	 * Same as {@link #startsWithExp(String, String)} only using
 	 * case-insensitive comparison.
 	 * 
@@ -848,6 +1101,16 @@ public class ExpressionFactory {
 	}
 
 	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#startsWithIgnoreCaseExp(String, String)
+	 */
+	static Expression startsWithIgnoreCaseExp(Expression exp, String value) {
+		ASTLikeIgnoreCase like = likeIgnoreCaseExp(exp, value, (char) 0);
+		LikeExpressionHelper.toStartsWith(like);
+		return like;
+	}
+
+	/**
 	 * Same as {@link #endsWithExp(String, String)} only using case-insensitive
 	 * comparison.
 	 * 
@@ -855,6 +1118,16 @@ public class ExpressionFactory {
 	 */
 	public static Expression endsWithIgnoreCaseExp(String pathSpec, String value) {
 		ASTLikeIgnoreCase like = likeIgnoreCaseExpInternal(pathSpec, value, (char) 0);
+		LikeExpressionHelper.toEndsWith(like);
+		return like;
+	}
+
+	/**
+	 * @since 4.0
+	 * @see ExpressionFactory#endsWithIgnoreCaseExp(String, String)
+	 */
+	static Expression endsWithIgnoreCaseExp(Expression exp, String value) {
+		ASTLikeIgnoreCase like = likeIgnoreCaseExp(exp, value, (char) 0);
 		LikeExpressionHelper.toEndsWith(like);
 		return like;
 	}
@@ -963,7 +1236,7 @@ public class ExpressionFactory {
 			return expFalse();
 		}
 
-		List<Expression> pairs = new ArrayList<Expression>(objects.length);
+		List<Expression> pairs = new ArrayList<>(objects.length);
 
 		for (Persistent object : objects) {
 			pairs.add(matchExp(object));

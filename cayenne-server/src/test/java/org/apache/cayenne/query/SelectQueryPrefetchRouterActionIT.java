@@ -20,7 +20,6 @@
 package org.apache.cayenne.query;
 
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.exp.ExpressionFactory;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjEntity;
@@ -45,7 +44,7 @@ public class SelectQueryPrefetchRouterActionIT extends ServerCase {
     public void testPaintings1() {
         ObjEntity paintingEntity = resolver.getObjEntity(Painting.class);
         SelectQuery q = new SelectQuery(Artist.class, ExpressionFactory.matchExp("artistName", "abc"));
-        q.addPrefetch(Artist.PAINTING_ARRAY_PROPERTY);
+        q.addPrefetch(Artist.PAINTING_ARRAY.disjoint());
 
         SelectQueryPrefetchRouterAction action = new SelectQueryPrefetchRouterAction();
 
@@ -56,15 +55,15 @@ public class SelectQueryPrefetchRouterActionIT extends ServerCase {
         PrefetchSelectQuery prefetch = (PrefetchSelectQuery) router.getQueries().get(0);
 
         assertSame(paintingEntity, prefetch.getRoot());
-        assertEquals(Expression.fromString("db:toArtist.ARTIST_NAME = 'abc'"), prefetch.getQualifier());
+        assertEquals(ExpressionFactory.exp("db:toArtist.ARTIST_NAME = 'abc'"), prefetch.getQualifier());
     }
 
     @Test
     public void testPrefetchPaintings2() {
         ObjEntity paintingEntity = resolver.getObjEntity(Painting.class);
 
-        SelectQuery q = new SelectQuery(Artist.class, Expression.fromString("artistName = 'abc' or artistName = 'xyz'"));
-        q.addPrefetch(Artist.PAINTING_ARRAY_PROPERTY);
+        SelectQuery<Artist> q = new SelectQuery<>(Artist.class, ExpressionFactory.exp("artistName = 'abc' or artistName = 'xyz'"));
+        q.addPrefetch(Artist.PAINTING_ARRAY.disjoint());
 
         SelectQueryPrefetchRouterAction action = new SelectQueryPrefetchRouterAction();
 
@@ -74,7 +73,7 @@ public class SelectQueryPrefetchRouterActionIT extends ServerCase {
 
         PrefetchSelectQuery prefetch = (PrefetchSelectQuery) router.getQueries().get(0);
         assertSame(paintingEntity, prefetch.getRoot());
-        assertEquals(Expression.fromString("db:toArtist.ARTIST_NAME = 'abc' or db:toArtist.ARTIST_NAME = 'xyz'"),
+        assertEquals(ExpressionFactory.exp("db:toArtist.ARTIST_NAME = 'abc' or db:toArtist.ARTIST_NAME = 'xyz'"),
                 prefetch.getQualifier());
     }
 
@@ -93,6 +92,6 @@ public class SelectQueryPrefetchRouterActionIT extends ServerCase {
         PrefetchSelectQuery prefetch = (PrefetchSelectQuery) router.getQueries().get(0);
 
         assertSame(galleryEntity, prefetch.getRoot());
-        assertEquals(Expression.fromString("db:paintingArray.toArtist.ARTIST_NAME = 'abc'"), prefetch.getQualifier());
+        assertEquals(ExpressionFactory.exp("db:paintingArray.toArtist.ARTIST_NAME = 'abc'"), prefetch.getQualifier());
     }
 }

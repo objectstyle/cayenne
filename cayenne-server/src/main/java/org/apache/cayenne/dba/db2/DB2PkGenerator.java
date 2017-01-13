@@ -18,6 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.dba.db2;
 
+import org.apache.cayenne.CayenneRuntimeException;
+import org.apache.cayenne.access.DataNode;
+import org.apache.cayenne.dba.JdbcAdapter;
+import org.apache.cayenne.dba.JdbcPkGenerator;
+import org.apache.cayenne.map.DataMap;
+import org.apache.cayenne.map.DbEntity;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,13 +33,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
-import org.apache.cayenne.CayenneRuntimeException;
-import org.apache.cayenne.access.DataNode;
-import org.apache.cayenne.dba.JdbcAdapter;
-import org.apache.cayenne.dba.JdbcPkGenerator;
-import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.map.DbEntity;
 
 /**
  * A sequence-based PK generator used by {@link DB2Adapter}.
@@ -52,15 +52,11 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 	protected long longPkFromDatabase(DataNode node, DbEntity entity) throws Exception {
 
 		String pkGeneratingSequenceName = sequenceName(entity);
-
-		try (Connection con = node.getDataSource().getConnection();) {
-
-			try (Statement st = con.createStatement();) {
+		try (Connection con = node.getDataSource().getConnection()) {
+			try (Statement st = con.createStatement()) {
 				String sql = "SELECT NEXTVAL FOR " + pkGeneratingSequenceName + " FROM SYSIBM.SYSDUMMY1";
 				adapter.getJdbcEventLogger().logQuery(sql, Collections.EMPTY_LIST);
-
-				try (ResultSet rs = st.executeQuery(sql);) {
-					// Object pk = null;
+				try (ResultSet rs = st.executeQuery(sql)) {
 					if (!rs.next()) {
 						throw new CayenneRuntimeException("Error generating pk for DbEntity " + entity.getName());
 					}
@@ -85,7 +81,7 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 	 */
 	@Override
 	public List<String> createAutoPkStatements(List<DbEntity> dbEntities) {
-		List<String> list = new ArrayList<String>(dbEntities.size());
+		List<String> list = new ArrayList<>(dbEntities.size());
 		for (DbEntity entity : dbEntities) {
 			list.add(createSequenceString(entity));
 		}
@@ -112,7 +108,7 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 				name = sequenceName(ent);
 			}
 			if (sequences.contains(name)) {
-				runUpdate(node, dropSequenceString(ent));
+				runUpdate(node, dropSequenceSql(ent));
 			}
 		}
 	}
@@ -122,9 +118,9 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 	 */
 	@Override
 	public List<String> dropAutoPkStatements(List<DbEntity> dbEntities) {
-		List<String> list = new ArrayList<String>(dbEntities.size());
+		List<String> list = new ArrayList<>(dbEntities.size());
 		for (DbEntity entity : dbEntities) {
-			list.add(dropSequenceString(entity));
+			list.add(dropSequenceSql(entity));
 		}
 		return list;
 	}
@@ -137,20 +133,15 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 
 		// check existing sequences
 
-		try (Connection con = node.getDataSource().getConnection();) {
-
-			try (Statement sel = con.createStatement();) {
-				StringBuilder buffer = new StringBuilder();
-				buffer.append("SELECT SEQNAME FROM SYSCAT.SEQUENCES ").append("WHERE SEQNAME LIKE '")
-						.append(_SEQUENCE_PREFIX).append("%'");
-
-				String sql = buffer.toString();
+		try (Connection con = node.getDataSource().getConnection()) {
+			try (Statement sel = con.createStatement()) {
+				String sql = "SELECT SEQNAME FROM SYSCAT.SEQUENCES WHERE SEQNAME LIKE '" + _SEQUENCE_PREFIX + "%'";
 				adapter.getJdbcEventLogger().logQuery(sql, Collections.EMPTY_LIST);
 
-				try (ResultSet rs = sel.executeQuery(sql);) {
-					List<String> sequenceList = new ArrayList<String>();
+				try (ResultSet rs = sel.executeQuery(sql)) {
+					List<String> sequenceList = new ArrayList<>();
 					while (rs.next()) {
-						sequenceList.add(rs.getString(1));
+						sequenceList.add(rs.getString(1).toUpperCase());
 					}
 					return sequenceList;
 				}
@@ -162,7 +153,7 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 	 * Returns default sequence name for DbEntity.
 	 */
 	protected String sequenceName(DbEntity entity) {
-		String entName = entity.getName();
+		String entName = entity.getName().toUpperCase();
 		String seqName = _SEQUENCE_PREFIX + entName;
 
 		return adapter.getQuotingStrategy().quotedIdentifier(entity, entity.getCatalog(), entity.getSchema(), seqName);
@@ -171,7 +162,7 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 	/**
 	 * Returns DROP SEQUENCE statement.
 	 */
-	protected String dropSequenceString(DbEntity entity) {
+	protected String dropSequenceSql(DbEntity entity) {
 		return "DROP SEQUENCE " + sequenceName(entity) + " RESTRICT ";
 	}
 
@@ -180,7 +171,7 @@ public class DB2PkGenerator extends JdbcPkGenerator {
 	 */
 	protected String createSequenceString(DbEntity entity) {
 		StringBuilder buf = new StringBuilder();
-		buf.append("CREATE SEQUENCE ").append(sequenceName(entity)).append(" START WITH ").append(pkStartValue)
+		buf.append("CREATE SEQUENCE ").append(sequenceName(entity)).append(" AS BIGINT START WITH ").append(pkStartValue)
 				.append(" INCREMENT BY ").append(getPkCacheSize()).append(" NO MAXVALUE ").append(" NO CYCLE ")
 				.append(" CACHE ").append(getPkCacheSize());
 		return buf.toString();

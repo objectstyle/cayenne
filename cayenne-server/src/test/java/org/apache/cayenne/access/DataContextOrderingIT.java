@@ -18,10 +18,12 @@
  ****************************************************************/
 package org.apache.cayenne.access;
 
+import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.exp.ExpressionFactory;
+import org.apache.cayenne.exp.Expression;
+import org.apache.cayenne.exp.FunctionExpressionFactory;
+import org.apache.cayenne.exp.Property;
 import org.apache.cayenne.query.SelectQuery;
-import org.apache.cayenne.query.SortOrder;
 import org.apache.cayenne.testdo.testmap.Artist;
 import org.apache.cayenne.testdo.testmap.Painting;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
@@ -63,11 +65,11 @@ public class DataContextOrderingIT extends ServerCase {
 
         context.commitChanges();
 
-        SelectQuery query = new SelectQuery(Artist.class);
-        query.addOrdering(Artist.ARTIST_NAME_PROPERTY, SortOrder.DESCENDING);
-        query.addOrdering(Artist.DATE_OF_BIRTH_PROPERTY, SortOrder.DESCENDING);
+        SelectQuery<Artist> query = new SelectQuery<>(Artist.class);
+        query.addOrdering(Artist.ARTIST_NAME.desc());
+        query.addOrdering(Artist.DATE_OF_BIRTH.desc());
 
-        List<Artist> list = context.performQuery(query);
+        List<Artist> list = query.select(context);
         assertEquals(3, list.size());
         assertSame(a2, list.get(0));
         assertSame(a3, list.get(1));
@@ -105,16 +107,50 @@ public class DataContextOrderingIT extends ServerCase {
 
         context.commitChanges();
 
-        SelectQuery query1 = new SelectQuery(Artist.class);
+        SelectQuery<Artist> query1 = new SelectQuery<>(Artist.class);
 
         // per CAY-1074, adding a to-many join to expression messes up the ordering
-        query1.andQualifier(ExpressionFactory.noMatchExp(
-                Artist.PAINTING_ARRAY_PROPERTY,
-                null));
-        query1.addOrdering(Artist.ARTIST_NAME_PROPERTY, SortOrder.DESCENDING);
-        query1.addOrdering(Artist.DATE_OF_BIRTH_PROPERTY, SortOrder.DESCENDING);
+        query1.andQualifier(Artist.PAINTING_ARRAY.ne((List<Painting>) null));
+        query1.addOrdering(Artist.ARTIST_NAME.desc());
+        query1.addOrdering(Artist.DATE_OF_BIRTH.desc());
 
-        List<Artist> list1 = context.performQuery(query1);
+        List<Artist> list1 = query1.select(context);
         assertEquals(2, list1.size());
+    }
+
+    /**
+     * For now Ordering doesn't support custom expression
+     */
+    @Test(expected = CayenneRuntimeException.class)
+    public void testCustomPropertySort() throws Exception {
+        Calendar c = Calendar.getInstance();
+
+        Artist a1 = context.newObject(Artist.class);
+        a1.setArtistName("31");
+        a1.setDateOfBirth(c.getTime());
+
+        c.add(Calendar.DAY_OF_MONTH, -1);
+        Artist a2 = context.newObject(Artist.class);
+        a2.setArtistName("22");
+        a2.setDateOfBirth(c.getTime());
+
+        c.add(Calendar.DAY_OF_MONTH, -1);
+        Artist a3 = context.newObject(Artist.class);
+        a3.setArtistName("13");
+        a3.setDateOfBirth(c.getTime());
+
+        context.commitChanges();
+
+        Expression exp = FunctionExpressionFactory.substringExp(Artist.ARTIST_NAME.path(), 2, 1);
+        Property<String> nameSubstr = Property.create("name", exp, String.class);
+
+        SelectQuery<Artist> query = new SelectQuery<>(Artist.class);
+        query.addOrdering(nameSubstr.desc());
+
+        List<Artist> list = query.select(context);
+        assertEquals(3, list.size());
+        assertSame(a3, list.get(0));
+        assertSame(a2, list.get(1));
+        assertSame(a1, list.get(2));
     }
 }

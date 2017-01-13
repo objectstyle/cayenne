@@ -13,18 +13,27 @@ Date:
 ----------------------------------
 Changes/New Features:
 
+CAY-2139 Upgrade HSQLDB dependency to the most recent version (2.3.4)
 CAY-2163 Property.path() , ExpressionFactory.pathExp()
 CAY-2164 Relocate builder bootstrap methods from ServerRuntimeBuilder to ServerRuntime
 CAY-2165 Explicit "contribution" API for easier expansion of DI collections and maps
 CAY-2166 Auto-loading of Cayenne modules
 CAY-2168 Split DbLoader to parts and clean it up
 CAY-2169 Split DbMerger to parts and clean it up
+CAY-2170 MergeToken sorting is highly unstable
+CAY-2172 Cleanup Modeler import and migrate db actions
+CAY-2176 Java 7 diamond class generation templates
+CAY-2177 Sync auto generated state of PK between model and DB
+CAY-2197 Update sqlite version and enable in-memory default config
 
 Bug Fixes:
 
+CAY-2174 Change FK attribute name cause ObjAttribute appear after Reverse Engineering
+CAY-2175 AliasName used in EJBQLQuery is not working if it contains mixed case
+
 ----------------------------------
 Release: 4.0.M4
-Date:
+Date: December 13, 2016
 ----------------------------------
 Changes/New Features:
 
@@ -96,7 +105,7 @@ CAY-2154 Migrate db: queries order
 
 ----------------------------------
 Release: 4.0.M3
-Date:
+Date: February 12, 2016
 ----------------------------------
 Changes/New Features:
 

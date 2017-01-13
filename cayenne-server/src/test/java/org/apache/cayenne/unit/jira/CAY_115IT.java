@@ -22,8 +22,8 @@ package org.apache.cayenne.unit.jira;
 import org.apache.cayenne.access.DataContext;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.exp.Expression;
+import org.apache.cayenne.exp.ExpressionFactory;
 import org.apache.cayenne.query.SelectQuery;
-import org.apache.cayenne.query.SortOrder;
 import org.apache.cayenne.test.jdbc.DBHelper;
 import org.apache.cayenne.test.jdbc.TableHelper;
 import org.apache.cayenne.testdo.relationships_clob.ClobMaster;
@@ -89,11 +89,11 @@ public class CAY_115IT extends ServerCase {
         createDistinctClobFetchDataSet();
 
         SelectQuery noDistinct = new SelectQuery(ClobMaster.class);
-        noDistinct.addOrdering(ClobMaster.NAME_PROPERTY, SortOrder.ASCENDING);
+        noDistinct.addOrdering(ClobMaster.NAME.asc());
 
         SelectQuery distinct = new SelectQuery(ClobMaster.class);
         distinct.setDistinct(true);
-        distinct.addOrdering(ClobMaster.NAME_PROPERTY, SortOrder.ASCENDING);
+        distinct.addOrdering(ClobMaster.NAME.asc());
 
         List<?> noDistinctResult = context.performQuery(noDistinct);
         List<?> distinctResult = context.performQuery(distinct);
@@ -110,7 +110,7 @@ public class CAY_115IT extends ServerCase {
 
         createDistinctClobFetchWithToManyJoin();
 
-        Expression qual = Expression.fromString("details.name like 'cd%'");
+        Expression qual = ExpressionFactory.exp("details.name like 'cd%'");
         SelectQuery query = new SelectQuery(ClobMaster.class, qual);
         List<?> result = context.performQuery(query);
 

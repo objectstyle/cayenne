@@ -30,7 +30,6 @@ import org.apache.cayenne.Persistent;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.query.SelectQuery;
-import org.apache.cayenne.query.SortOrder;
 import org.apache.cayenne.test.jdbc.DBHelper;
 import org.apache.cayenne.test.jdbc.TableHelper;
 import org.apache.cayenne.testdo.testmap.Artist;
@@ -48,13 +47,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @UseServerRuntime(CayenneProjects.TESTMAP_PROJECT)
 public class NestedDataContextReadIT extends ServerCase {
@@ -170,19 +163,20 @@ public class NestedDataContextReadIT extends ServerCase {
         assertEquals(PersistenceState.DELETED, deleted.getPersistenceState());
         assertEquals(PersistenceState.NEW, _new.getPersistenceState());
 
-        List<?> objects = child.performQuery(new SelectQuery(Artist.class));
+        List<Artist> objects = child.performQuery(new SelectQuery(Artist.class));
         assertEquals("All but NEW object must have been included", 4, objects.size());
 
         Iterator<?> it = objects.iterator();
-        while (it.hasNext()) {
-            DataObject next = (DataObject) it.next();
+
+        for (Artist next : objects) {
             assertEquals(PersistenceState.COMMITTED, next.getPersistenceState());
 
             int id = Cayenne.intPKForObject(next);
             if (id == 33003) {
-                assertEquals("MODDED", next.readProperty(Artist.ARTIST_NAME_PROPERTY));
+                assertEquals("MODDED", next.getArtistName());
             }
         }
+
     }
 
     @Test
@@ -245,7 +239,7 @@ public class NestedDataContextReadIT extends ServerCase {
 
         // run an ordered query, so we can address specific objects directly by index
         SelectQuery q = new SelectQuery(Painting.class);
-        q.addOrdering(Painting.PAINTING_TITLE_PROPERTY, SortOrder.ASCENDING);
+        q.addOrdering(Painting.PAINTING_TITLE.asc());
         final List<?> childSources = child.performQuery(q);
         assertEquals(5, childSources.size());
 
@@ -311,8 +305,8 @@ public class NestedDataContextReadIT extends ServerCase {
                 new Integer(33001));
 
         SelectQuery q = new SelectQuery(Painting.class);
-        q.addOrdering(Painting.PAINTING_TITLE_PROPERTY, SortOrder.ASCENDING);
-        q.addPrefetch(Painting.TO_ARTIST_PROPERTY);
+        q.addOrdering(Painting.PAINTING_TITLE.asc());
+        q.addPrefetch(Painting.TO_ARTIST.disjoint());
 
         final List<?> results = child.performQuery(q);
 
@@ -345,8 +339,8 @@ public class NestedDataContextReadIT extends ServerCase {
         final ObjectContext child = runtime.newContext(context);
 
         SelectQuery q = new SelectQuery(Artist.class);
-        q.addOrdering(Artist.ARTIST_NAME_PROPERTY, SortOrder.ASCENDING);
-        q.addPrefetch(Artist.PAINTING_ARRAY_PROPERTY);
+        q.addOrdering(Artist.ARTIST_NAME.asc());
+        q.addPrefetch(Artist.PAINTING_ARRAY.disjoint());
 
         final List<?> results = child.performQuery(q);
 

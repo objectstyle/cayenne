@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
@@ -33,12 +34,18 @@ import org.apache.cayenne.ResultIterator;
 import org.apache.cayenne.ResultIteratorCallback;
 import org.apache.cayenne.access.DataContext;
 import org.apache.cayenne.di.Inject;
+import org.apache.cayenne.exp.Expression;
+import org.apache.cayenne.exp.FunctionExpressionFactory;
+import org.apache.cayenne.exp.Property;
+import org.apache.cayenne.exp.parser.ASTScalar;
 import org.apache.cayenne.test.jdbc.DBHelper;
 import org.apache.cayenne.test.jdbc.TableHelper;
 import org.apache.cayenne.testdo.testmap.Artist;
+import org.apache.cayenne.testdo.testmap.Painting;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
+import org.junit.Before;
 import org.junit.Test;
 
 @UseServerRuntime(CayenneProjects.TESTMAP_PROJECT)
@@ -50,22 +57,29 @@ public class ObjectSelect_RunIT extends ServerCase {
 	@Inject
 	private DBHelper dbHelper;
 
-	protected void createArtistsDataSet() throws Exception {
+	@Before
+	public void createArtistsDataSet() throws Exception {
 		TableHelper tArtist = new TableHelper(dbHelper, "ARTIST");
 		tArtist.setColumns("ARTIST_ID", "ARTIST_NAME", "DATE_OF_BIRTH");
 
 		long dateBase = System.currentTimeMillis();
-
 		for (int i = 1; i <= 20; i++) {
 			tArtist.insert(i, "artist" + i, new java.sql.Date(dateBase + 10000 * i));
+		}
+
+		TableHelper tGallery = new TableHelper(dbHelper, "GALLERY");
+		tGallery.setColumns("GALLERY_ID", "GALLERY_NAME");
+		tGallery.insert(1, "tate modern");
+
+		TableHelper tPaintings = new TableHelper(dbHelper, "PAINTING");
+		tPaintings.setColumns("PAINTING_ID", "PAINTING_TITLE", "ARTIST_ID", "GALLERY_ID");
+		for (int i = 1; i <= 20; i++) {
+			tPaintings.insert(i, "painting" + i, i % 5 + 1, 1);
 		}
 	}
 
 	@Test
 	public void test_SelectObjects() throws Exception {
-
-		createArtistsDataSet();
-
 		List<Artist> result = ObjectSelect.query(Artist.class).select(context);
 		assertEquals(20, result.size());
 		assertThat(result.get(0), instanceOf(Artist.class));
@@ -77,8 +91,6 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_Iterate() throws Exception {
-		createArtistsDataSet();
-
 		final int[] count = new int[1];
 		ObjectSelect.query(Artist.class).iterate(context, new ResultIteratorCallback<Artist>() {
 
@@ -94,8 +106,6 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_Iterator() throws Exception {
-		createArtistsDataSet();
-
 		try (ResultIterator<Artist> it = ObjectSelect.query(Artist.class).iterator(context)) {
 			int count = 0;
 
@@ -109,8 +119,6 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_BatchIterator() throws Exception {
-		createArtistsDataSet();
-
 		try (ResultBatchIterator<Artist> it = ObjectSelect.query(Artist.class).batchIterator(context, 5);) {
 			int count = 0;
 
@@ -125,9 +133,6 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_SelectDataRows() throws Exception {
-
-		createArtistsDataSet();
-
 		List<DataRow> result = ObjectSelect.dataRowQuery(Artist.class).select(context);
 		assertEquals(20, result.size());
 		assertThat(result.get(0), instanceOf(DataRow.class));
@@ -139,8 +144,6 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_SelectOne() throws Exception {
-		createArtistsDataSet();
-
 		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist13")).selectOne(context);
 		assertNotNull(a);
 		assertEquals("artist13", a.getArtistName());
@@ -148,20 +151,17 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_SelectOne_NoMatch() throws Exception {
-		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist13")).selectOne(context);
+		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist33")).selectOne(context);
 		assertNull(a);
 	}
 
 	@Test(expected = CayenneRuntimeException.class)
 	public void test_SelectOne_MoreThanOneMatch() throws Exception {
-		createArtistsDataSet();
 		ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.like("artist%")).selectOne(context);
 	}
 
 	@Test
 	public void test_SelectFirst() throws Exception {
-		createArtistsDataSet();
-
 		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist13")).selectFirst(context);
 		assertNotNull(a);
 		assertEquals("artist13", a.getArtistName());
@@ -169,8 +169,6 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_SelectFirstByContext() throws Exception {
-		createArtistsDataSet();
-
 		ObjectSelect<Artist> q = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist13"));
 		Artist a = context.selectFirst(q);
 		assertNotNull(a);
@@ -179,17 +177,119 @@ public class ObjectSelect_RunIT extends ServerCase {
 
 	@Test
 	public void test_SelectFirst_NoMatch() throws Exception {
-		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist13")).selectFirst(context);
+		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.eq("artist33")).selectFirst(context);
 		assertNull(a);
 	}
 
 	@Test
 	public void test_SelectFirst_MoreThanOneMatch() throws Exception {
-		createArtistsDataSet();
-
-		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.like("artist%")).orderBy("db:ARTIST_ID")
-				.selectFirst(context);
+		Artist a = ObjectSelect.query(Artist.class).where(Artist.ARTIST_NAME.like("artist%"))
+				.orderBy("db:ARTIST_ID").selectFirst(context);
 		assertNotNull(a);
 		assertEquals("artist1", a.getArtistName());
+	}
+
+	@Test
+	public void test_SelectFirst_TrimInWhere() throws Exception {
+		Expression exp = FunctionExpressionFactory.trimExp(Artist.ARTIST_NAME.path());
+		Property<String> trimmedName = Property.create("trimmed", exp, String.class);
+		Artist a = ObjectSelect.query(Artist.class).where(trimmedName.likeIgnoreCase("artist%"))
+				.orderBy("db:ARTIST_ID").selectFirst(context);
+		assertNotNull(a);
+		assertEquals("artist1", a.getArtistName());
+	}
+
+	@Test
+	public void test_SelectFirst_SubstringInWhere() throws Exception {
+		Expression exp = FunctionExpressionFactory.substringExp(Artist.ARTIST_NAME.path(), 2, 3);
+		Property<String> substrName = Property.create("substr", exp, String.class);
+		Artist a = ObjectSelect.query(Artist.class).where(substrName.eq("rti"))
+				.orderBy("db:ARTIST_ID").selectFirst(context);
+		assertNotNull(a);
+		assertEquals("artist1", a.getArtistName());
+	}
+
+	@Test
+	public void test_SelectFirst_MultiColumns() throws Exception {
+		Object[] a = ObjectSelect.query(Artist.class)
+				.columns(Artist.ARTIST_NAME, Artist.DATE_OF_BIRTH)
+				.columns(Artist.ARTIST_NAME, Artist.DATE_OF_BIRTH)
+				.columns(Artist.ARTIST_NAME.alias("newName"))
+				.where(Artist.ARTIST_NAME.like("artist%"))
+				.orderBy("db:ARTIST_ID")
+				.selectFirst(context);
+		assertNotNull(a);
+		assertEquals("artist1", a[0]);
+		assertEquals("artist1", a[4]);
+	}
+
+	@SuppressWarnings("ConstantConditions")
+	@Test
+	public void test_SelectFirst_EmptyColumns() throws Exception {
+		Object a = ObjectSelect.query(Artist.class)
+				.columns()
+				.where(Artist.ARTIST_NAME.like("artist%"))
+				.orderBy("db:ARTIST_ID")
+				.selectFirst(context);
+		assertNotNull(a);
+		assertTrue(a instanceof Artist);
+		assertEquals("artist1", ((Artist)a).getArtistName());
+	}
+
+	@Test
+	public void test_SelectFirst_SubstringName() throws Exception {
+		Expression exp = FunctionExpressionFactory.substringExp(Artist.ARTIST_NAME.path(), 5, 3);
+		Property<String> substrName = Property.create("substrName", exp, String.class);
+		Object[] a = ObjectSelect.query(Artist.class)
+				.columns(Artist.ARTIST_NAME, substrName)
+				.where(substrName.eq("st3"))
+				.selectFirst(context);
+
+		assertNotNull(a);
+		assertEquals("artist3", a[0]);
+		assertEquals("st3", a[1]);
+	}
+
+	@Test
+	public void test_SelectFirst_RelColumns() throws Exception {
+		// set shorter than painting_array.paintingTitle alias as some DBs doesn't support dot in alias
+		Property<String> paintingTitle = Artist.PAINTING_ARRAY.dot(Painting.PAINTING_TITLE).alias("paintingTitle");
+
+		Object[] a = ObjectSelect.query(Artist.class)
+				.columns(Artist.ARTIST_NAME, paintingTitle)
+				.orderBy(paintingTitle.asc())
+				.selectFirst(context);
+		assertNotNull(a);
+		assertEquals("painting1", a[1]);
+	}
+
+	@Test
+	public void test_SelectFirst_RelColumn() throws Exception {
+		// set shorter than painting_array.paintingTitle alias as some DBs doesn't support dot in alias
+		Property<String> paintingTitle = Artist.PAINTING_ARRAY.dot(Painting.PAINTING_TITLE).alias("paintingTitle");
+
+		String a = ObjectSelect.query(Artist.class)
+				.column(paintingTitle)
+				.orderBy(paintingTitle.asc())
+				.selectFirst(context);
+		assertNotNull(a);
+		assertEquals("painting1", a);
+	}
+
+	@Test
+	public void test_SelectFirst_RelColumnWithFunction() throws Exception {
+		Property<String> paintingTitle = Artist.PAINTING_ARRAY.dot(Painting.PAINTING_TITLE);
+		Expression exp = FunctionExpressionFactory.substringExp(paintingTitle.path(), 7, 3);
+		exp = FunctionExpressionFactory.concatExp(exp, new ASTScalar(" "), Artist.ARTIST_NAME.path());
+		Property<String> altTitle = Property.create("altTitle", exp, String.class);
+
+		String a = ObjectSelect.query(Artist.class)
+				.column(altTitle)
+				.where(altTitle.like("ng1%"))
+				.and(Artist.ARTIST_NAME.like("%ist1"))
+//				.orderBy(altTitle.asc()) // unsupported for now
+				.selectFirst(context);
+		assertNotNull(a);
+		assertEquals("ng1 artist1", a);
 	}
 }

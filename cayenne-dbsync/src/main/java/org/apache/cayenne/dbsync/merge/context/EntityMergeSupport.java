@@ -159,6 +159,9 @@ public class EntityMergeSupport {
 
         if (shouldAddToObjEntity(entity, dbRelationship)) {
             addMissingRelationship(entity, dbRelationship);
+            if (removingMeaningfulFKs) {
+                getRidOfAttributesThatAreNowSrcAttributesForRelationships(entity);
+            }
         }
 
         return true;
@@ -451,7 +454,7 @@ public class EntityMergeSupport {
     }
 
     private Collection<DbRelationship> getIncomingRelationships(DbEntity entity) {
-        Collection<DbRelationship> incoming = new ArrayList<DbRelationship>();
+        Collection<DbRelationship> incoming = new ArrayList<>();
 
         for (DbEntity nextEntity : entity.getDataMap().getDbEntities()) {
             for (DbRelationship relationship : nextEntity.getRelationships()) {
@@ -472,7 +475,7 @@ public class EntityMergeSupport {
     }
 
     protected List<DbRelationship> getRelationshipsToAdd(ObjEntity objEntity) {
-        List<DbRelationship> missing = new ArrayList<DbRelationship>();
+        List<DbRelationship> missing = new ArrayList<>();
         for (DbRelationship dbRel : objEntity.getDbEntity().getRelationships()) {
             if (shouldAddToObjEntity(objEntity, dbRel)) {
                 missing.add(dbRel);

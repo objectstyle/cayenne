@@ -13,15 +13,10 @@ public abstract class _PrimitivesTestEntity extends CayenneDataObject {
 
     private static final long serialVersionUID = 1L; 
 
-    @Deprecated
-    public static final String BOOLEAN_COLUMN_PROPERTY = "booleanColumn";
-    @Deprecated
-    public static final String INT_COLUMN_PROPERTY = "intColumn";
-
     public static final String ID_PK_COLUMN = "ID";
 
-    public static final Property<Boolean> BOOLEAN_COLUMN = new Property<Boolean>("booleanColumn");
-    public static final Property<Integer> INT_COLUMN = new Property<Integer>("intColumn");
+    public static final Property<Boolean> BOOLEAN_COLUMN = Property.create("booleanColumn", Boolean.class);
+    public static final Property<Integer> INT_COLUMN = Property.create("intColumn", Integer.class);
 
     public void setBooleanColumn(boolean booleanColumn) {
         writeProperty("booleanColumn", booleanColumn);

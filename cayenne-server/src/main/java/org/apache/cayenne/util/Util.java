@@ -312,14 +312,14 @@ public class Util {
 
 		if (keysSize == 0 && valuesSize == 0) {
 			// return mutable map
-			return new HashMap<K, V>();
+			return new HashMap<>();
 		}
 
 		if (keysSize != valuesSize) {
 			throw new IllegalArgumentException("The number of keys doesn't match the number of values.");
 		}
 
-		Map<K, V> map = new HashMap<K, V>();
+		Map<K, V> map = new HashMap<>();
 		for (int i = 0; i < keysSize; i++) {
 			map.put(keys[i], values[i]);
 		}
@@ -459,7 +459,7 @@ public class Util {
 	 * that backs the original iterator.
 	 */
 	public static <T> Iterator<T> sortedIterator(Iterator<T> it, Comparator<T> comparator) {
-		List<T> list = new ArrayList<T>();
+		List<T> list = new ArrayList<>();
 		while (it.hasNext()) {
 			list.add(it.next());
 		}

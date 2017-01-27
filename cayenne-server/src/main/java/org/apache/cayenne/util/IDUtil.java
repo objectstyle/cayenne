@@ -19,16 +19,16 @@
 
 package org.apache.cayenne.util;
 
+import org.apache.cayenne.CayenneRuntimeException;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import org.apache.cayenne.CayenneRuntimeException;
-
 /**
  * helper class to generate pseudo-GUID sequences.
- * 
+ *
  */
 public class IDUtil {
 
@@ -69,7 +69,7 @@ public class IDUtil {
 
     /**
      * Prints a byte value to a StringBuffer as a double digit hex value.
-     * 
+     *
      * @since 1.2 Since 3.0 signature has changed to take Appendable argument.
      */
     public static void appendFormattedByte(Appendable buffer, byte byteValue) {

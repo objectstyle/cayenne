@@ -28,6 +28,7 @@ import org.apache.cayenne.exp.Property;
 import org.apache.cayenne.test.jdbc.DBHelper;
 import org.apache.cayenne.test.jdbc.TableHelper;
 import org.apache.cayenne.testdo.primitive.PrimitivesTestEntity;
+import org.apache.cayenne.unit.UnitDbAdapter;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
@@ -50,9 +51,14 @@ public class ObjectSelect_PrimitiveColumnsIT extends ServerCase {
     @Inject
     private DBHelper dbHelper;
 
+    @Inject
+    private UnitDbAdapter unitDbAdapter;
+
+    private TableHelper tPrimitives;
+
     @Before
     public void createTestRecords() throws Exception {
-        TableHelper tPrimitives = new TableHelper(dbHelper, "PRIMITIVES_TEST");
+        tPrimitives = new TableHelper(dbHelper, "PRIMITIVES_TEST");
         tPrimitives.setColumns("ID", "BOOLEAN_COLUMN", "INT_COLUMN");
         for (int i = 1; i <= 20; i++) {
             tPrimitives.insert(i, (i % 2 == 0), i * 10);
@@ -111,6 +117,10 @@ public class ObjectSelect_PrimitiveColumnsIT extends ServerCase {
 
     @Test
     public void test_SelectBooleanExpColumn() throws Exception {
+        if(!unitDbAdapter.supportsSelectBooleanExpression()) {
+            return;
+        }
+
         Property<Boolean> property = Property.create("boolColumn",
                 ExpressionFactory.exp("(obj:intColumn < 10)"), Boolean.class);
 
@@ -135,6 +145,9 @@ public class ObjectSelect_PrimitiveColumnsIT extends ServerCase {
 
     @Test
     public void test_SelectColumnsExpList() throws Exception {
+        if(!unitDbAdapter.supportsSelectBooleanExpression()) {
+            return;
+        }
 
         Property<Integer> intProperty = Property.create("intColumn",
                 ExpressionFactory.exp("(obj:intColumn + 1)"), Integer.class);
@@ -154,23 +167,34 @@ public class ObjectSelect_PrimitiveColumnsIT extends ServerCase {
 
     @Test
     public void testSum() throws Exception {
-        Property<Long> sumProp = Property.create(sumExp(PrimitivesTestEntity.INT_COLUMN.path()), Long.class);
-
-        long sum = ObjectSelect.query(PrimitivesTestEntity.class)
-                .column(sumProp)
+        int sum = ObjectSelect.query(PrimitivesTestEntity.class)
+                .sum(PrimitivesTestEntity.INT_COLUMN)
                 .selectOne(context);
         assertEquals(2100, sum);
     }
 
     @Test
     public void testAvg() throws Exception {
-        Property<Double> avgProp = Property.create(avgExp(PrimitivesTestEntity.INT_COLUMN.path()), Double.class);
-
-        double avg = ObjectSelect.query(PrimitivesTestEntity.class)
-                .column(avgProp)
+        int avg = ObjectSelect.query(PrimitivesTestEntity.class)
+                .avg(PrimitivesTestEntity.INT_COLUMN)
                 .selectOne(context);
         assertEquals(105.0, avg, 0.00001);
     }
 
+    @Test
+    public void testOrderByCount() throws Exception {
+        tPrimitives.insert(21, true, 210);
 
+        List<Object[]> res = ObjectSelect
+                .columnQuery(PrimitivesTestEntity.class, PrimitivesTestEntity.BOOLEAN_COLUMN, PrimitivesTestEntity.INT_COLUMN.count())
+                .orderBy(PrimitivesTestEntity.INT_COLUMN.count().asc())
+                .select(context);
+        assertEquals(2, res.size());
+
+        assertEquals(false, res.get(0)[0]);
+        assertEquals(true, res.get(1)[0]);
+
+        assertEquals(10L, res.get(0)[1]);
+        assertEquals(11L, res.get(1)[1]);
+    }
 }

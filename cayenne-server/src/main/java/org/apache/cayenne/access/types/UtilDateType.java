@@ -19,19 +19,19 @@
 
 package org.apache.cayenne.access.types;
 
+import org.apache.cayenne.dba.TypesMapping;
+
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Types;
 import java.util.Date;
 
-import org.apache.cayenne.dba.TypesMapping;
-
 /**
  * Maps <code>java.util.Date</code> to any of the three database date/time types: TIME,
  * DATE, TIMESTAMP.
  */
-public class UtilDateType implements ExtendedType {
+public class UtilDateType implements ExtendedType<Date> {
 
     /**
      * Returns "java.util.Date".
@@ -41,13 +41,13 @@ public class UtilDateType implements ExtendedType {
         return Date.class.getName();
     }
 
-    protected Object convertToJdbcObject(Object val, int type) throws Exception {
+    protected Object convertToJdbcObject(Date val, int type) throws Exception {
         if (type == Types.DATE)
-            return new java.sql.Date(((Date) val).getTime());
+            return new java.sql.Date(val.getTime());
         else if (type == Types.TIME)
-            return new java.sql.Time(((Date) val).getTime());
+            return new java.sql.Time(val.getTime());
         else if (type == Types.TIMESTAMP)
-            return new java.sql.Timestamp(((Date) val).getTime());
+            return new java.sql.Timestamp(val.getTime());
         else
             throw new IllegalArgumentException(
                     "Only DATE, TIME or TIMESTAMP can be mapped as '"
@@ -106,7 +106,7 @@ public class UtilDateType implements ExtendedType {
     @Override
     public void setJdbcObject(
             PreparedStatement statement,
-            Object value,
+            Date value,
             int pos,
             int type,
             int scale) throws Exception {
@@ -117,5 +117,15 @@ public class UtilDateType implements ExtendedType {
         else {
             statement.setObject(pos, convertToJdbcObject(value, type), type);
         }
+    }
+
+    @Override
+    public String toString(Date value) {
+        if (value == null) {
+            return "NULL";
+        }
+
+        long time = value.getTime();
+        return "\'" + new java.sql.Timestamp(time) + "\'";
     }
 }

@@ -31,39 +31,77 @@ public interface ExpressionParserConstants {
   /** End of File. */
   int EOF = 0;
   /** RegularExpression Id. */
-  int NULL = 38;
+  int NULL = 33;
   /** RegularExpression Id. */
-  int TRUE = 39;
+  int TRUE = 34;
   /** RegularExpression Id. */
-  int FALSE = 40;
+  int FALSE = 35;
   /** RegularExpression Id. */
-  int PROPERTY_PATH = 41;
+  int AVG = 36;
   /** RegularExpression Id. */
-  int IDENTIFIER = 42;
+  int MIN = 37;
   /** RegularExpression Id. */
-  int LETTER = 43;
+  int MAX = 38;
   /** RegularExpression Id. */
-  int DIGIT = 44;
+  int SUM = 39;
   /** RegularExpression Id. */
-  int ESC = 47;
+  int COUNT = 40;
   /** RegularExpression Id. */
-  int SINGLE_QUOTED_STRING = 49;
+  int CONCAT = 41;
   /** RegularExpression Id. */
-  int STRING_ESC = 50;
+  int SUBSTRING = 42;
   /** RegularExpression Id. */
-  int DOUBLE_QUOTED_STRING = 52;
+  int TRIM = 43;
   /** RegularExpression Id. */
-  int INT_LITERAL = 53;
+  int LOWER = 44;
   /** RegularExpression Id. */
-  int FLOAT_LITERAL = 54;
+  int UPPER = 45;
   /** RegularExpression Id. */
-  int DEC_FLT = 55;
+  int LENGTH = 46;
   /** RegularExpression Id. */
-  int DEC_DIGITS = 56;
+  int LOCATE = 47;
   /** RegularExpression Id. */
-  int EXPONENT = 57;
+  int ABS = 48;
   /** RegularExpression Id. */
-  int FLT_SUFF = 58;
+  int SQRT = 49;
+  /** RegularExpression Id. */
+  int MOD = 50;
+  /** RegularExpression Id. */
+  int CURRENT_DATE = 51;
+  /** RegularExpression Id. */
+  int CURRENT_TIME = 52;
+  /** RegularExpression Id. */
+  int CURRENT_TIMESTAMP = 53;
+  /** RegularExpression Id. */
+  int ASTERISK = 58;
+  /** RegularExpression Id. */
+  int PROPERTY_PATH = 59;
+  /** RegularExpression Id. */
+  int IDENTIFIER = 60;
+  /** RegularExpression Id. */
+  int LETTER = 61;
+  /** RegularExpression Id. */
+  int DIGIT = 62;
+  /** RegularExpression Id. */
+  int ESC = 65;
+  /** RegularExpression Id. */
+  int SINGLE_QUOTED_STRING = 67;
+  /** RegularExpression Id. */
+  int STRING_ESC = 68;
+  /** RegularExpression Id. */
+  int DOUBLE_QUOTED_STRING = 70;
+  /** RegularExpression Id. */
+  int INT_LITERAL = 71;
+  /** RegularExpression Id. */
+  int FLOAT_LITERAL = 72;
+  /** RegularExpression Id. */
+  int DEC_FLT = 73;
+  /** RegularExpression Id. */
+  int DEC_DIGITS = 74;
+  /** RegularExpression Id. */
+  int EXPONENT = 75;
+  /** RegularExpression Id. */
+  int FLT_SUFF = 76;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -101,13 +139,8 @@ public interface ExpressionParserConstants {
     "\">>\"",
     "\"+\"",
     "\"-\"",
-    "\"*\"",
     "\"/\"",
     "\"~\"",
-    "\"$\"",
-    "\"obj:\"",
-    "\"db:\"",
-    "\"enum:\"",
     "\" \"",
     "\"\\t\"",
     "\"\\n\"",
@@ -115,6 +148,29 @@ public interface ExpressionParserConstants {
     "<NULL>",
     "<TRUE>",
     "<FALSE>",
+    "\"AVG\"",
+    "\"MIN\"",
+    "\"MAX\"",
+    "\"SUM\"",
+    "\"COUNT\"",
+    "\"CONCAT\"",
+    "\"SUBSTRING\"",
+    "\"TRIM\"",
+    "\"LOWER\"",
+    "\"UPPER\"",
+    "\"LENGTH\"",
+    "\"LOCATE\"",
+    "\"ABS\"",
+    "\"SQRT\"",
+    "\"MOD\"",
+    "\"CURRENT_DATE\"",
+    "\"CURRENT_TIME\"",
+    "\"CURRENT_TIMESTAMP\"",
+    "\"$\"",
+    "\"obj:\"",
+    "\"db:\"",
+    "\"enum:\"",
+    "\"*\"",
     "<PROPERTY_PATH>",
     "<IDENTIFIER>",
     "<LETTER>",
@@ -122,10 +178,10 @@ public interface ExpressionParserConstants {
     "\"\\\'\"",
     "\"\\\"\"",
     "<ESC>",
-    "<token of kind 48>",
+    "<token of kind 66>",
     "\"\\\'\"",
     "<STRING_ESC>",
-    "<token of kind 51>",
+    "<token of kind 69>",
     "\"\\\"\"",
     "<INT_LITERAL>",
     "<FLOAT_LITERAL>",

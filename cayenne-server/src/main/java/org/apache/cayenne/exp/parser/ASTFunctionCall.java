@@ -33,8 +33,8 @@ public abstract class ASTFunctionCall extends SimpleNode {
         this.functionName = functionName;
     }
 
-    public ASTFunctionCall(String functionName, Object... nodes) {
-        this(0, functionName);
+    public ASTFunctionCall(int id, String functionName, Object... nodes) {
+        this(id, functionName);
         this.functionName = functionName;
         int len = nodes.length;
         for (int i = 0; i < len; i++) {
@@ -49,6 +49,10 @@ public abstract class ASTFunctionCall extends SimpleNode {
         return Expression.FUNCTION_CALL;
     }
 
+    public boolean needParenthesis() {
+        return true;
+    }
+
     public String getFunctionName() {
         return functionName;
     }
@@ -61,4 +65,17 @@ public abstract class ASTFunctionCall extends SimpleNode {
         return functionName;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        ASTFunctionCall that = (ASTFunctionCall) o;
+        return functionName.equals(that.functionName);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * super.hashCode() + functionName.hashCode();
+    }
 }

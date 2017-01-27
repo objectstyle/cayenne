@@ -23,6 +23,9 @@ import org.apache.cayenne.exp.parser.ASTAbs;
 import org.apache.cayenne.exp.parser.ASTAvg;
 import org.apache.cayenne.exp.parser.ASTConcat;
 import org.apache.cayenne.exp.parser.ASTCount;
+import org.apache.cayenne.exp.parser.ASTCurrentDate;
+import org.apache.cayenne.exp.parser.ASTCurrentTime;
+import org.apache.cayenne.exp.parser.ASTCurrentTimestamp;
 import org.apache.cayenne.exp.parser.ASTLength;
 import org.apache.cayenne.exp.parser.ASTLocate;
 import org.apache.cayenne.exp.parser.ASTLower;
@@ -49,7 +52,7 @@ public class FunctionExpressionFactory {
      *
      * @param exp expression that must evaluate to string
      * @param offset start offset of substring
-     * @param length length of subtring
+     * @param length length of substring
      * @return SUBSTRING() call expression
      */
     public static Expression substringExp(Expression exp, int offset, int length) {
@@ -61,7 +64,7 @@ public class FunctionExpressionFactory {
      *
      * @param path Object path value
      * @param offset start offset of substring
-     * @param length length of subtring
+     * @param length length of substring
      * @return SUBSTRING() call expression
      */
     public static Expression substringExp(String path, int offset, int length) {
@@ -73,7 +76,7 @@ public class FunctionExpressionFactory {
      *
      * @param exp expression that must evaluate to string
      * @param offset start offset of substring must evaluate to int
-     * @param length length of subtring must evaluate to int
+     * @param length length of substring must evaluate to int
      * @return SUBSTRING() call expression
      */
     public static Expression substringExp(Expression exp, Expression offset, Expression length) {
@@ -240,17 +243,24 @@ public class FunctionExpressionFactory {
     }
 
     /**
+     * <p>
      * Factory method for expression to call CONCAT(string1, string2, ...) function
-     * Can be used like:
+     * </p>
+     * <p>
+     * Can be used like: <pre>
      *  Expression concat = concatExp(SomeClass.POPERTY_1.getPath(), SomeClass.PROPERTY_2.getPath());
-     *
+     * </pre>
+     * </p>
+     * <p>
      * SQL generation note:
-     * - if DB supports CONCAT function with vararg then it will be used
-     * - if DB supports CONCAT function with two args but also supports concat operator, then operator (eg ||) will be used
-     * - if DB supports only CONCAT function with two args then it will be used what can lead to SQL exception if
+     * <ul>
+     *      <li> if DB supports CONCAT function with vararg then it will be used
+     *      <li> if DB supports CONCAT function with two args but also supports concat operator, then operator (eg ||) will be used
+     *      <li> if DB supports only CONCAT function with two args then it will be used what can lead to SQL exception if
      * used with more than two arguments
-     *
-     * Currently only known DB with limited concatenation functionality is Openbase.
+     * </ul>
+     * </p>
+     * <p>Currently only known DB with limited concatenation functionality is Openbase.</p>
      *
      * @param expressions array of expressions
      * @return CONCAT() call expression
@@ -264,17 +274,24 @@ public class FunctionExpressionFactory {
     }
 
     /**
+     * <p>
      * Factory method for expression to call CONCAT(string1, string2, ...) function
-     * Can be used like:
+     * </p>
+     * <p>
+     * Can be used like:<pre>
      *  Expression concat = concatExp("property1", "property2");
-     *
+     * </pre>
+     * </p>
+     * <p>
      * SQL generation note:
-     * - if DB supports CONCAT function with vararg then it will be used
-     * - if DB supports CONCAT function with two args but also supports concat operator, then operator (eg ||) will be used
-     * - if DB supports only CONCAT function with two args then it will be used what can lead to SQL exception if
+     * <ul>
+     *      <li> if DB supports CONCAT function with vararg then it will be used
+     *      <li> if DB supports CONCAT function with two args but also supports concat operator, then operator (eg ||) will be used
+     *      <li> if DB supports only CONCAT function with two args then it will be used what can lead to SQL exception if
      * used with more than two arguments
-     *
-     * Currently only known DB with limited concatenation functionality is Openbase.
+     * </ul>
+     * </p>
+     * <p>Currently only Openbase DB has limited concatenation functionality.</p>
      *
      * @param paths array of paths
      * @return CONCAT() call expression
@@ -331,5 +348,26 @@ public class FunctionExpressionFactory {
      */
     public static Expression sumExp(Expression exp) {
         return new ASTSum(exp);
+    }
+
+    /**
+     * @return CURRENT_DATE expression
+     */
+    public static Expression currentDate() {
+        return new ASTCurrentDate();
+    }
+
+    /**
+     * @return CURRENT_TIME expression
+     */
+    public static Expression currentTime() {
+        return new ASTCurrentTime();
+    }
+
+    /**
+     * @return CURRENT_TIMESTAMP expression
+     */
+    public static Expression currentTimestamp() {
+        return new ASTCurrentTimestamp();
     }
 }

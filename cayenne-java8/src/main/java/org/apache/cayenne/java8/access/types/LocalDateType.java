@@ -27,7 +27,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.LocalDate;
 
-public class LocalDateType implements ExtendedType {
+public class LocalDateType implements ExtendedType<LocalDate> {
 
     @Override
     public String getClassName() {
@@ -35,8 +35,8 @@ public class LocalDateType implements ExtendedType {
     }
 
     @Override
-    public void setJdbcObject(PreparedStatement statement, Object value, int pos, int type, int scale) throws Exception {
-        statement.setDate(pos, Date.valueOf((LocalDate) value));
+    public void setJdbcObject(PreparedStatement statement, LocalDate value, int pos, int type, int scale) throws Exception {
+        statement.setDate(pos, Date.valueOf(value));
     }
 
     @Override
@@ -51,4 +51,12 @@ public class LocalDateType implements ExtendedType {
         return date != null ? date.toLocalDate() : null;
     }
 
+    @Override
+    public String toString(LocalDate value) {
+        if (value == null) {
+            return "NULL";
+        }
+
+        return '\'' + value.toString() + '\'';
+    }
 }

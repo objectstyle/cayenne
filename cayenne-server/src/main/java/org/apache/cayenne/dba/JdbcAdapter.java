@@ -443,7 +443,7 @@ public class JdbcAdapter implements DbAdapter {
 	@Override
 	public String createFkConstraint(DbRelationship rel) {
 
-		DbEntity source = (DbEntity) rel.getSourceEntity();
+		DbEntity source = rel.getSourceEntity();
 		StringBuilder buf = new StringBuilder();
 		StringBuilder refBuf = new StringBuilder();
 
@@ -468,7 +468,7 @@ public class JdbcAdapter implements DbAdapter {
 
 		buf.append(") REFERENCES ");
 
-		buf.append(quotingStrategy.quotedFullyQualifiedName((DbEntity) rel.getTargetEntity()));
+		buf.append(quotingStrategy.quotedFullyQualifiedName(rel.getTargetEntity()));
 
 		buf.append(" (").append(refBuf.toString()).append(')');
 		return buf.toString();
@@ -545,12 +545,11 @@ public class JdbcAdapter implements DbAdapter {
 		if (binding.getValue() == null) {
 			statement.setNull(binding.getStatementPosition(), binding.getType());
 		} else {
-			ExtendedType typeProcessor = getExtendedTypes().getRegisteredType(binding.getValue().getClass());
-			typeProcessor.setJdbcObject(statement
-					, binding.getValue()
-					, binding.getStatementPosition()
-					, binding.getType()
-					, binding.getScale());
+			binding.getExtendedType().setJdbcObject(statement,
+					binding.getValue(),
+					binding.getStatementPosition(),
+					binding.getType(),
+					binding.getScale());
 		}
 	}
 

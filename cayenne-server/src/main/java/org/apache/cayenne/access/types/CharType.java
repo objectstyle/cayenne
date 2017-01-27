@@ -35,9 +35,10 @@ import java.sql.Types;
  * Handles <code>java.lang.String</code>, mapping it as either of JDBC types -
  * CLOB or (VAR)CHAR. Can be configured to trim trailing spaces.
  */
-public class CharType implements ExtendedType {
+public class CharType implements ExtendedType<String> {
 
 	private static final int BUF_SIZE = 8 * 1024;
+	private static final int TRIM_VALUES_THRESHOLD = 30;
 
 	protected boolean trimmingChars;
 	protected boolean usingClobs;
@@ -57,7 +58,7 @@ public class CharType implements ExtendedType {
 
 	/** Return trimmed string. */
 	@Override
-	public Object materializeObject(ResultSet rs, int index, int type) throws Exception {
+	public String materializeObject(ResultSet rs, int index, int type) throws Exception {
 
 		if (type == Types.CLOB || type == Types.NCLOB) {
 			return isUsingClobs() ? readClob(rs.getClob(index)) : readCharStream(rs, index);
@@ -67,7 +68,7 @@ public class CharType implements ExtendedType {
 	}
 
 	@Override
-	public Object materializeObject(CallableStatement cs, int index, int type) throws Exception {
+	public String materializeObject(CallableStatement cs, int index, int type) throws Exception {
 
 		if (type == Types.CLOB || type == Types.NCLOB) {
 			if (!isUsingClobs()) {
@@ -80,7 +81,7 @@ public class CharType implements ExtendedType {
 		return handleString(cs.getString(index), type);
 	}
 
-	private Object handleString(String val, int type) throws SQLException {
+	private String handleString(String val, int type) throws SQLException {
 		// trim CHAR type
 		if (val != null && (type == Types.CHAR || type == Types.NCHAR) && isTrimmingChars()) {
 			return rtrim(val);
@@ -100,17 +101,50 @@ public class CharType implements ExtendedType {
 	}
 
 	@Override
-	public void setJdbcObject(PreparedStatement st, Object value, int pos, int type, int scale) throws Exception {
+	public void setJdbcObject(PreparedStatement st, String value, int pos, int type, int scale) throws Exception {
 
 		// if this is a CLOB column, set the value as "String"
 		// instead. This should work with most drivers
 		if (type == Types.CLOB || type == Types.NCLOB) {
-			st.setString(pos, (String) value);
+			st.setString(pos, value);
 		} else if (scale != -1) {
 			st.setObject(pos, value, type, scale);
 		} else {
 			st.setObject(pos, value, type);
 		}
+	}
+
+	@Override
+	public String toString(String value) {
+		if (value == null) {
+			return "NULL";
+		}
+
+		StringBuilder buffer = new StringBuilder();
+
+		buffer.append('\'');
+
+		String literal = value;
+		if (literal.length() > TRIM_VALUES_THRESHOLD) {
+			literal = literal.substring(0, TRIM_VALUES_THRESHOLD) + "...";
+		}
+
+		// escape quotes
+		int curPos = 0;
+		int endPos = 0;
+
+		while ((endPos = literal.indexOf('\'', curPos)) >= 0) {
+			buffer.append(literal.substring(curPos, endPos + 1)).append('\'');
+			curPos = endPos + 1;
+		}
+
+		if (curPos < literal.length()) {
+			buffer.append(literal.substring(curPos));
+		}
+
+		buffer.append('\'');
+
+		return buffer.toString();
 	}
 
 	protected String readClob(Clob clob) throws IOException, SQLException {

@@ -18,16 +18,17 @@
  ****************************************************************/
 package org.apache.cayenne.dba.sqlite;
 
+import org.apache.cayenne.access.types.ByteArrayType;
+import org.apache.cayenne.access.types.ExtendedType;
+
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-import org.apache.cayenne.access.types.ExtendedType;
-
 /**
  * @since 3.0
  */
-class SQLiteByteArrayType implements ExtendedType {
+class SQLiteByteArrayType implements ExtendedType<byte[]> {
 
     @Override
     public String getClassName() {
@@ -37,13 +38,13 @@ class SQLiteByteArrayType implements ExtendedType {
     @Override
     public void setJdbcObject(
             PreparedStatement st,
-            Object val,
+            byte[] val,
             int pos,
             int type,
             int scale) throws Exception {
 
-        if (val instanceof byte[]) {
-            st.setBytes(pos, (byte[]) val);
+        if (val != null) {
+            st.setBytes(pos, val);
         }
         else {
             if (scale != -1) {
@@ -56,13 +57,24 @@ class SQLiteByteArrayType implements ExtendedType {
     }
 
     @Override
-    public Object materializeObject(ResultSet rs, int index, int type) throws Exception {
+    public byte[] materializeObject(ResultSet rs, int index, int type) throws Exception {
         return rs.getBytes(index);
     }
 
     @Override
-    public Object materializeObject(CallableStatement rs, int index, int type)
+    public byte[] materializeObject(CallableStatement rs, int index, int type)
             throws Exception {
         return rs.getBytes(index);
+    }
+
+    @Override
+    public String toString(byte[] value) {
+        if (value == null) {
+            return "NULL";
+        }
+
+        StringBuilder buffer = new StringBuilder();
+        ByteArrayType.logBytes(buffer, value);
+        return buffer.toString();
     }
 }

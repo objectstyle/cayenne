@@ -24,10 +24,15 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 /**
- * Defines methods to read Java objects from JDBC ResultSets and write as parameters of
- * PreparedStatements.
+ * Defines methods to read Java objects from JDBC ResultSets and write as parameters of PreparedStatements.
  */
-public interface ExtendedType {
+public interface ExtendedType<T> {
+
+
+    /**
+     * Defines trimming constant for toString method that helps to limit logging of large values.
+     */
+    int TRIM_VALUES_THRESHOLD = 30;
 
     /**
      * Returns a full name of Java class that this ExtendedType supports.
@@ -39,7 +44,7 @@ public interface ExtendedType {
      */
     void setJdbcObject(
             PreparedStatement statement,
-            Object value,
+            T value,
             int pos,
             int type,
             int scale) throws Exception;
@@ -47,18 +52,27 @@ public interface ExtendedType {
     /**
      * Reads an object from JDBC ResultSet column, converting it to class returned by
      * 'getClassName' method.
-     * 
+     *
      * @throws Exception if read error occurred, or an object can't be converted to a
-     *             target Java class.
+     *                   target Java class.
      */
-    Object materializeObject(ResultSet rs, int index, int type) throws Exception;
+    T materializeObject(ResultSet rs, int index, int type) throws Exception;
 
     /**
      * Reads an object from a stored procedure OUT parameter, converting it to class
      * returned by 'getClassName' method.
-     * 
-     * @throws Exception if read error ocurred, or an object can't be converted to a
-     *             target Java class.
+     *
+     * @throws Exception if read error occurred, or an object can't be converted to a
+     *                   target Java class.
      */
-    Object materializeObject(CallableStatement rs, int index, int type) throws Exception;
+    T materializeObject(CallableStatement rs, int index, int type) throws Exception;
+
+    /**
+     * Converts value of the supported type to a human-readable String representation.
+     *
+     * @param value a vlue to convert to String.
+     * @since 4.0
+     */
+    String toString(T value);
+
 }

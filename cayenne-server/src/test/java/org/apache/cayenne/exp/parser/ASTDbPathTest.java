@@ -23,6 +23,7 @@ import org.junit.Test;
 import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class ASTDbPathTest {
 
@@ -37,6 +38,15 @@ public class ASTDbPathTest {
         new ASTDbPath("x.y").appendAsString(buffer);
         assertEquals("db:x.y", buffer.toString());
     }
-    
-    
+
+    @Test
+    public void testEquals() throws Exception {
+        ASTPath path1 = new ASTDbPath("x.y.z");
+        ASTPath path2 = new ASTDbPath("x.y.z");
+        ASTPath path3 = new ASTDbPath("x.x.z");
+
+        assertEquals(path1, path2);
+        assertNotEquals(path1, path3);
+    }
+
 }

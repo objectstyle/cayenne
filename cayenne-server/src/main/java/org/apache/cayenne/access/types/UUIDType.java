@@ -18,19 +18,19 @@
  ****************************************************************/
 package org.apache.cayenne.access.types;
 
+import org.apache.cayenne.CayenneRuntimeException;
+
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.UUID;
-
-import org.apache.cayenne.CayenneRuntimeException;
 
 /**
  * An ExtendedType to map Java UUIDs as persistent attributes.
  * 
  * @since 3.0
  */
-public class UUIDType implements ExtendedType {
+public class UUIDType implements ExtendedType<UUID> {
 
     @Override
     public String getClassName() {
@@ -38,7 +38,7 @@ public class UUIDType implements ExtendedType {
     }
 
     @Override
-    public Object materializeObject(ResultSet rs, int index, int type) throws Exception {
+    public UUID materializeObject(ResultSet rs, int index, int type) throws Exception {
         String uuid = rs.getString(index);
         if (uuid == null) {
             return null;
@@ -53,7 +53,7 @@ public class UUIDType implements ExtendedType {
     }
 
     @Override
-    public Object materializeObject(CallableStatement rs, int index, int type)
+    public UUID materializeObject(CallableStatement rs, int index, int type)
             throws Exception {
 
         String uuid = rs.getString(index);
@@ -72,21 +72,24 @@ public class UUIDType implements ExtendedType {
     @Override
     public void setJdbcObject(
             PreparedStatement statement,
-            Object value,
+            UUID value,
             int pos,
             int type,
             int scale) throws Exception {
 
         if (value == null) {
             statement.setNull(pos, type);
-        }
-        else if (value instanceof UUID) {
+        } else {
             statement.setObject(pos, value.toString(), type);
-        }
-        else {
-            throw new IllegalArgumentException("Expected java.util.UUID, got "
-                    + value.getClass().getName());
         }
     }
 
+    @Override
+    public String toString(UUID value) {
+        if (value == null) {
+            return "NULL";
+        }
+
+        return value.toString();
+    }
 }

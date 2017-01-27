@@ -14,6 +14,7 @@ Date:
 Changes/New Features:
 
 CAY-2139 Upgrade HSQLDB dependency to the most recent version (2.3.4)
+CAY-2150 Refactoring: ParameterBinding to contain ExtendedType property
 CAY-2163 Property.path() , ExpressionFactory.pathExp()
 CAY-2164 Relocate builder bootstrap methods from ServerRuntimeBuilder to ServerRuntime
 CAY-2165 Explicit "contribution" API for easier expansion of DI collections and maps
@@ -24,12 +25,15 @@ CAY-2170 MergeToken sorting is highly unstable
 CAY-2172 Cleanup Modeler import and migrate db actions
 CAY-2176 Java 7 diamond class generation templates
 CAY-2177 Sync auto generated state of PK between model and DB
+CAY-2187 Support for the scalar and aggregate SQL functions in ObjectSelect API
 CAY-2197 Update sqlite version and enable in-memory default config
 
 Bug Fixes:
 
+CAY-2137 When generating SQL from EJBQL, use "AND" to separate multiple join conditions
 CAY-2174 Change FK attribute name cause ObjAttribute appear after Reverse Engineering
 CAY-2175 AliasName used in EJBQLQuery is not working if it contains mixed case
+CAY-2183 Newly created DbRelationship is unexpectedly renamed by the Modeler
 
 ----------------------------------
 Release: 4.0.M4

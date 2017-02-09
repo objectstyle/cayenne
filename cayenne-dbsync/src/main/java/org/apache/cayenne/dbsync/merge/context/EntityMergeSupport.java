@@ -38,6 +38,7 @@ import org.apache.cayenne.util.EntityMergeListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -52,10 +53,14 @@ public class EntityMergeSupport {
 
     private static final Log LOGGER = LogFactory.getLog(EntityMergeSupport.class);
 
-    private static final Map<String, String> CLASS_TO_PRIMITIVE;
+    private static final Map<String, String> CLASS_TO_PRIMITIVE = new HashMap<>();
+
+    /**
+     * Type conversion to Java 8 types (now it's only java.time.* types)
+     */
+    private static final Map<Integer, String> SQL_TYPE_TO_JAVA8_TYPE = new HashMap<>();
 
     static {
-        CLASS_TO_PRIMITIVE = new HashMap<>();
         CLASS_TO_PRIMITIVE.put(Byte.class.getName(), "byte");
         CLASS_TO_PRIMITIVE.put(Long.class.getName(), "long");
         CLASS_TO_PRIMITIVE.put(Double.class.getName(), "double");
@@ -63,6 +68,10 @@ public class EntityMergeSupport {
         CLASS_TO_PRIMITIVE.put(Float.class.getName(), "float");
         CLASS_TO_PRIMITIVE.put(Short.class.getName(), "short");
         CLASS_TO_PRIMITIVE.put(Integer.class.getName(), "int");
+
+        SQL_TYPE_TO_JAVA8_TYPE.put(Types.DATE,      "java.time.LocalDate");
+        SQL_TYPE_TO_JAVA8_TYPE.put(Types.TIME,      "java.time.LocalTime");
+        SQL_TYPE_TO_JAVA8_TYPE.put(Types.TIMESTAMP, "java.time.LocalDateTime");
     }
 
     private final ObjectNameGenerator nameGenerator;
@@ -70,17 +79,20 @@ public class EntityMergeSupport {
     private final boolean removingMeaningfulFKs;
     private final NameFilter meaningfulPKsFilter;
     private final boolean usingPrimitives;
+    private final boolean usingJava7Types;
 
     public EntityMergeSupport(ObjectNameGenerator nameGenerator,
                               NameFilter meaningfulPKsFilter,
                               boolean removingMeaningfulFKs,
-                              boolean usingPrimitives) {
+                              boolean usingPrimitives,
+                              boolean usingJava7Types) {
 
         this.listeners = new ArrayList<>();
         this.nameGenerator = nameGenerator;
         this.removingMeaningfulFKs = removingMeaningfulFKs;
         this.meaningfulPKsFilter = meaningfulPKsFilter;
         this.usingPrimitives = usingPrimitives;
+        this.usingJava7Types = usingJava7Types;
 
         // will ensure that all created ObjRelationships would have
         // default delete rule
@@ -245,8 +257,7 @@ public class EntityMergeSupport {
             }
 
             if (dbRelationship.getTargetEntityName() != null) {
-                boolean needGeneratedEntity = createObjRelationship(entity, dbRelationship,
-                        nameGenerator.objEntityName(targetEntity));
+                boolean needGeneratedEntity = createObjRelationship(entity, dbRelationship, nameGenerator.objEntityName(targetEntity));
                 if (needGeneratedEntity) {
                     LOGGER.warn("Can't find ObjEntity for " + dbRelationship.getTargetEntityName());
                     LOGGER.warn("Db Relationship (" + dbRelationship + ") will have GUESSED Obj Relationship reflection. ");
@@ -261,22 +272,25 @@ public class EntityMergeSupport {
 
     private void addMissingAttribute(ObjEntity entity, DbAttribute da) {
         ObjAttribute oa = new ObjAttribute();
-        oa.setName(NameBuilder.builder(oa, entity)
-                .baseName(nameGenerator.objAttributeName(da))
-                .name());
+        oa.setName(NameBuilder.builder(oa, entity).baseName(nameGenerator.objAttributeName(da)).name());
         oa.setEntity(entity);
-
-        String type = TypesMapping.getJavaBySqlType(da.getType());
-        if (usingPrimitives) {
-            String primitive = CLASS_TO_PRIMITIVE.get(type);
-            if (primitive != null) {
-                type = primitive;
-            }
-        }
-        oa.setType(type);
+        oa.setType(getTypeForObjAttribute(da));
         oa.setDbAttributePath(da.getName());
         entity.addAttribute(oa);
         fireAttributeAdded(oa);
+    }
+
+    private String getTypeForObjAttribute(DbAttribute dbAttribute) {
+        String java8Type;
+        if(!usingJava7Types && (java8Type = SQL_TYPE_TO_JAVA8_TYPE.get(dbAttribute.getType())) != null) {
+            return java8Type;
+        }
+        String type = TypesMapping.getJavaBySqlType(dbAttribute.getType());
+        String primitiveType;
+        if (usingPrimitives && (primitiveType = CLASS_TO_PRIMITIVE.get(type)) != null) {
+            return primitiveType;
+        }
+        return type;
     }
 
     private boolean getRidOfAttributesThatAreNowSrcAttributesForRelationships(ObjEntity entity) {
@@ -317,14 +331,13 @@ public class EntityMergeSupport {
      * Returns a list of attributes that exist in the DbEntity, but are missing
      * from the ObjEntity.
      */
-    protected List<DbAttribute> getAttributesToAdd(ObjEntity objEntity) {
+    private List<DbAttribute> getAttributesToAdd(ObjEntity objEntity) {
         DbEntity dbEntity = objEntity.getDbEntity();
 
         List<DbAttribute> missing = new ArrayList<>();
         Collection<DbRelationship> incomingRels = getIncomingRelationships(dbEntity);
 
         for (DbAttribute dba : dbEntity.getAttributes()) {
-
             if (shouldAddToObjEntity(objEntity, dba, incomingRels)) {
                 missing.add(dba);
             }
@@ -333,64 +346,35 @@ public class EntityMergeSupport {
         return missing;
     }
 
-    protected boolean shouldAddToObjEntity(ObjEntity entity, DbAttribute dbAttribute, Collection<DbRelationship> incomingRels) {
-
+    private boolean shouldAddToObjEntity(ObjEntity entity, DbAttribute dbAttribute, Collection<DbRelationship> incomingRels) {
         if (dbAttribute.getName() == null || entity.getAttributeForDbAttribute(dbAttribute) != null) {
             return false;
         }
 
         boolean addMeaningfulPK = meaningfulPKsFilter.isIncluded(entity.getDbEntityName());
-
-        if (dbAttribute.isPrimaryKey() && !addMeaningfulPK) {
-            return false;
+        if (dbAttribute.isPrimaryKey()) {
+            return addMeaningfulPK;
         }
 
         // check FK's
-        boolean isFK = false;
-        Iterator<DbRelationship> rit = dbAttribute.getEntity().getRelationships().iterator();
-        while (!isFK && rit.hasNext()) {
-            DbRelationship rel = rit.next();
-            for (DbJoin join : rel.getJoins()) {
-                if (join.getSource() == dbAttribute) {
-                    isFK = true;
-                    break;
-                }
-            }
+        if(isFK(dbAttribute, dbAttribute.getEntity().getRelationships(), true)) {
+            return false;
         }
-
-        if (addMeaningfulPK) {
-            if (!dbAttribute.isPrimaryKey() && isFK) {
-                return false;
-            }
-        } else {
-            if (isFK) {
-                return false;
-            }
-        }
-
         // check incoming relationships
-        rit = incomingRels.iterator();
-        while (!isFK && rit.hasNext()) {
-            DbRelationship rel = rit.next();
+        return !isFK(dbAttribute, incomingRels, false);
+    }
+
+    private boolean isFK(DbAttribute dbAttribute, Collection<DbRelationship> collection, boolean source) {
+        for (DbRelationship rel : collection) {
             for (DbJoin join : rel.getJoins()) {
-                if (join.getTarget() == dbAttribute) {
-                    isFK = true;
-                    break;
+                DbAttribute joinAttribute = source ? join.getSource() : join.getTarget();
+                if (joinAttribute == dbAttribute) {
+                    return true;
                 }
             }
         }
 
-        if (addMeaningfulPK) {
-            if (!dbAttribute.isPrimaryKey() && isFK) {
-                return false;
-            }
-        } else {
-            if (isFK) {
-                return false;
-            }
-        }
-
-        return true;
+        return false;
     }
 
     private boolean shouldAddToObjEntity(ObjEntity entity, DbRelationship dbRelationship) {
@@ -502,7 +486,7 @@ public class EntityMergeSupport {
     /**
      * Notifies all listeners that an ObjAttribute was added
      */
-    protected void fireAttributeAdded(ObjAttribute attr) {
+    private void fireAttributeAdded(ObjAttribute attr) {
         for (EntityMergeListener listener : listeners) {
             listener.objAttributeAdded(attr);
         }
@@ -511,7 +495,7 @@ public class EntityMergeSupport {
     /**
      * Notifies all listeners that an ObjRelationship was added
      */
-    protected void fireRelationshipAdded(ObjRelationship rel) {
+    private void fireRelationshipAdded(ObjRelationship rel) {
         for (EntityMergeListener listener : listeners) {
             listener.objRelationshipAdded(rel);
         }

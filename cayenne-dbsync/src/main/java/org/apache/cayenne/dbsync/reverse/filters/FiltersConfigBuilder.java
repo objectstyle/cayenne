@@ -18,19 +18,18 @@
  */
 package org.apache.cayenne.dbsync.reverse.filters;
 
-import org.apache.cayenne.dbimport.Catalog;
-import org.apache.cayenne.dbimport.ExcludeColumn;
-import org.apache.cayenne.dbimport.ExcludeProcedure;
-import org.apache.cayenne.dbimport.ExcludeTable;
-import org.apache.cayenne.dbimport.IncludeColumn;
-import org.apache.cayenne.dbimport.IncludeProcedure;
-import org.apache.cayenne.dbimport.IncludeTable;
-import org.apache.cayenne.dbimport.PatternParam;
-import org.apache.cayenne.dbimport.ReverseEngineering;
-import org.apache.cayenne.dbimport.Schema;
+import org.apache.cayenne.dbsync.reverse.dbimport.Catalog;
+import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeColumn;
+import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeProcedure;
+import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeTable;
+import org.apache.cayenne.dbsync.reverse.dbimport.IncludeColumn;
+import org.apache.cayenne.dbsync.reverse.dbimport.IncludeProcedure;
+import org.apache.cayenne.dbsync.reverse.dbimport.IncludeTable;
+import org.apache.cayenne.dbsync.reverse.dbimport.PatternParam;
+import org.apache.cayenne.dbsync.reverse.dbimport.ReverseEngineering;
+import org.apache.cayenne.dbsync.reverse.dbimport.Schema;
 
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
@@ -78,7 +77,7 @@ public final class FiltersConfigBuilder {
     }
 
     private SortedSet<Pattern> transformExcludeTable(Collection<ExcludeTable> excludeTables) {
-        SortedSet<Pattern> res = new TreeSet<Pattern>(PatternFilter.PATTERN_COMPARATOR);
+        SortedSet<Pattern> res = new TreeSet<>(PatternFilter.PATTERN_COMPARATOR);
         for (ExcludeTable exclude : excludeTables) {
             res.add(PatternFilter.pattern(exclude.getPattern()));
         }
@@ -86,7 +85,7 @@ public final class FiltersConfigBuilder {
     }
 
     private SortedSet<IncludeTableFilter> transformIncludeTable(Collection<IncludeTable> includeTables) {
-        SortedSet<IncludeTableFilter> includeTableFilters = new TreeSet<IncludeTableFilter>();
+        SortedSet<IncludeTableFilter> includeTableFilters = new TreeSet<>();
         for (IncludeTable includeTable : includeTables) {
             includeTableFilters.add(new IncludeTableFilter(includeTable.getPattern(),
                     transform(includeTable.getIncludeColumns(), includeTable.getExcludeColumns())));
@@ -95,8 +94,7 @@ public final class FiltersConfigBuilder {
         return includeTableFilters;
     }
 
-    private PatternFilter transform(Collection<? extends PatternParam> include,
-                                    Collection<? extends PatternParam> exclude) {
+    private PatternFilter transform(Collection<? extends PatternParam> include, Collection<? extends PatternParam> exclude) {
         PatternFilter filter = new PatternFilter();
 
         for (PatternParam patternParam : include) {
@@ -172,38 +170,30 @@ public final class FiltersConfigBuilder {
         compactTableFilter();
         compactProcedureFilter();
         compactSchemas();
+
+        clearGlobalFilters();
     }
 
     private void compactSchemas() {
         for (Catalog catalog : engineering.getCatalogs()) {
             catalog.getSchemas().addAll(engineering.getSchemas());
         }
-        engineering.setSchemas(null);
     }
 
     private void compactProcedureFilter() {
         Collection<IncludeProcedure> engIncludeProcedures = engineering.getIncludeProcedures();
         Collection<ExcludeProcedure> engExcludeProcedures = engineering.getExcludeProcedures();
 
-        engineering.setIncludeProcedures(null);
-        engineering.setExcludeProcedures(null);
-
         for (Catalog catalog : engineering.getCatalogs()) {
             Collection<IncludeProcedure> catalogIncludeProcedures = catalog.getIncludeProcedures();
             Collection<ExcludeProcedure> catalogExcludeProcedures = catalog.getExcludeProcedures();
 
-            catalog.setIncludeProcedures(null);
-            catalog.setExcludeProcedures(null);
-
             for (Schema schema : catalog.getSchemas()) {
-                if (engIncludeProcedures != null) {
-                    schema.getIncludeProcedures().addAll(engIncludeProcedures);
-                    schema.getIncludeProcedures().addAll(catalogIncludeProcedures);
-                }
-                if (engExcludeProcedures != null) {
-                    schema.getExcludeProcedures().addAll(engExcludeProcedures);
-                    schema.getExcludeProcedures().addAll(catalogExcludeProcedures);
-                }
+                schema.getIncludeProcedures().addAll(engIncludeProcedures);
+                schema.getIncludeProcedures().addAll(catalogIncludeProcedures);
+
+                schema.getExcludeProcedures().addAll(engExcludeProcedures);
+                schema.getExcludeProcedures().addAll(catalogExcludeProcedures);
             }
         }
 
@@ -217,25 +207,16 @@ public final class FiltersConfigBuilder {
         Collection<IncludeTable> engIncludeTables = engineering.getIncludeTables();
         Collection<ExcludeTable> engExcludeTables = engineering.getExcludeTables();
 
-        engineering.setIncludeTables(null);
-        engineering.setExcludeTables(null);
-
         for (Catalog catalog : engineering.getCatalogs()) {
             Collection<IncludeTable> catalogIncludeTables = catalog.getIncludeTables();
             Collection<ExcludeTable> catalogExcludeTables = catalog.getExcludeTables();
 
-            catalog.setIncludeTables(null);
-            catalog.setExcludeTables(null);
-
             for (Schema schema : catalog.getSchemas()) {
-                if (engIncludeTables != null) {
-                    schema.getIncludeTables().addAll(engIncludeTables);
-                    schema.getIncludeTables().addAll(catalogIncludeTables);
-                }
-                if (engExcludeTables != null) {
-                    schema.getExcludeTables().addAll(engExcludeTables);
-                    schema.getExcludeTables().addAll(catalogExcludeTables);
-                }
+                schema.getIncludeTables().addAll(engIncludeTables);
+                schema.getIncludeTables().addAll(catalogIncludeTables);
+
+                schema.getExcludeTables().addAll(engExcludeTables);
+                schema.getExcludeTables().addAll(catalogExcludeTables);
             }
         }
 
@@ -249,56 +230,37 @@ public final class FiltersConfigBuilder {
         Collection<IncludeColumn> engIncludeColumns = engineering.getIncludeColumns();
         Collection<ExcludeColumn> engExcludeColumns = engineering.getExcludeColumns();
 
-        engineering.setIncludeColumns(null);
-        engineering.setExcludeColumns(null);
-
         for (Catalog catalog : engineering.getCatalogs()) {
             Collection<IncludeColumn> catalogIncludeColumns = catalog.getIncludeColumns();
             Collection<ExcludeColumn> catalogExcludeColumns = catalog.getExcludeColumns();
-
-            catalog.setIncludeColumns(null);
-            catalog.setExcludeColumns(null);
 
             for (Schema schema : catalog.getSchemas()) {
                 Collection<IncludeColumn> schemaIncludeColumns = schema.getIncludeColumns();
                 Collection<ExcludeColumn> schemaExcludeColumns = schema.getExcludeColumns();
 
-                schema.setIncludeColumns(null);
-                schema.setExcludeColumns(null);
-
-                if (schema != null) {
-                    for (IncludeTable includeTable : schema.getIncludeTables()) {
-                        if (engIncludeColumns != null) {
-                            includeTable.getIncludeColumns().addAll(engIncludeColumns);
-                            includeTable.getIncludeColumns().addAll(catalogIncludeColumns);
-                            includeTable.getIncludeColumns().addAll(schemaIncludeColumns);
-                        }
-                        if (engExcludeColumns != null) {
-                            includeTable.getExcludeColumns().addAll(engExcludeColumns);
-                            includeTable.getExcludeColumns().addAll(catalogExcludeColumns);
-                            includeTable.getExcludeColumns().addAll(schemaExcludeColumns);
-                        }
-                    }
-                }
-            }
-
-            if (catalog.getIncludeTables() != null) {
-                for (IncludeTable includeTable : catalog.getIncludeTables()) {
+                for (IncludeTable includeTable : schema.getIncludeTables()) {
                     includeTable.getIncludeColumns().addAll(engIncludeColumns);
                     includeTable.getIncludeColumns().addAll(catalogIncludeColumns);
+                    includeTable.getIncludeColumns().addAll(schemaIncludeColumns);
 
                     includeTable.getExcludeColumns().addAll(engExcludeColumns);
                     includeTable.getExcludeColumns().addAll(catalogExcludeColumns);
+                    includeTable.getExcludeColumns().addAll(schemaExcludeColumns);
                 }
+            }
+
+            for (IncludeTable includeTable : catalog.getIncludeTables()) {
+                includeTable.getIncludeColumns().addAll(engIncludeColumns);
+                includeTable.getIncludeColumns().addAll(catalogIncludeColumns);
+
+                includeTable.getExcludeColumns().addAll(engExcludeColumns);
+                includeTable.getExcludeColumns().addAll(catalogExcludeColumns);
             }
         }
 
         for (Schema schema : engineering.getSchemas()) {
             Collection<IncludeColumn> schemaIncludeColumns = schema.getIncludeColumns();
             Collection<ExcludeColumn> schemaExcludeColumns = schema.getExcludeColumns();
-
-            schema.setIncludeColumns(null);
-            schema.setExcludeColumns(null);
 
             for (IncludeTable includeTable : schema.getIncludeTables()) {
                 includeTable.getIncludeColumns().addAll(engIncludeColumns);
@@ -309,12 +271,35 @@ public final class FiltersConfigBuilder {
             }
         }
 
-        if (engineering.getIncludeTables() != null) {
-            for (IncludeTable includeTable : engineering.getIncludeTables()) {
-                includeTable.getIncludeColumns().addAll(engIncludeColumns);
-                includeTable.getExcludeColumns().addAll(engExcludeColumns);
+        for (IncludeTable includeTable : engineering.getIncludeTables()) {
+            includeTable.getIncludeColumns().addAll(engIncludeColumns);
+            includeTable.getExcludeColumns().addAll(engExcludeColumns);
+        }
+    }
+
+    private void clearGlobalFilters() {
+        for(Catalog catalog : engineering.getCatalogs()) {
+            catalog.clearIncludeTables();
+            catalog.clearExcludeTables();
+            catalog.clearIncludeProcedures();
+            catalog.clearExcludeProcedures();
+            catalog.clearIncludeColumns();
+            catalog.clearExcludeColumns();
+
+            for (Schema schema : catalog.getSchemas()) {
+                schema.clearIncludeColumns();
+                schema.clearExcludeColumns();
             }
         }
+
+        engineering.clearIncludeTables();
+        engineering.clearExcludeTables();
+        engineering.clearIncludeProcedures();
+        engineering.clearExcludeProcedures();
+        engineering.clearIncludeColumns();
+        engineering.clearExcludeColumns();
+
+        engineering.getSchemas().clear();
     }
 
     private void addEmptyElements() {
@@ -323,29 +308,19 @@ public final class FiltersConfigBuilder {
         }
 
         for (Catalog catalog : engineering.getCatalogs()) {
-            if (catalog.getSchemas().isEmpty()
-                    && engineering.getSchemas().isEmpty()) {
+            if (catalog.getSchemas().isEmpty() && engineering.getSchemas().isEmpty()) {
                 catalog.addSchema(new Schema());
             }
 
             for (Schema schema : catalog.getSchemas()) {
-                if (schema.getIncludeTables().isEmpty()
-                        && catalog.getIncludeTables().isEmpty()
-                        && engineering.getIncludeTables().isEmpty()) {
-
+                if (schema.getIncludeTables().isEmpty() && catalog.getIncludeTables().isEmpty() && engineering.getIncludeTables().isEmpty()) {
                     schema.addIncludeTable(new IncludeTable());
                 }
             }
         }
 
-        if (engineering.getSchemas() == null) {
-            engineering.setSchemas(new LinkedList<Schema>());
-        }
-
         for (Schema schema : engineering.getSchemas()) {
-            if (schema.getIncludeTables().isEmpty()
-                    && engineering.getIncludeTables().isEmpty()) {
-
+            if (schema.getIncludeTables().isEmpty() && engineering.getIncludeTables().isEmpty()) {
                 schema.addIncludeTable(new IncludeTable());
             }
         }

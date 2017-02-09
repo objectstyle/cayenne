@@ -90,7 +90,7 @@
 
     <build>
         <plugins>
-            <!-- This ensures LICESNE and NOTICE inclusion in all jars -->
+            <!-- This ensures LICENSE and NOTICE inclusion in all jars -->
             <plugin>
                 <artifactId>maven-remote-resources-plugin</artifactId>
                 <executions>
@@ -110,7 +110,7 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.cayenne.plugins</groupId>
-                <artifactId>maven-cayenne-plugin</artifactId>
+                <artifactId>cayenne-maven-plugin</artifactId>
                 <version>${project.version}</version>
                 <configuration>
                     <map>${project.basedir}/src/test/resources/protostuff.map.xml</map>

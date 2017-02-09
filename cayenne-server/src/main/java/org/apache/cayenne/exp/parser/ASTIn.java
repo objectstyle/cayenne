@@ -19,8 +19,6 @@
 
 package org.apache.cayenne.exp.parser;
 
-import java.util.Collection;
-
 import org.apache.cayenne.exp.Expression;
 import org.apache.commons.collections.Transformer;
 
@@ -50,41 +48,24 @@ public class ASTIn extends ConditionNode {
 		connectChildren();
 	}
 
-	@SuppressWarnings("rawtypes")
 	@Override
-	protected Object evaluateNode(Object o) throws Exception {
-		int len = jjtGetNumChildren();
-		if (len != 2) {
+	protected int getRequiredChildrenCount() {
+		return 2;
+	}
+
+	@Override
+	protected Boolean evaluateSubNode(Object o, Object[] evaluatedChildren) throws Exception {
+		if (o == null || evaluatedChildren[1] == null) {
+			// Even if there is NULL value in list we should return false,
+			// as check against NULL can be done only with IS NULL operator
+			// and moreover not all DB accept syntax like 'value IN (NULL)'
 			return Boolean.FALSE;
 		}
 
-		Object o1 = evaluateChild(0, o);
-		// TODO: what if there's a NULL inside IN list?
-		// e.g. ASTEqual evals as "NULL == NULL"
-		if (o1 == null) {
-			return Boolean.FALSE;
-		}
-
-		Object[] objects = (Object[]) evaluateChild(1, o);
-		if (objects == null) {
-			return Boolean.FALSE;
-		}
-
-		int size = objects.length;
-		for (int i = 0; i < size; i++) {
-			if (objects[i] != null) {
-				if (o1 instanceof Collection) {
-					// handle the case where we have a collection of objects
-					for (Object obj : (Collection) o1) {
-						if (Evaluator.evaluator(obj).eq(obj, objects[i])) {
-							return Boolean.TRUE;
-						}
-					}
-				} else {
-					if (Evaluator.evaluator(o1).eq(o1, objects[i])) {
-						return Boolean.TRUE;
-					}
-				}
+		Object[] objects = (Object[]) evaluatedChildren[1];
+		for (Object object : objects) {
+			if (object != null && Evaluator.evaluator(o).eq(o, object)) {
+				return Boolean.TRUE;
 			}
 		}
 

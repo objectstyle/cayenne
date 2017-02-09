@@ -24,7 +24,7 @@ import org.apache.cayenne.di.Module;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.project.ProjectSaver;
-import org.apache.cayenne.tools.dbimport.DbImportAction;
+import org.apache.cayenne.dbsync.reverse.dbimport.DbImportAction;
 
 class ModelerSyncModule implements Module {
 

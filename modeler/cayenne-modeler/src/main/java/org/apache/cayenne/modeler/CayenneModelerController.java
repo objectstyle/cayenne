@@ -59,7 +59,7 @@ public class CayenneModelerController extends CayenneController {
 
     private static final ProjectStateUtil PROJECT_STATE_UTIL = new ProjectStateUtil();
 
-    protected ProjectController projectController;
+    private ProjectController projectController;
 
     protected CayenneModelerFrame frame;
 	private EditorView editorView;
@@ -70,15 +70,11 @@ public class CayenneModelerController extends CayenneController {
         super(application);
 
         this.frame = new CayenneModelerFrame(application.getActionManager());
-
-        application
-                .getInjector()
-                .getInstance(PlatformInitializer.class)
-                .setupMenus(frame);
-
+        application.getInjector().getInstance(PlatformInitializer.class).setupMenus(frame);
         this.projectController = new ProjectController(this);
     }
 
+    @Override
     public Component getView() {
         return frame;
     }
@@ -92,9 +88,7 @@ public class CayenneModelerController extends CayenneController {
 
         FSPath path = (FSPath) application
                 .getCayenneProjectPreferences()
-                .getProjectDetailObject(
-                        FSPath.class,
-                        getViewPreferences().node("lastEOMDir"));
+                .getProjectDetailObject(FSPath.class, getViewPreferences().node("lastEOMDir"));
 
         if (path.getPath() == null) {
             path.setPath(getLastDirectory().getPath());
@@ -107,7 +101,7 @@ public class CayenneModelerController extends CayenneController {
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
         frame.addWindowListener(new WindowAdapter() {
-
+            @Override
             public void windowClosing(WindowEvent e) {
                 PROJECT_STATE_UTIL.saveLastState(projectController);
                 getApplication().getActionManager().getAction(ExitAction.class).exit();
@@ -123,12 +117,11 @@ public class CayenneModelerController extends CayenneController {
                     PROJECT_STATE_UTIL.saveLastState(projectController);
                 }
             };
-
             Runtime.getRuntime().addShutdownHook(new Thread(runner, "Window Prefs Hook"));
         }
 
         new DropTarget(frame, new DropTargetAdapter() {
-
+            @Override
             public void drop(DropTargetDropEvent dtde) {
                 dtde.acceptDrop(dtde.getDropAction());
                 Transferable transferable = dtde.getTransferable();
@@ -154,16 +147,10 @@ public class CayenneModelerController extends CayenneController {
 
         File transferFile = fileList.get(0);
             if (transferFile.isFile()) {
-
                 FileFilter filter = FileFilters.getApplicationFilter();
-
                 if (filter.accept(transferFile)) {
-                    ActionEvent e = new ActionEvent(
-                            transferFile,
-                            ActionEvent.ACTION_PERFORMED,
-                            "OpenProject");
-                    Application.getInstance().getActionManager().getAction(
-                            OpenProjectAction.class).actionPerformed(e);
+                    ActionEvent e = new ActionEvent(transferFile, ActionEvent.ACTION_PERFORMED, "OpenProject");
+                    Application.getInstance().getActionManager().getAction(OpenProjectAction.class).actionPerformed(e);
                     return true;
                 }
             }
@@ -180,12 +167,7 @@ public class CayenneModelerController extends CayenneController {
     public void projectModifiedAction() {
         String title = (projectController.getProject().getConfigurationResource() == null)
                 ? "[New]"
-                : projectController
-                        .getProject()
-                        .getConfigurationResource()
-                        .getURL()
-                        .getPath();
-
+                : projectController.getProject().getConfigurationResource().getURL().getPath();
         frame.setTitle("* - " + ModelerConstants.TITLE + " - " + title);
     }
 
@@ -195,11 +177,7 @@ public class CayenneModelerController extends CayenneController {
         updateStatus("Project saved...");
         frame.setTitle(ModelerConstants.TITLE
                 + " - "
-                + projectController
-                        .getProject()
-                        .getConfigurationResource()
-                        .getURL()
-                        .getPath());
+                + projectController.getProject().getConfigurationResource().getURL().getPath());
     }
 
     /**
@@ -242,8 +220,7 @@ public class CayenneModelerController extends CayenneController {
         if (project.getConfigurationResource() == null) {
             updateStatus("New project created...");
             frame.setTitle(ModelerConstants.TITLE + "- [New]");
-        }
-        else {
+        } else {
             updateStatus("Project opened...");
             frame.setTitle(ModelerConstants.TITLE
                     + " - "
@@ -252,8 +229,7 @@ public class CayenneModelerController extends CayenneController {
 
         // update preferences
         if (project.getConfigurationResource() != null) {
-            getLastDirectory().setDirectory(
-                    new File(project.getConfigurationResource().getURL().getPath()));
+            getLastDirectory().setDirectory(new File(project.getConfigurationResource().getURL().getPath()));
             frame.fireRecentFileListChanged();
         }
 
@@ -262,9 +238,7 @@ public class CayenneModelerController extends CayenneController {
         // for validation purposes combine load failures with post-load validation (not
         // sure if that'll cause duplicate messages?).
         List<ValidationFailure> allFailures = new ArrayList<>();
-        Collection<ValidationFailure> loadFailures = project
-                .getConfigurationTree()
-                .getLoadFailures();
+        Collection<ValidationFailure> loadFailures = project.getConfigurationTree().getLoadFailures();
 
         if (!loadFailures.isEmpty()) {
             // mark project as unsaved
@@ -273,10 +247,8 @@ public class CayenneModelerController extends CayenneController {
             allFailures.addAll(loadFailures);
         }
 
-        ProjectValidator projectValidator = getApplication().getInjector().getInstance(
-                ProjectValidator.class);
-        ValidationResult validationResult = projectValidator.validate(project
-                .getRootNode());
+        ProjectValidator projectValidator = getApplication().getInjector().getInstance(ProjectValidator.class);
+        ValidationResult validationResult = projectValidator.validate(project.getRootNode());
         allFailures.addAll(validationResult.getFailures());
 
         if (!allFailures.isEmpty()) {
@@ -289,30 +261,30 @@ public class CayenneModelerController extends CayenneController {
     }
 
 	/** Adds path to the list of last opened projects in preferences. */
-    public void addToLastProjListAction(String path) {
+    public void addToLastProjListAction(File file) {
 
-        Preferences frefLastProjFiles = ModelerPreferences.getLastProjFilesPref();
-        List<String> arr = ModelerPreferences.getLastProjFiles();
+        Preferences prefLastProjFiles = ModelerPreferences.getLastProjFilesPref();
+        List<File> arr = ModelerPreferences.getLastProjFiles();
         // Add proj path to the preferences
         // Prevent duplicate entries.
-        if (arr.contains(path)) {
-            arr.remove(path);
+        if (arr.contains(file)) {
+            arr.remove(file);
         }
 
-        arr.add(0, path);
+        arr.add(0, file);
         while (arr.size() > ModelerPreferences.LAST_PROJ_FILES_SIZE) {
             arr.remove(arr.size() - 1);
         }
 
         try {
-            frefLastProjFiles.clear();
+            prefLastProjFiles.clear();
         } catch (BackingStoreException ignored) {
             // ignore exception
         }
-        int size = arr.size();
 
+        int size = arr.size();
         for (int i = 0; i < size; i++) {
-            frefLastProjFiles.put(String.valueOf(i), arr.get(i));
+            prefLastProjFiles.put(String.valueOf(i), arr.get(i).getAbsolutePath());
         }
     }
 
@@ -339,11 +311,11 @@ public class CayenneModelerController extends CayenneController {
             this.message = message;
         }
 
+        @Override
         public void run() {
             try {
                 sleep(seconds * 1000);
-            }
-            catch (InterruptedException e) {
+            } catch (InterruptedException e) {
                 // ignore exception
             }
 
@@ -353,39 +325,31 @@ public class CayenneModelerController extends CayenneController {
         }
     }
 
-    public void changePathInLastProjListAction(String oldPath, String newPath) {
+    public void changePathInLastProjListAction(File oldFile, File newFile) {
         Preferences frefLastProjFiles = ModelerPreferences.getLastProjFilesPref();
-        List<String> arr = ModelerPreferences.getLastProjFiles();
+        List<File> arr = ModelerPreferences.getLastProjFiles();
+
         // Add proj path to the preferences
-        // Prevent duplicate entries.
-        if (arr.contains(oldPath)) {
-            arr.remove(oldPath);
-        }
-
-        if (arr.contains(newPath)) {
-            arr.remove(newPath);
-        }
-
-        arr.add(0, newPath);
+        arr.remove(oldFile);
+        arr.remove(newFile);
+        arr.add(0, newFile);
         while (arr.size() > ModelerPreferences.LAST_PROJ_FILES_SIZE) {
             arr.remove(arr.size() - 1);
         }
 
         try {
             frefLastProjFiles.clear();
-        }
-        catch (BackingStoreException e) {
+        } catch (BackingStoreException e) {
             // ignore exception
         }
-        int size = arr.size();
 
+        int size = arr.size();
         for (int i = 0; i < size; i++) {
-            frefLastProjFiles.put(String.valueOf(i), arr.get(i));
+            frefLastProjFiles.put(String.valueOf(i), arr.get(i).getAbsolutePath());
         }
 
-        getLastDirectory().setDirectory(new File(newPath));
+        getLastDirectory().setDirectory(newFile);
         frame.fireRecentFileListChanged();
     }
-
 	
 }

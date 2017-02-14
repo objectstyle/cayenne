@@ -28,6 +28,8 @@ CAY-2177 Sync auto generated state of PK between model and DB
 CAY-2187 Support for the scalar and aggregate SQL functions in ObjectSelect API
 CAY-2197 Update sqlite version and enable in-memory default config
 CAY-2212 cdbimport cleanup and configuration schema refactoring
+CAY-2223 JCacheQueryCache - a query cache provider to plug in JCache implementers
+CAY-2225 Extensible CacheInvalidationFilter logic
 
 Bug Fixes:
 
@@ -111,6 +113,7 @@ CAY-2150 UI bug: PK generation custom sequence is getting reset
 CAY-2151 Migrate Database Schema: issue when no db is specified
 CAY-2153 Modeler Exception in save action after reverse engineering some complex DB schema
 CAY-2154 Migrate db: queries order
+CAY-2226 PK generation for Frontbase: PK cache size must be ignored
 
 ----------------------------------
 Release: 4.0.M3

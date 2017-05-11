@@ -8,8 +8,62 @@ To browse individual bug reports check out project issue tracker:
 https://issues.apache.org/jira/browse/CAY
 
 ----------------------------------
-Release: 4.0.M5
+Release: 4.0.M6
 Date:
+----------------------------------
+Changes/New Features:
+
+CAY-1873 Move DataDomain cache configuration from the Modeler and into DI
+CAY-1891 Modeler: Add To-Many Warning
+CAY-1892 Modeler: Add Relationship Data Type Warning
+CAY-2057 Modeler: Clean up OS X version
+CAY-2109 cayenne-crypto: add value authentication (HMAC) 
+CAY-2210 Query cache: incorrect cache key for queries with custom value objects
+CAY-2255 ObjectSelect improvement: columns as full entities
+CAY-2258 DI: type-safe binding of List and Map
+CAY-2259 QueryCache: support for referencing type-safe caches
+CAY-2261 Replace NamedQuery with MappedXYZ in *datamap.vm
+CAY-2262 Module auto-loading
+CAY-2266 Move EventBridge implementations into autoloadable modules
+CAY-2267 Contribute lifecycle events listeners via DI
+CAY-2268 DI: Refactor ListBuilder API ambiguities for before() / after() bindings
+CAY-2269 Add support for date/time components extraction in expression functions
+CAY-2270 Update function support in expression parser
+CAY-2271 ColumnSelect: support for prefetch and limit
+CAY-2272 ColumnSelect: methods to manually control DISTINCT clause
+CAY-2274 Modeler: Validate case when dependent PK is marked as “generated”
+CAY-2277 Create ClientRuntime with ClientRuntimeBuilder just like ServerRuntime
+CAY-2278 Extract cayenne-postcommit module from cayenne-lifecycle
+CAY-2280 Switch from commons-logging to slf4j
+CAY-2295 "Sync ObjEntity with DbEntity" and "View related DbEntity" buttons aren't disabled, if DbEntity doesn't have ObjEntity
+CAY-2296 cayenne-crypto: Get java type for DbAttribute bound to ObjAttributes with the same type
+CAY-2300 Modeler: New icons and design improvements
+
+Bug Fixes:
+
+CAY-2021 cdbimport: detect when same FK constraint is defined twice
+CAY-2077 Bug in CayenneRuntimeException using wrong specified string in Formatter
+CAY-2094 SelectById query doesn't work from ROP client
+CAY-2161 'Not for Client Use' option is ignored at Class Generation
+CAY-2171 Modeler: Undo db Entity Sync throws error
+CAY-2208 SQLTemplate: LEFT JOIN to a subset of a table returns nulls for entries that don't have a match in the subset
+CAY-2230 Error using connection to postgresql with db schema in DB URL
+CAY-2240 Modeler: issue with cursor rendering for EJBQL query
+CAY-2243 ObjectContext.getGraphManager().unregisterObject() inconsistencies
+CAY-2250 Remove: Incorrect text in Confirm Remove message when cursor is set on attribute row
+CAY-2256 Cannot Save/Insert an Object With null Flattened (complex) toOne Relationship (see also CAY-2146)
+CAY-2265 ServerRuntime.builder() fails to set default runtime name when a the project file doesn't follow recognized pattern
+CAY-2273 Modeler: default suggested cgen location is rooted in subpackage
+CAY-2275 Documentation: tutorial is out of sync with 4.0.M5 version
+CAY-2276 PrePersist listener registered as PostPersist in LifecycleCallbackRegistry.addListener(Class<?>, LifecycleListener)
+CAY-2279 cdbimport: skip PK comparison for VIEWs
+CAY-2281 ObjEntity attribute overrides are never deleted
+CAY-2284 Expression likeIgnoreCase can't handle unicode chars in in-memory evaluation
+CAY-2286 Filter out inherited ObjEntities from sync with DbEntity
+
+----------------------------------
+Release: 4.0.M5
+Date: March 6, 2017
 ----------------------------------
 Changes/New Features:
 
@@ -30,6 +84,10 @@ CAY-2197 Update sqlite version and enable in-memory default config
 CAY-2212 cdbimport cleanup and configuration schema refactoring
 CAY-2223 JCacheQueryCache - a query cache provider to plug in JCache implementers
 CAY-2225 Extensible CacheInvalidationFilter logic
+CAY-2228 Deprecate multiple cache groups in caching and query API
+CAY-2231 Support for collections in new functional expressions and old math expressions
+CAY-2232 Proper conversion to String for new functional expressions
+CAY-2235 Deprecate Query.getDataMap() method
 
 Bug Fixes:
 
@@ -39,7 +97,11 @@ CAY-2174 Change FK attribute name cause ObjAttribute appear after Reverse Engine
 CAY-2175 AliasName used in EJBQLQuery is not working if it contains mixed case
 CAY-2183 Newly created DbRelationship is unexpectedly renamed by the Modeler
 CAY-2199 Modeler on Windows: The same project is displayed twice in "Recent Projects"
+CAY-2207 Modeler: "Java Type" and "DbAttribute Path" are not saved with using TAB to move forward
 CAY-2221 In-memory expression evaluation gives different result than select query
+CAY-2236 Modeler Migrate DB Schema: unable to Reverse All Operations
+CAY-2238 Modeler: Preserve manually set DbRelationship name when syncing with ObjEntity
+CAY-2242 Vertical Inheritance: Cannot Insert Record For Implementing Class with Attribute And Relationship
 
 ----------------------------------
 Release: 4.0.M4

@@ -40,6 +40,7 @@ import java.util.Map;
  * @since 1.2
  * @deprecated since 4.0 you should use {@link MappedSelect} or {@link MappedExec} instead.
  */
+@SuppressWarnings("deprecation")
 @Deprecated
 public class NamedQuery extends IndirectQuery {
 
@@ -82,24 +83,16 @@ public class NamedQuery extends IndirectQuery {
     @Override
     public QueryMetadata getMetaData(EntityResolver resolver) {
 
-        QueryMetadata base = overrideMetadata != null ? overrideMetadata : super
-                .getMetaData(resolver);
-
+        QueryMetadata base = overrideMetadata != null ? overrideMetadata : super.getMetaData(resolver);
         QueryMetadataWrapper wrapper = new QueryMetadataWrapper(base);
 
         // override cache policy, forcing refresh if needed
         if (forceNoCache) {
             QueryCacheStrategy strategy = base.getCacheStrategy();
-
             if (QueryCacheStrategy.LOCAL_CACHE == strategy) {
-                wrapper.override(
-                        QueryMetadata.CACHE_STRATEGY_PROPERTY,
-                        QueryCacheStrategy.LOCAL_CACHE_REFRESH);
-            }
-            else if (QueryCacheStrategy.SHARED_CACHE == strategy) {
-                wrapper.override(
-                        QueryMetadata.CACHE_STRATEGY_PROPERTY,
-                        QueryCacheStrategy.SHARED_CACHE_REFRESH);
+                wrapper.override(QueryMetadata.CACHE_STRATEGY_PROPERTY, QueryCacheStrategy.LOCAL_CACHE_REFRESH);
+            } else if (QueryCacheStrategy.SHARED_CACHE == strategy) {
+                wrapper.override(QueryMetadata.CACHE_STRATEGY_PROPERTY, QueryCacheStrategy.SHARED_CACHE_REFRESH);
             }
         }
 
@@ -131,11 +124,8 @@ public class NamedQuery extends IndirectQuery {
         if (query instanceof ParameterizedQuery) {
             query = ((ParameterizedQuery) query).createQuery(normalizedParameters());
         } else if (query instanceof EJBQLQuery) {
-            
-            Iterator it = normalizedParameters().entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pairs = (Map.Entry)it.next();
-                ((EJBQLQuery)query).setParameter((String) pairs.getKey(), pairs.getValue());
+            for (Map.Entry<String, ?> pairs : normalizedParameters().entrySet()) {
+                ((EJBQLQuery) query).setParameter(pairs.getKey(), pairs.getValue());
             }
         }
 
@@ -149,7 +139,7 @@ public class NamedQuery extends IndirectQuery {
      */
     Map<String, ?> normalizedParameters() {
         if (parameters == null || parameters.isEmpty()) {
-            return Collections.EMPTY_MAP;
+            return Collections.emptyMap();
         }
 
         Map<String, Object> substitutes = new HashMap<>(parameters);
@@ -173,15 +163,10 @@ public class NamedQuery extends IndirectQuery {
      */
     protected Query resolveQuery(EntityResolver resolver) {
         QueryDescriptor queryDescriptor = resolver.getQueryDescriptor(getName());
-
         Query query = queryDescriptor.buildQuery();
 
-        Object root = queryDescriptor.getRoot();
-
         if (query == this) {
-            throw new CayenneRuntimeException("Named query resolves to self: '"
-                    + getName()
-                    + "'");
+            throw new CayenneRuntimeException("Named query resolves to self: '%s'", getName());
         }
 
         return query;

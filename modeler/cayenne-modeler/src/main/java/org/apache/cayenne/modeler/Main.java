@@ -29,8 +29,8 @@ import org.apache.cayenne.modeler.dialog.pref.GeneralPreferences;
 import org.apache.cayenne.modeler.init.CayenneModelerModule;
 import org.apache.cayenne.modeler.init.platform.PlatformInitializer;
 import org.apache.cayenne.project.ProjectModule;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.io.File;
@@ -44,7 +44,7 @@ import java.util.prefs.Preferences;
  */
 public class Main {
 
-    private static Log logger = LogFactory.getLog(Main.class);
+    private static Logger logger = LoggerFactory.getLogger(Main.class);
 
     protected String[] args;
 
@@ -70,14 +70,15 @@ public class Main {
         // TODO: use module auto-loading...
         final Injector injector = DIBootstrap.createInjector(appendModules(new ArrayList<Module>()));
 
+        // init look and feel before using any Swing classes...
+        injector.getInstance(PlatformInitializer.class).initLookAndFeel();
+
+        // logger should go after Look And Feel or Logger Console will be without style
         logger.info("Starting CayenneModeler.");
         logger.info("JRE v."
                 + System.getProperty("java.version")
                 + " at "
                 + System.getProperty("java.home"));
-
-        // init look and feel before starting any Swing classes...
-        injector.getInstance(PlatformInitializer.class).initLookAndFeel();
 
         SwingUtilities.invokeLater(new Runnable() {
 

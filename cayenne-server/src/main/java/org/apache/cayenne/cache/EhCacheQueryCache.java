@@ -19,26 +19,29 @@
 package org.apache.cayenne.cache;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.di.BeforeScopeEnd;
 import org.apache.cayenne.query.QueryMetadata;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
+import org.slf4j.LoggerFactory;
 
+/**
+ * @deprecated since 4.0 please use JCacheQueryCache (provided by "cayenne-jcache" module)
+ */
+@Deprecated
 public class EhCacheQueryCache implements QueryCache {
 
     /**
      * Default cache group name.
      */
-    static final String DEFAULT_CACHE_NAME = "cayenne.default.cachegroup";
+    private static final String DEFAULT_CACHE_NAME = "cayenne.default.cachegroup";
 
-    private static Log logger = LogFactory.getLog(EhCacheQueryCache.class);
+    private static final Logger logger = LoggerFactory.getLogger(EhCacheQueryCache.class);
 
     protected CacheManager cacheManager;
 
@@ -72,7 +75,7 @@ public class EhCacheQueryCache implements QueryCache {
             return null;
         }
 
-        String cacheName = cacheName(key, metadata.getCacheGroups());
+        String cacheName = cacheName(metadata);
         Ehcache cache = cacheManager.getCache(cacheName);
 
         if (cache == null) {
@@ -93,7 +96,7 @@ public class EhCacheQueryCache implements QueryCache {
             return null;
         }
 
-        String cacheName = cacheName(key, metadata.getCacheGroups());
+        String cacheName = cacheName(metadata);
 
         // create empty cache for cache group here, as we have a factory to
         // create an object, and should never ever return null from this
@@ -122,7 +125,7 @@ public class EhCacheQueryCache implements QueryCache {
             // object to the cache ourselves
             List object = factory.createObject();
             if (object == null) {
-                throw new CayenneRuntimeException("Null object created: " + metadata.getCacheKey());
+                throw new CayenneRuntimeException("Null object created: %s", metadata.getCacheKey());
             }
 
             cache.put(new Element(key, object));
@@ -136,15 +139,9 @@ public class EhCacheQueryCache implements QueryCache {
     /**
      * @since 4.0
      */
-	protected String cacheName(String key, String... cacheGroups) {
-		if (cacheGroups != null && cacheGroups.length > 0) {
-
-			if (cacheGroups.length > 1) {
-				logger.warn("multiple cache groups per key '" + key + "', ignoring all but the first one: "
-						+ cacheGroups[0]);
-			}
-
-			return Objects.requireNonNull(cacheGroups[0], "Null cache group");
+	protected String cacheName(QueryMetadata metadata) {
+		if (metadata.getCacheGroup() != null) {
+			return metadata.getCacheGroup();
 		}
 
 		return DEFAULT_CACHE_NAME;
@@ -154,7 +151,7 @@ public class EhCacheQueryCache implements QueryCache {
     public void put(QueryMetadata metadata, List results) {
         String key = metadata.getCacheKey();
         if (key != null) {
-            String cacheName = cacheName(key, metadata.getCacheGroups());
+            String cacheName = cacheName(metadata);
             Ehcache cache = cacheManager.addCacheIfAbsent(cacheName);
             cache.put(new Element(key, results));
         }
@@ -175,6 +172,10 @@ public class EhCacheQueryCache implements QueryCache {
         }
     }
 
+    public void removeGroup(String groupKey, Class<?> keyType, Class<?> valueType) {
+        removeGroup(groupKey);
+    }
+
     public void clear() {
         cacheManager.removalAll();
     }
@@ -191,7 +192,7 @@ public class EhCacheQueryCache implements QueryCache {
      * Returns default cache group.
      * 
      * @deprecated since 4.0 - this method is no longer in use. If you are
-     *             overriding it, override {@link #cacheName(String, String...)}
+     *             overriding it, override {@link #cacheName(QueryMetadata)}
      *             instead.
      */
     @Deprecated

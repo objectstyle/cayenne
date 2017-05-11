@@ -18,6 +18,7 @@
  ****************************************************************/
 package org.apache.cayenne.project.validation;
 
+import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.DbJoin;
 import org.apache.cayenne.map.DbRelationship;
@@ -25,6 +26,7 @@ import org.apache.cayenne.util.Util;
 import org.apache.cayenne.validation.ValidationResult;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,15 +40,13 @@ class DbRelationshipValidator extends ConfigurationNodeValidator {
                     relationship,
                     "DbRelationship '%s' has no target entity",
                     toString(relationship));
-        }
-        else if (relationship.getJoins().isEmpty()) {
+        } else if (relationship.getJoins().isEmpty()) {
             addFailure(
                     validationResult,
                     relationship,
                     "DbRelationship '%s' has no joins",
                     toString(relationship));
-        }
-        else {
+        } else {
             // validate joins
             for (DbJoin join : relationship.getJoins()) {
                 if (join.getSource() == null && join.getTarget() == null) {
@@ -55,15 +55,13 @@ class DbRelationshipValidator extends ConfigurationNodeValidator {
                             relationship,
                             "DbRelationship '%s' has a join with no source and target attributes selected",
                             toString(relationship));
-                }
-                else if (join.getSource() == null) {
+                } else if (join.getSource() == null) {
                     addFailure(
                             validationResult,
                             relationship,
                             "DbRelationship '%s' has a join with no source attribute selected",
                             toString(relationship));
-                }
-                else if (join.getTarget() == null) {
+                } else if (join.getTarget() == null) {
                     addFailure(
                             validationResult,
                             relationship,
@@ -75,20 +73,16 @@ class DbRelationshipValidator extends ConfigurationNodeValidator {
 
         if (Util.isEmptyString(relationship.getName())) {
             addFailure(validationResult, relationship, "Unnamed DbRelationship");
-        }
-        // check if there are attributes having the same name
-        else if (relationship.getSourceEntity().getAttribute(relationship.getName()) != null) {
+        } else if (relationship.getSourceEntity().getAttribute(relationship.getName()) != null) {
+            // check if there are attributes having the same name
             addFailure(
                     validationResult,
                     relationship,
                     "Name of DbRelationship '%s' conflicts with the name of one of DbAttributes in the same entity",
                     toString(relationship));
-        }
-        else {
+        } else {
             NameValidationHelper helper = NameValidationHelper.getInstance();
-            String invalidChars = helper.invalidCharsInDbPathComponent(relationship
-                    .getName());
-
+            String invalidChars = helper.invalidCharsInDbPathComponent(relationship.getName());
             if (invalidChars != null) {
                 addFailure(
                         validationResult,
@@ -100,6 +94,51 @@ class DbRelationshipValidator extends ConfigurationNodeValidator {
         }
 
         checkForDuplicates(relationship, validationResult);
+        checkOnGeneratedStrategyConflict(relationship, validationResult);
+        checkToMany(relationship, validationResult);
+    }
+
+    private void checkToMany(DbRelationship relationship, ValidationResult validationResult) {
+        if (relationship != null && relationship.getReverseRelationship() != null) {
+            if (relationship.isToMany() && relationship.getReverseRelationship().isToMany()) {
+                addFailure(
+                        validationResult,
+                        relationship,
+                        "Relationship '%s' and reverse '%s' are both toMany",
+                        relationship.getName(), relationship.getReverseRelationship().getName());
+            }
+        }
+        checkTypesOfAttributesInRelationship(relationship, validationResult);
+    }
+
+    private void checkTypesOfAttributesInRelationship(DbRelationship relationship, ValidationResult validationResult) {
+        for (DbJoin join: relationship.getJoins()) {
+            if (join.getSource() != null && join.getTarget() != null
+                    && join.getSource().getType() != join.getTarget().getType()) {
+                addFailure(
+                        validationResult,
+                        relationship,
+                        "Attributes '%s' and '%s' have different types in a relationship '%s'",
+                        join.getSourceName(), join.getTargetName(), relationship.getName());
+            }
+        }
+    }
+
+    private void checkOnGeneratedStrategyConflict(DbRelationship relationship, ValidationResult validationResult) {
+        if (relationship.isToDependentPK()) {
+            Collection<DbAttribute> attributes = relationship.getTargetEntity().getGeneratedAttributes();
+            for (DbAttribute attribute : attributes) {
+
+                if (attribute.isGenerated()) {
+                    addFailure(
+                            validationResult,
+                            relationship,
+                            "'To Dep Pk' incompatible with Database-Generated on '%s' relationship",
+                            toString(relationship));
+                }
+
+            }
+        }
     }
 
     /**
@@ -116,25 +155,23 @@ class DbRelationshipValidator extends ConfigurationNodeValidator {
                        "." +
                        getJoins(relationship);
 
-            if (dbRelationshipPath != null) {
-                DbEntity entity = (DbEntity) relationship.getSourceEntity();
+            DbEntity entity = relationship.getSourceEntity();
 
-                for (DbRelationship comparisonRelationship : entity.getRelationships()) {
-                    if (relationship != comparisonRelationship) {
-                        String comparisonDbRelationshipPath =
-                                   comparisonRelationship.getTargetEntityName() +
-                                   "." +
-                                   getJoins(comparisonRelationship);
+            for (DbRelationship comparisonRelationship : entity.getRelationships()) {
+                if (relationship != comparisonRelationship) {
+                    String comparisonDbRelationshipPath =
+                               comparisonRelationship.getTargetEntityName() +
+                               "." +
+                               getJoins(comparisonRelationship);
 
-                        if (dbRelationshipPath.equals(comparisonDbRelationshipPath)) {
-                            addFailure(validationResult,
-                                       relationship,
-                                       "DbEntity '%s' contains a duplicate DbRelationship mapping ('%s' -> '%s')",
-                                       entity.getName(),
-                                       relationship.getName(),
-                                       dbRelationshipPath);
-                            return; // Duplicate found, stop.
-                        }
+                    if (dbRelationshipPath.equals(comparisonDbRelationshipPath)) {
+                        addFailure(validationResult,
+                                   relationship,
+                                   "DbEntity '%s' contains a duplicate DbRelationship mapping ('%s' -> '%s')",
+                                   entity.getName(),
+                                   relationship.getName(),
+                                   dbRelationshipPath);
+                        return; // Duplicate found, stop.
                     }
                 }
             }
@@ -143,19 +180,9 @@ class DbRelationshipValidator extends ConfigurationNodeValidator {
 
     private String getJoins(DbRelationship relationship) {
         List<String> joins = new ArrayList<>();
-
         for (DbJoin join : relationship.getJoins()) {
-            StringBuilder builder = new StringBuilder();
-
-            builder.append("[");
-            builder.append("source=").append(join.getSourceName());
-            builder.append(",");
-            builder.append("target=").append(join.getTargetName());
-            builder.append("]");
-
-            joins.add(builder.toString());
+            joins.add("[source=" + join.getSourceName() + ",target=" + join.getTargetName() + "]");
         }
-
         Collections.sort(joins);
 
         return Util.join(joins, ",");

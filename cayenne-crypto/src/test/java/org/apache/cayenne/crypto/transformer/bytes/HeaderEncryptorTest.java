@@ -30,7 +30,7 @@ public class HeaderEncryptorTest {
     @Test
     public void testTransform() throws UnsupportedEncodingException {
 
-        Header encryptionHeader = Header.create("mykey", false);
+        Header encryptionHeader = Header.create("mykey", false, false);
 
         BytesEncryptor delegate = SwapBytesTransformer.encryptor();
 

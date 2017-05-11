@@ -22,7 +22,7 @@
 	<parent>
 		<artifactId>cayenne-parent</artifactId>
 		<groupId>org.apache.cayenne</groupId>
-		<version>4.0.M5-SNAPSHOT</version>
+		<version>4.0.M6-SNAPSHOT</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
@@ -33,6 +33,10 @@
 	<dependencies>
         <!-- Compile Dependencies -->
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.ant</groupId>
             <artifactId>ant</artifactId>
             <scope>compile</scope>
@@ -40,11 +44,6 @@
 		<dependency>
 			<groupId>commons-collections</groupId>
 			<artifactId>commons-collections</artifactId>
-            <scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
             <scope>compile</scope>
 		</dependency>
 		<dependency>
@@ -92,16 +91,6 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>jcl-over-slf4j</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -32,6 +32,7 @@ import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.action.ActionManager;
 import org.apache.cayenne.modeler.action.CopyAttributeRelationshipAction;
 import org.apache.cayenne.modeler.action.CutAttributeRelationshipAction;
+import org.apache.cayenne.modeler.action.ObjEntityToSuperEntityAction;
 import org.apache.cayenne.modeler.action.PasteAction;
 import org.apache.cayenne.modeler.action.RemoveAttributeRelationshipAction;
 import org.apache.cayenne.modeler.dialog.objentity.ObjAttributeInfoDialog;
@@ -48,18 +49,23 @@ import org.apache.cayenne.modeler.util.DbAttributePathComboBoxRenderer;
 import org.apache.cayenne.modeler.util.DbAttributePathComboBoxEditor;
 import org.apache.cayenne.modeler.util.ModelerUtil;
 import org.apache.cayenne.modeler.util.PanelFactory;
+import org.apache.cayenne.modeler.util.ProjectUtil;
 import org.apache.cayenne.modeler.util.UIUtil;
 import org.apache.cayenne.modeler.util.combo.AutoCompletion;
+import org.apache.cayenne.swing.components.image.FilteredIconFactory;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -71,10 +77,12 @@ import java.awt.Component;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -127,10 +135,23 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
                 ObjAttributeTableModel.class,
                 "objEntity/attributeTable");
 
-        /**
-         * Create and install a popup
-         */
-        Icon ico = ModelerUtil.buildIcon("icon-info.gif");
+        // go to SuperEntity from ObjEntity by inheritance icon
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                if (row >= 0 && col == ObjAttributeTableModel.INHERITED) {
+                    if (Boolean.TRUE.equals(table.getValueAt(row, col))) {
+                        ActionManager actionManager = Application.getInstance().getActionManager();
+                        actionManager.getAction(ObjEntityToSuperEntityAction.class).performAction(null);
+                    }
+                }
+            }
+        });
+
+        // Create and install a popup
+        Icon ico = ModelerUtil.buildIcon("icon-edit.png");
         resolveMenu = new JMenuItem("Database Mapping", ico);
 
         JPopupMenu popup = new JPopupMenu();
@@ -164,13 +185,10 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
                 // ... show dialog...
                 new ObjAttributeInfoDialog(mediator, row, model).startupAction();
 
-                /**
-                 * This is required for a table to be updated properly
-                 */
+                // This is required for a table to be updated properly
                 table.cancelEditing();
 
-                // need to refresh selected row... do this by unselecting/selecting the
-                // row
+                // need to refresh selected row... do this by unselecting/selecting the row
                 table.getSelectionModel().clearSelection();
                 table.select(row);
                 enabledResolve = false;
@@ -188,14 +206,10 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
     }
 
     public void initComboBoxes() {
-        List<String> embeddableNames = new ArrayList<String>();
-        List<String> typeNames = new ArrayList<String>();
+        List<String> embeddableNames = new ArrayList<>();
+        List<String> typeNames = new ArrayList<>();
 
-        Iterator it = ((DataChannelDescriptor) mediator.getProject().getRootNode())
-                .getDataMaps()
-                .iterator();
-        while (it.hasNext()) {
-            DataMap dataMap = (DataMap) it.next();
+        for (DataMap dataMap : ((DataChannelDescriptor) mediator.getProject().getRootNode()).getDataMaps()) {
             for (Embeddable emb : dataMap.getEmbeddables()) {
                 embeddableNames.add(emb.getClassName());
             }
@@ -205,15 +219,11 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
         Collections.addAll(typeNames, registeredTypes);
         typeNames.addAll(embeddableNames);
 
-        TableColumn typeColumn = table.getColumnModel().getColumn(
-                ObjAttributeTableModel.OBJ_ATTRIBUTE_TYPE);
+        TableColumn typeColumn = table.getColumnModel().getColumn(ObjAttributeTableModel.OBJ_ATTRIBUTE_TYPE);
 
-        JComboBox javaTypesCombo = Application.getWidgetFactory().createComboBox(
-                typeNames.toArray(),
-                false);
+        JComboBox javaTypesCombo = Application.getWidgetFactory().createComboBox(typeNames.toArray(), false);
         AutoCompletion.enable(javaTypesCombo, false, true);
-        typeColumn.setCellEditor(Application.getWidgetFactory().createCellEditor(
-                javaTypesCombo));
+        typeColumn.setCellEditor(Application.getWidgetFactory().createCellEditor(javaTypesCombo));
     }
 
     /**
@@ -258,6 +268,9 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
         }
 
         table.select(ind);
+        if (e.getOldName() != null) {
+            removeDuplicateAttribute(e);
+        }
     }
 
     public void objAttributeAdded(AttributeEvent e) {
@@ -300,6 +313,34 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
             model.removeRow(list.get(ind));
             model.fireTableDataChanged();
             table.select(ind);
+        }
+    }
+
+    public void removeDuplicateAttribute(AttributeEvent e) {
+        Collection<ObjEntity> objEntities = ProjectUtil.getCollectionOfChildren((ObjEntity) e.getEntity());
+
+
+        for (ObjEntity objEntity: objEntities) {
+            if (objEntity.getDeclaredAttribute(e.getAttribute().getName()) != null) {
+
+                JOptionPane pane = new JOptionPane(
+                        String.format("'%s' and '%s' can't have attribute '%s' together. " +
+                                        "Would you like to delete this attribute from the '%s' class?",
+                                objEntity.getName(), e.getEntity().getName(), e.getAttribute().getName(), objEntity.getName()),
+                        JOptionPane.QUESTION_MESSAGE,
+                        JOptionPane.YES_NO_OPTION);
+
+                JDialog dialog = pane.createDialog(Application.getFrame(), "Confirm Remove");
+                dialog.setVisible(true);
+
+                boolean shouldDelete;
+                Object selectedValue = pane.getValue();
+                shouldDelete = selectedValue != null && selectedValue.equals(JOptionPane.YES_OPTION);
+                if (shouldDelete) {
+                    objEntity.removeAttribute(e.getAttribute().getName());
+                    objEntity.removeAttributeOverride(e.getAttribute().getName());
+                }
+            }
         }
     }
 
@@ -399,13 +440,7 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
                 int row,
                 int column) {
 
-            super.getTableCellRendererComponent(
-                    table,
-                    value,
-                    isSelected,
-                    hasFocus,
-                    row,
-                    column);
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
             ObjAttributeTableModel model = (ObjAttributeTableModel) table.getModel();
             column = table.getColumnModel().getColumn(column).getModelIndex();
@@ -415,8 +450,7 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
                 if (!model.isCellEditable(row, column)) {
                     setForeground(Color.GRAY);
                 } else {
-                    setForeground(isSelected && !hasFocus ? table
-                            .getSelectionForeground() : table.getForeground());
+                    setForeground(isSelected && !hasFocus ? table.getSelectionForeground() : table.getForeground());
                 }
 
                 if (attribute.isInherited()) {
@@ -427,11 +461,16 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
                 setIcon(null);
             } else {
                 if (attribute.isInherited()) {
-                    ImageIcon objEntityIcon = ModelerUtil.buildIcon("icon-override.gif");
+                    Icon objEntityIcon = ModelerUtil.buildIcon("icon-inheritance.png");
+                    if(isSelected) {
+                        objEntityIcon = FilteredIconFactory
+                                .createIcon(objEntityIcon, FilteredIconFactory.FilterType.SELECTION);
+                    }
                     setIcon(objEntityIcon);
                 }
                 setText("");
             }
+            setFont(UIManager.getFont("Label.font"));
             setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
 
             return this;

@@ -31,6 +31,7 @@ import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
 import org.apache.cayenne.access.types.ShortType;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -158,11 +159,12 @@ public class OracleAdapter extends JdbcAdapter {
 	}
 
 	public OracleAdapter(@Inject RuntimeProperties runtimeProperties,
-			@Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
-			@Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
-			@Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
-			@Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator) {
-		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator);
+						 @Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
+						 @Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
+						 @Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
+						 @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator,
+						 @Inject ValueObjectTypeRegistry valueObjectTypeRegistry) {
+		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator, valueObjectTypeRegistry);
 
 		// enable batch updates by default
 		setSupportsBatchUpdates(true);
@@ -236,10 +238,10 @@ public class OracleAdapter extends JdbcAdapter {
 		// Oracle doesn't support BOOLEAN even when binding NULL, so have to
 		// intercept
 		// NULL Boolean here, as super doesn't pass it through ExtendedType...
-		if (binding.getValue() == null && binding.getType() == Types.BOOLEAN) {
+		if (binding.getValue() == null && binding.getJdbcType() == Types.BOOLEAN) {
 			ExtendedType typeProcessor = getExtendedTypes().getRegisteredType(Boolean.class);
 			typeProcessor.setJdbcObject(statement, binding.getValue(), binding.getStatementPosition(), binding
-							.getType(),binding.getScale());
+							.getJdbcType(),binding.getScale());
 		} else {
 			super.bindParameter(statement, binding);
 		}

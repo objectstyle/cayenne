@@ -46,6 +46,16 @@ public class ASTMod extends ASTFunctionCall {
     }
 
     @Override
+    protected int getRequiredChildrenCount() {
+        return 0;
+    }
+
+    @Override
+    protected Object evaluateSubNode(Object o, Object[] evaluatedChildren) throws Exception {
+        return null;
+    }
+
+    @Override
     public Expression shallowCopy() {
         return new ASTMod(id);
     }

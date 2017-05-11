@@ -23,6 +23,8 @@ import org.apache.cayenne.DataChannel;
 import org.apache.cayenne.DataChannelFilter;
 import org.apache.cayenne.access.DataDomain;
 import org.apache.cayenne.access.DataNode;
+import org.apache.cayenne.access.DataRowStoreFactory;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.cache.NestedQueryCache;
 import org.apache.cayenne.cache.QueryCache;
 import org.apache.cayenne.configuration.ConfigurationTree;
@@ -40,8 +42,8 @@ import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.EntitySorter;
 import org.apache.cayenne.resource.Resource;
 import org.apache.cayenne.resource.ResourceLocator;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -55,7 +57,7 @@ import java.util.List;
  */
 public class DataDomainProvider implements Provider<DataDomain> {
 
-	private static Log logger = LogFactory.getLog(DataDomainProvider.class);
+	private static Logger logger = LoggerFactory.getLogger(DataDomainProvider.class);
 
 	@Inject
 	protected ResourceLocator resourceLocator;
@@ -68,6 +70,9 @@ public class DataDomainProvider implements Provider<DataDomain> {
 
 	@Inject(Constants.SERVER_DOMAIN_FILTERS_LIST)
 	protected List<DataChannelFilter> filters;
+
+	@Inject(Constants.SERVER_DOMAIN_LISTENERS_LIST)
+	protected List<Object> listeners;
 
 	@Inject(Constants.SERVER_PROJECT_LOCATIONS_LIST)
 	protected List<String> locations;
@@ -83,6 +88,9 @@ public class DataDomainProvider implements Provider<DataDomain> {
 
 	@Inject
 	protected DataNodeFactory dataNodeFactory;
+
+	@Inject
+	protected ValueObjectTypeRegistry valueObjectTypeRegistry;
 
 	@Override
 	public DataDomain get() throws ConfigurationException {
@@ -113,6 +121,7 @@ public class DataDomainProvider implements Provider<DataDomain> {
 		dataDomain.setQueryCache(new NestedQueryCache(queryCache));
 		dataDomain.setEntitySorter(injector.getInstance(EntitySorter.class));
 		dataDomain.setEventManager(injector.getInstance(EventManager.class));
+		dataDomain.setDataRowStoreFactory(injector.getInstance(DataRowStoreFactory.class));
 
 		dataDomain.initWithProperties(descriptor.getProperties());
 
@@ -122,6 +131,7 @@ public class DataDomainProvider implements Provider<DataDomain> {
 
 		dataDomain.getEntityResolver().applyDBLayerDefaults();
 		dataDomain.getEntityResolver().applyObjectLayerDefaults();
+		dataDomain.getEntityResolver().setValueObjectTypeRegistry(valueObjectTypeRegistry);
 
 		for (DataNodeDescriptor nodeDescriptor : descriptor.getNodeDescriptors()) {
 			addDataNode(dataDomain, nodeDescriptor);
@@ -149,6 +159,10 @@ public class DataDomainProvider implements Provider<DataDomain> {
 
 		for (DataChannelFilter filter : filters) {
 			dataDomain.addFilter(filter);
+		}
+
+		for (Object listener : listeners) {
+			dataDomain.addListener(listener);
 		}
 
 		return dataDomain;

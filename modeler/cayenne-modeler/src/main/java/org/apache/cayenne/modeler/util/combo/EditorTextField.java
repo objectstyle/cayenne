@@ -22,14 +22,19 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 
+import javax.swing.AbstractAction;
 import javax.swing.CellRendererPane;
+import javax.swing.InputMap;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JList;
+import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.ListCellRenderer;
+import javax.swing.KeyStroke;
 
 /**
  * EditorTextField is a text field to be used in combobox editor. It paints self normally
@@ -63,34 +68,63 @@ public class EditorTextField extends JTextField implements FocusListener {
         rendererPane = new CellRendererPane();
 
         addFocusListener(this);
+        // hook up to TAB handler to keep entered value after TAB is pressed
+        initTabHandler();
+    }
+
+    private void initTabHandler() {
+        this.combo.setFocusTraversalKeysEnabled(false);
+        this.combo.getActionMap().put("tab-action", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                combo.setSelectedItem(getText());
+                Component component = getParent().getParent();
+                if(component instanceof JTable) {
+                    JTable table = (JTable)component;
+                    if((e.getModifiers() & ActionEvent.SHIFT_MASK) > 0) {
+                        table.changeSelection(table.getEditingRow(), table.getEditingColumn()-1, false, false);
+                    } else {
+                        table.changeSelection(table.getEditingRow(), table.getEditingColumn()+1, false, false);
+                    }
+                } else {
+                    if((e.getModifiers() & ActionEvent.SHIFT_MASK) > 0) {
+                        transferFocusBackward();
+                    } else {
+                        transferFocus();
+                    }
+                }
+            }
+        });
+        InputMap inputMap = this.combo.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        inputMap.put(KeyStroke.getKeyStroke("TAB"), "tab-action");
+        inputMap.put(KeyStroke.getKeyStroke("shift TAB"), "tab-action");
     }
 
     @Override
     public void paintComponent(Graphics g) {
-        if (hasFocus)
+        if (hasFocus) {
             super.paintComponent(g);
-        else {
+        } else {
             list.setEnabled(combo.isEnabled());
 
-            ListCellRenderer renderer = combo.getRenderer();
-            Component c = renderer.getListCellRendererComponent(list, combo
-                    .getSelectedItem(), -1, false, false);
-            
-            //fill background first
+            Component c = combo.getRenderer()
+                    .getListCellRendererComponent(list, combo.getSelectedItem(), -1, false, false);
+
+            Insets insets = getInsets();
+
             Color oldColor = g.getColor();
             g.setColor(getBackground());
-            g.fillRect(0, 0, getWidth(), getHeight());
+            g.fillRect(insets.left, insets.top,
+                    getWidth() - insets.right - insets.left, getHeight() - insets.bottom - insets.top);
             g.setColor(oldColor);
-            
-            Insets insets = getInsets();
-            rendererPane.paintComponent(g, c, combo, insets.left, insets.top, 
+
+            rendererPane.paintComponent(g, c, combo, insets.left, insets.top,
                     getWidth() - insets.right - insets.left, getHeight() - insets.bottom - insets.top);
         }
     }
 
     public void focusGained(FocusEvent e) {
         hasFocus = true;
-
         combo.repaint();
     }
 

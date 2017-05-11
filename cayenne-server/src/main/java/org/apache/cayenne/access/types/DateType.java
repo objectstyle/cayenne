@@ -39,8 +39,7 @@ public class DateType implements ExtendedType<Date> {
     }
 
     @Override
-    public Date materializeObject(CallableStatement rs, int index, int type)
-            throws Exception {
+    public Date materializeObject(CallableStatement rs, int index, int type) throws Exception {
         return rs.getDate(index);
     }
 
@@ -54,8 +53,7 @@ public class DateType implements ExtendedType<Date> {
 
         if (value == null) {
             statement.setNull(pos, type);
-        }
-        else {
+        } else {
             statement.setDate(pos, value);
         }
     }

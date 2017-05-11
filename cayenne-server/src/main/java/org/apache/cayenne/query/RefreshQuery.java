@@ -23,7 +23,6 @@ import java.util.Collection;
 
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.Persistent;
-import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.EntityResolver;
 
@@ -42,7 +41,11 @@ public class RefreshQuery implements Query {
     /**
      * Creates a RefreshQuery that does full refresh of all registered objects, cascading
      * refresh all the way to the shared cache.
+     *
+     * @deprecated since 4.0, "refresh all" query will drop all cache contents
+     * @see org.apache.cayenne.cache.QueryCache#clear()
      */
+    @Deprecated
     public RefreshQuery() {
 
     }
@@ -127,19 +130,15 @@ public class RefreshQuery implements Query {
 
                 QueryMetadataWrapper wrappedMd = new QueryMetadataWrapper(md);
                 if (QueryCacheStrategy.LOCAL_CACHE == md.getCacheStrategy()) {
-                    wrappedMd.override(
-                            QueryMetadata.CACHE_STRATEGY_PROPERTY,
-                            QueryCacheStrategy.LOCAL_CACHE_REFRESH);
-                }
-                else if (QueryCacheStrategy.SHARED_CACHE == md.getCacheStrategy()) {
-                    wrappedMd.override(
-                            QueryMetadata.CACHE_STRATEGY_PROPERTY,
-                            QueryCacheStrategy.SHARED_CACHE_REFRESH);
+                    wrappedMd.override(QueryMetadata.CACHE_STRATEGY_PROPERTY, QueryCacheStrategy.LOCAL_CACHE_REFRESH);
+                } else if (QueryCacheStrategy.SHARED_CACHE == md.getCacheStrategy()) {
+                    wrappedMd.override(QueryMetadata.CACHE_STRATEGY_PROPERTY, QueryCacheStrategy.SHARED_CACHE_REFRESH);
                 }
 
                 return wrappedMd;
             }
 
+            @Deprecated
             public String getName() {
                 return query.getName();
             }
@@ -151,12 +150,14 @@ public class RefreshQuery implements Query {
                 query.route(router, resolver, this);
             }
 
+            @Deprecated
             public DataMap getDataMap() {
                 return query.getDataMap();
             }
         };
     }
 
+    @Deprecated
     public DataMap getDataMap() {
         return null;
     }

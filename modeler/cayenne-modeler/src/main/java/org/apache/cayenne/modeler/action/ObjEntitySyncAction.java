@@ -51,7 +51,7 @@ public class ObjEntitySyncAction extends CayenneAction {
     }
 
     public String getIconName() {
-        return "icon-sync.gif";
+        return "icon-sync.png";
     }
 
     public KeyStroke getAcceleratorKey() {
@@ -64,10 +64,10 @@ public class ObjEntitySyncAction extends CayenneAction {
      * @see org.apache.cayenne.modeler.util.CayenneAction#performAction(ActionEvent)
      */
     public void performAction(ActionEvent e) {
-        synchObjEntity();
+        syncObjEntity();
     }
 
-    protected void synchObjEntity() {
+    protected void syncObjEntity() {
         ProjectController mediator = getProjectController();
         ObjEntity entity = mediator.getCurrentObjEntity();
 
@@ -79,6 +79,8 @@ public class ObjEntitySyncAction extends CayenneAction {
             if (merger == null) {
                 return;
             }
+
+            merger.setNameGenerator(new DbEntitySyncAction.PreserveRelationshipNameGenerator());
 
             if (merger.synchronizeWithDbEntity(entity)) {
                 mediator

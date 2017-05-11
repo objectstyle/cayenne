@@ -21,6 +21,7 @@ package org.apache.cayenne.map;
 
 import org.apache.cayenne.ObjectId;
 import org.apache.cayenne.Persistent;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.query.Query;
 import org.apache.cayenne.reflect.ClassDescriptor;
 import org.apache.cayenne.reflect.ClassDescriptorMap;
@@ -29,8 +30,8 @@ import org.apache.cayenne.reflect.LifecycleCallbackRegistry;
 import org.apache.cayenne.reflect.SingletonFaultFactory;
 import org.apache.cayenne.reflect.generic.DataObjectDescriptorFactory;
 import org.apache.cayenne.reflect.valueholder.ValueHolderDescriptorFactory;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -52,7 +53,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class EntityResolver implements MappingNamespace, Serializable {
 
-    protected static final Log logger = LogFactory.getLog(EntityResolver.class);
+    protected static final Logger logger = LoggerFactory.getLogger(EntityResolver.class);
     protected static AtomicLong incrementer = new AtomicLong();
 
     @Deprecated
@@ -68,6 +69,8 @@ public class EntityResolver implements MappingNamespace, Serializable {
 
     // callbacks are not serializable
     protected transient LifecycleCallbackRegistry callbackRegistry;
+
+    protected transient ValueObjectTypeRegistry valueObjectTypeRegistry;
 
     /**
      * Creates new empty EntityResolver.
@@ -500,6 +503,37 @@ public class EntityResolver implements MappingNamespace, Serializable {
     }
 
     /**
+     * <p>
+     * Looks in the DataMap's that this object was created with for the
+     * ObjEntity that maps to the services the specified class, with option to
+     * fallback to search by name with client resolver in case entity not found.
+     * </p>
+     * <p>
+     * This method can be used where entity class can be received from client.
+     * </p>
+     *
+     * @param entityClass entity class to search
+     * @param lookupClientResolver flag to fallback to client resolver
+     * @return the required ObjEntity or null if there is none that matches the
+     *         specifier
+     *
+     * @since 4.0
+     */
+    public ObjEntity getObjEntity(Class<?> entityClass, boolean lookupClientResolver) {
+        ObjEntity entity = getObjEntity(entityClass);
+        if(entity != null || !lookupClientResolver) {
+            return entity;
+        }
+
+        EntityResolver clientResolver = getClientEntityResolver();
+        if (clientResolver != this) {
+            ObjEntity clientEntity = clientResolver.getObjEntity(entityClass);
+            entity = clientEntity == null ? null : getObjEntity(clientEntity.getName());
+        }
+        return entity;
+    }
+
+    /**
      * @deprecated since 4.0, use {@link #getObjEntity(Class)}.
      */
     public ObjEntity lookupObjEntity(Class<?> entityClass) {
@@ -629,5 +663,13 @@ public class EntityResolver implements MappingNamespace, Serializable {
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         refreshMappingCache();
+    }
+
+    public ValueObjectTypeRegistry getValueObjectTypeRegistry() {
+        return valueObjectTypeRegistry;
+    }
+
+    public void setValueObjectTypeRegistry(ValueObjectTypeRegistry valueObjectTypeRegistry) {
+        this.valueObjectTypeRegistry = valueObjectTypeRegistry;
     }
 }

@@ -22,7 +22,7 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M5-SNAPSHOT</version>
+		<version>4.0.M6-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-server</artifactId>
 	<name>cayenne-server: Cayenne Server</name>
@@ -32,6 +32,12 @@
 	<dependencies>
 
 		<!-- Compile dependencies -->
+
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<scope>compile</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.cayenne</groupId>
 			<artifactId>cayenne-di</artifactId>
@@ -41,11 +47,6 @@
 		<dependency>
 			<groupId>commons-collections</groupId>
 			<artifactId>commons-collections</artifactId>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
@@ -62,24 +63,6 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-			<groupId>jgroups</groupId>
-			<artifactId>jgroups-all</artifactId>
-			<scope>provided</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>jivesoftware</groupId>
-			<artifactId>smack</artifactId>
-			<scope>provided</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>jivesoftware</groupId>
-			<artifactId>smackx</artifactId>
-			<scope>provided</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
 			<groupId>opensymphony</groupId>
 			<artifactId>oscache</artifactId>
 			<scope>provided</scope>
@@ -88,12 +71,6 @@
 		<dependency>
 			<groupId>net.sf.ehcache</groupId>
 			<artifactId>ehcache-core</artifactId>
-			<scope>provided</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.geronimo.specs</groupId>
-			<artifactId>geronimo-jms_1.1_spec</artifactId>
 			<scope>provided</scope>
 			<optional>true</optional>
 		</dependency>
@@ -136,20 +113,10 @@
 			<artifactId>mockrunner</artifactId>
 			<scope>test</scope>
 		</dependency>
-        <dependency>
-    		<groupId>org.slf4j</groupId>
-    		<artifactId>jcl-over-slf4j</artifactId>
-    		<scope>test</scope>
-		</dependency>
 		<dependency>
-    		<groupId>org.slf4j</groupId>
-    		<artifactId>slf4j-api</artifactId>
-    		<scope>test</scope>
-		</dependency>
-		<dependency>
-    		<groupId>org.slf4j</groupId>
-    		<artifactId>slf4j-simple</artifactId>
-    		<scope>test</scope>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>xmlunit</groupId>

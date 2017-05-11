@@ -29,6 +29,7 @@ import org.apache.cayenne.access.types.CharType;
 import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -69,11 +70,12 @@ public class PostgresAdapter extends JdbcAdapter {
 	public static final String BYTEA = "bytea";
 
 	public PostgresAdapter(@Inject RuntimeProperties runtimeProperties,
-			@Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
-			@Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
-			@Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
-			@Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator) {
-		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator);
+						   @Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
+						   @Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
+						   @Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
+						   @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator,
+						   @Inject ValueObjectTypeRegistry valueObjectTypeRegistry) {
+		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator, valueObjectTypeRegistry);
 		setSupportsBatchUpdates(true);
 		setSupportsGeneratedKeys(true);
 	}
@@ -133,7 +135,7 @@ public class PostgresAdapter extends JdbcAdapter {
 	@Override
 	public void bindParameter(PreparedStatement statement, ParameterBinding binding)
 			throws SQLException, Exception {
-		binding.setType(mapNTypes(binding.getType()));
+		binding.setJdbcType(mapNTypes(binding.getJdbcType()));
 		super.bindParameter(statement, binding);
 	}
 
@@ -210,14 +212,14 @@ public class PostgresAdapter extends JdbcAdapter {
 	private void createAttribute(DbEntity ent, QuotingStrategy context, StringBuilder buf, DbAttribute at) {
 		// attribute may not be fully valid, do a simple check
 		if (at.getType() == TypesMapping.NOT_DEFINED) {
-			throw new CayenneRuntimeException("Undefined type for attribute '" + ent.getFullyQualifiedName() + "."
-					+ at.getName() + "'.");
+			throw new CayenneRuntimeException("Undefined type for attribute '%s.%s'"
+					, ent.getFullyQualifiedName(), at.getName());
 		}
 
 		String[] types = externalTypesForJdbcType(at.getType());
 		if (types == null || types.length == 0) {
-			throw new CayenneRuntimeException("Undefined type for attribute '" + ent.getFullyQualifiedName() + "."
-					+ at.getName() + "': " + at.getType());
+			throw new CayenneRuntimeException("Undefined type for attribute '%s.%s': %s"
+					, ent.getFullyQualifiedName(), at.getName(), at.getType());
 		}
 
 		// Checking that attribute is generated and we have alternative types in types.xml.

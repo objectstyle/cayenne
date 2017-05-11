@@ -22,7 +22,7 @@ package org.apache.cayenne.access.types;
 import org.apache.cayenne.ExtendedEnumeration;
 
 /**
- * ExtendedTypeFactory for handling JDK 1.5 Enums.
+ * ExtendedTypeFactory for handling Enum types.
  * 
  * @since 3.0
  */
@@ -30,12 +30,13 @@ public class EnumTypeFactory implements ExtendedTypeFactory {
 
     @SuppressWarnings("unchecked")
     public ExtendedType getType(Class<?> objectClass) {
-        if (ExtendedEnumeration.class.isAssignableFrom(objectClass))
+        if (ExtendedEnumeration.class.isAssignableFrom(objectClass)) {
             return new ExtendedEnumType(objectClass);
-        else if (objectClass.isEnum())
+        } else if (objectClass.isEnum()) {
             return new EnumType(objectClass);
-        else
+        } else {
             return null;
+        }
     }
 
 }

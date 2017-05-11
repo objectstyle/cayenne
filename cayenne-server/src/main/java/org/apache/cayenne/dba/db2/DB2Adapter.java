@@ -36,6 +36,7 @@ import org.apache.cayenne.access.types.CharType;
 import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -67,8 +68,9 @@ public class DB2Adapter extends JdbcAdapter {
             @Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
             @Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
             @Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
-            @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator) {
-        super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator);
+            @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator,
+            @Inject ValueObjectTypeRegistry valueObjectTypeRegistry) {
+        super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator, valueObjectTypeRegistry);
         setSupportsGeneratedKeys(true);
     }
 
@@ -99,8 +101,8 @@ public class DB2Adapter extends JdbcAdapter {
         String[] types = externalTypesForJdbcType(column.getType());
         if (types == null || types.length == 0) {
             String entityName = column.getEntity() != null ? column.getEntity().getFullyQualifiedName() : "<null>";
-            throw new CayenneRuntimeException("Undefined type for attribute '"
-                    + entityName + "." + column.getName() + "': " + column.getType());
+            throw new CayenneRuntimeException("Undefined type for attribute '%s.%s': %s"
+                    , entityName, column.getName(), column.getType());
         }
         String type = types[0];
 
@@ -164,10 +166,10 @@ public class DB2Adapter extends JdbcAdapter {
 
     @Override
     public void bindParameter(PreparedStatement statement, ParameterBinding binding) throws Exception {
-        if (binding.getValue() == null && (binding.getType() == 0 || binding.getType() == Types.BOOLEAN)) {
+        if (binding.getValue() == null && (binding.getJdbcType() == 0 || binding.getJdbcType() == Types.BOOLEAN)) {
             statement.setNull(binding.getStatementPosition(), Types.VARCHAR);
         } else {
-            binding.setType(convertNTypes(binding.getType()));
+            binding.setJdbcType(convertNTypes(binding.getJdbcType()));
             super.bindParameter(statement, binding);
         }
     }

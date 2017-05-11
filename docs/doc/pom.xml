@@ -24,7 +24,7 @@
 	<parent>
 		<groupId>org.apache.cayenne.docs</groupId>
 		<artifactId>cayenne-docs-parent</artifactId>
-		<version>4.0.M5-SNAPSHOT</version>
+		<version>4.0.M6-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>cayenne-doc</artifactId>
@@ -53,11 +53,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
-		</dependency>
-
-		<dependency>
 			<groupId>commons-collections</groupId>
 			<artifactId>commons-collections</artifactId>
 		</dependency>
@@ -83,11 +78,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.geronimo.specs</groupId>
-			<artifactId>geronimo-jms_1.1_spec</artifactId>
-		</dependency>
-
-		<dependency>
 			<groupId>ognl</groupId>
 			<artifactId>ognl</artifactId>
 		</dependency>
@@ -95,11 +85,6 @@
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>servlet-api</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>jivesoftware</groupId>
-			<artifactId>smack</artifactId>
 		</dependency>
 
 		<dependency>
@@ -177,11 +162,6 @@
 					<destDir>doc/api</destDir>
 					<stylesheet>java</stylesheet>
                     <additionalDependencies>
-                        <additionalDependency>
-                            <groupId>jgroups</groupId>
-                            <artifactId>jgroups-all</artifactId>
-                            <version>2.2.7</version>
-                        </additionalDependency>
                         <additionalDependency>
                             <groupId>net.sf.ehcache</groupId>
                             <artifactId>ehcache-core</artifactId>

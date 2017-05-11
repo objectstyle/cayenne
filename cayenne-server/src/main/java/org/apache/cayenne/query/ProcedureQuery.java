@@ -36,8 +36,9 @@ import java.util.Map;
 /**
  * A query based on Procedure. Can be used as a select query, or as a query of an
  * arbitrary complexity, performing data modification, selecting data (possibly with
- * multiple result sets per call), returning values via OUT parameters. <h3>Execution with
- * DataContext</h3> <h4>Reading OUT parameters</h4>
+ * multiple result sets per call), returning values via OUT parameters.
+ * <h3>Execution with DataContext</h3>
+ * <h4>Reading OUT parameters</h4>
  * <p>
  * If a ProcedureQuery has OUT parameters, they are wrapped in a separate List in the
  * query result. Such list will contain a single Map with OUT parameter values.
@@ -53,8 +54,7 @@ import java.util.Map;
  * {@link org.apache.cayenne.access.DataContext#performGenericQuery(Query)}.
  * </p>
  */
-public class ProcedureQuery extends AbstractQuery implements ParameterizedQuery,
-        XMLSerializable {
+public class ProcedureQuery extends AbstractQuery implements ParameterizedQuery, XMLSerializable {
 
     public static final String COLUMN_NAME_CAPITALIZATION_PROPERTY = "cayenne.ProcedureQuery.columnNameCapitalization";
 
@@ -73,8 +73,7 @@ public class ProcedureQuery extends AbstractQuery implements ParameterizedQuery,
 
     ProcedureQueryMetadata metaData = new ProcedureQueryMetadata();
 
-    // TODO: ColumnDescriptor is not XMLSerializable so we can't store
-    // it in a DataMap
+    // TODO: ColumnDescriptor is not XMLSerializable so we can't store it in a DataMap
     /**
      * @since 1.2
      */
@@ -297,64 +296,9 @@ public class ProcedureQuery extends AbstractQuery implements ParameterizedQuery,
         return query;
     }
 
-    /**
-     * @since 3.0
-     */
-    public QueryCacheStrategy getCacheStrategy() {
-        return metaData.getCacheStrategy();
-    }
-
-    /**
-     * @since 3.0
-     */
-    public void setCacheStrategy(QueryCacheStrategy strategy) {
-        metaData.setCacheStrategy(strategy);
-    }
-
-    /**
-     * @since 3.0
-     */
-    public String[] getCacheGroups() {
-        return metaData.getCacheGroups();
-    }
-
-    /**
-     * @since 3.0
-     */
-    public void setCacheGroups(String... cacheGroups) {
-        this.metaData.setCacheGroups(cacheGroups);
-    }
-    
-    /**
-     * Instructs Cayenne to look for query results in the "local" cache when
-     * running the query. This is a short-hand notation for:
-     * 
-     * <pre>
-     * query.setCacheStrategy(QueryCacheStrategy.LOCAL_CACHE);
-     * query.setCacheGroups(&quot;group1&quot;, &quot;group2&quot;);
-     * </pre>
-     * 
-     * @since 4.0
-     */
-    public void useLocalCache(String... cacheGroups) {
-        setCacheStrategy(QueryCacheStrategy.LOCAL_CACHE);
-        setCacheGroups(cacheGroups);
-    }
-
-    /**
-     * Instructs Cayenne to look for query results in the "shared" cache when
-     * running the query. This is a short-hand notation for:
-     * 
-     * <pre>
-     * query.setCacheStrategy(QueryCacheStrategy.SHARED_CACHE);
-     * query.setCacheGroups(&quot;group1&quot;, &quot;group2&quot;);
-     * </pre>
-     * 
-     * @since 4.0
-     */
-    public void useSharedCache(String... cacheGroups) {
-        setCacheStrategy(QueryCacheStrategy.SHARED_CACHE);
-        setCacheGroups(cacheGroups);
+    @Override
+    protected BaseQueryMetadata getBaseMetaData() {
+        return metaData;
     }
 
     public int getFetchLimit() {

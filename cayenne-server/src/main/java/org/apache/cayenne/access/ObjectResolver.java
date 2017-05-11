@@ -31,8 +31,8 @@ import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.reflect.ClassDescriptor;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,7 +47,7 @@ import java.util.Map;
  */
 class ObjectResolver {
 
-	private static final Log LOGGER = LogFactory.getLog(ObjectResolver.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(ObjectResolver.class);
 
 	DataContext context;
 	ClassDescriptor descriptor;
@@ -66,14 +66,13 @@ class ObjectResolver {
 
 		DbEntity dbEntity = descriptor.getEntity().getDbEntity();
 		if (dbEntity == null) {
-			throw new CayenneRuntimeException("ObjEntity '" + descriptor.getEntity().getName() + "' has no DbEntity.");
+			throw new CayenneRuntimeException("ObjEntity '%s' has no DbEntity.", descriptor.getEntity().getName());
 		}
 
 		this.primaryKey = dbEntity.getPrimaryKeys();
 		if (primaryKey.size() == 0) {
-			throw new CayenneRuntimeException("Won't be able to create ObjectId for '"
-					+ descriptor.getEntity().getName() + "'. Reason: DbEntity '" + dbEntity.getName()
-					+ "' has no Primary Key defined.");
+			throw new CayenneRuntimeException("Won't be able to create ObjectId for '%s'. Reason: DbEntity " +
+					"'%s' has no Primary Key defined.", descriptor.getEntity().getName(), dbEntity.getName());
 		}
 
 		this.context = context;
@@ -128,8 +127,7 @@ class ObjectResolver {
 		ClassDescriptor classDescriptor = descriptorResolutionStrategy.descriptorForRow(row);
 
 		// not using DataRow.createObjectId for performance reasons -
-		// ObjectResolver
-		// has all needed metadata already cached.
+		// ObjectResolver has all needed metadata already cached.
 		ObjectId anId = createObjectId(row, classDescriptor.getEntity(), null);
 		return objectFromDataRow(row, anId, classDescriptor);
 	}

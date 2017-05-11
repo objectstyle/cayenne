@@ -23,7 +23,7 @@ import junit.framework.AssertionFailedError;
 import org.apache.cayenne.DataObject;
 import org.apache.cayenne.Persistent;
 import org.apache.cayenne.access.DataContext;
-import org.apache.cayenne.access.jdbc.SQLParameterBinding;
+import org.apache.cayenne.access.translator.ParameterBinding;
 import org.apache.cayenne.dbsync.merge.DataMapMerger;
 import org.apache.cayenne.dbsync.merge.MergeCase;
 import org.apache.cayenne.di.Inject;
@@ -95,6 +95,7 @@ public class ValueForNullIT extends MergeCase {
         // check values for null
         Expression qual = ExpressionFactory.matchExp(objAttr.getName(), DEFAULT_VALUE_STRING);
         SelectQuery query = new SelectQuery("Painting", qual);
+        @SuppressWarnings("unchecked")
         List<Persistent> rows = context.performQuery(query);
         assertEquals(nrows, rows.size());
 
@@ -109,11 +110,11 @@ public class ValueForNullIT extends MergeCase {
         return super.merger().valueForNullProvider(new DefaultValueForNullProvider() {
 
             @Override
-            protected SQLParameterBinding get(DbEntity entity, DbAttribute column) {
+            protected ParameterBinding get(DbEntity entity, DbAttribute column) {
                 int type = column.getType();
                 switch (type) {
                     case Types.VARCHAR:
-                        return new SQLParameterBinding(DEFAULT_VALUE_STRING, type, -1);
+                        return new ParameterBinding(DEFAULT_VALUE_STRING, type, -1);
                     default:
                         throw new AssertionFailedError("should not get here");
                 }

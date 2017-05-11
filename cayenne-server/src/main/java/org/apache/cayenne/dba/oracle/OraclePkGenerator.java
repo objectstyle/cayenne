@@ -32,7 +32,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -167,11 +166,11 @@ public class OraclePkGenerator extends JdbcPkGenerator {
 		try (Connection con = node.getDataSource().getConnection()) {
 			try (Statement st = con.createStatement()) {
 				String sql = selectNextValQuery(pkGeneratingSequenceName);
-				adapter.getJdbcEventLogger().logQuery(sql, Collections.EMPTY_LIST);
+				adapter.getJdbcEventLogger().log(sql);
 
 				try (ResultSet rs = st.executeQuery(sql)) {
 					if (!rs.next()) {
-						throw new CayenneRuntimeException("Error generating pk for DbEntity " + entity.getName());
+						throw new CayenneRuntimeException("Error generating pk for DbEntity %s", entity.getName());
 					}
 					return rs.getLong(1);
 				}
@@ -228,7 +227,7 @@ public class OraclePkGenerator extends JdbcPkGenerator {
 		try (Connection con = node.getDataSource().getConnection()) {
 			try (Statement sel = con.createStatement()) {
 				String sql = selectAllSequencesQuery();
-				adapter.getJdbcEventLogger().logQuery(sql, Collections.EMPTY_LIST);
+				adapter.getJdbcEventLogger().log(sql);
 
 				try (ResultSet rs = sel.executeQuery(sql)) {
 					List<String> sequenceList = new ArrayList<>();

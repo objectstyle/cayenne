@@ -38,9 +38,14 @@ public class QueryMetadataProxy implements QueryMetadata {
         this.mdDelegate = mdDelegate;
     }
 
+    @Deprecated
     @Override
     public String[] getCacheGroups() {
         return mdDelegate.getCacheGroups();
+    }
+
+    public String getCacheGroup() {
+        return mdDelegate.getCacheGroup();
     }
 
     @Override
@@ -83,9 +88,15 @@ public class QueryMetadataProxy implements QueryMetadata {
         return mdDelegate.getObjEntity();
     }
 
+    @Deprecated
     @Override
     public Query getOrginatingQuery() {
-        return mdDelegate.getOrginatingQuery();
+        return mdDelegate.getOriginatingQuery();
+    }
+
+    @Override
+    public Query getOriginatingQuery() {
+        return mdDelegate.getOriginatingQuery();
     }
 
     @Override
@@ -131,5 +142,10 @@ public class QueryMetadataProxy implements QueryMetadata {
     @Override
     public int getStatementFetchSize() {
         return mdDelegate.getStatementFetchSize();
+    }
+
+    @Override
+    public boolean isSuppressingDistinct() {
+        return mdDelegate.isSuppressingDistinct();
     }
 }

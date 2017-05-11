@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -71,11 +70,10 @@ class DataDomainFlattenedBucket {
 
         DeleteBatchQuery relationDeleteQuery = flattenedDeleteQueries.get(flattenedEntity);
         if (relationDeleteQuery == null) {
-            boolean optimisticLocking = false;
             Collection<DbAttribute> pk = flattenedEntity.getPrimaryKeys();
             List<DbAttribute> pkList = pk instanceof List ? (List<DbAttribute>) pk : new ArrayList<>(pk);
             relationDeleteQuery = new DeleteBatchQuery(flattenedEntity, pkList, Collections.<String> emptySet(), 50);
-            relationDeleteQuery.setUsingOptimisticLocking(optimisticLocking);
+            relationDeleteQuery.setUsingOptimisticLocking(false);
             flattenedDeleteQueries.put(flattenedEntity, relationDeleteQuery);
         }
 
@@ -92,8 +90,6 @@ class DataDomainFlattenedBucket {
      * responsible for adding the flattened Insert Queries. Its possible an insert query for the same DbEntity/ObjectId
      * already has been added from the insert bucket queries if that Object also has an attribute. So we want to merge
      * the data for each insert into a single insert.
-     *
-     * @param queries
      */
     void appendInserts(Collection<Query> queries) {
 
@@ -115,13 +111,42 @@ class DataDomainFlattenedBucket {
             InsertBatchQuery existingQuery = findInsertBatchQuery(queries, dbEntity);
             InsertBatchQuery newQuery = new InsertBatchQuery(dbEntity, 50);
 
+            // merge the snapshots of the FAKs by ObjectId for all ToOne relationships in case we have multiple Arcs per Object
+            Map<ObjectId, Map<String, Object>> toOneSnapshots = new HashMap<>();
+
+            // gather the list of the ToMany snapshots (these will actually be their own insert rows)
+            List<Map<String, Object>> toManySnapshots = new ArrayList<>();
+
             for (FlattenedArcKey flattenedArcKey : flattenedArcKeys) {
-                Map<String, Object> snapshot = flattenedArcKey.buildJoinSnapshotForInsert(node);
+                Map<String, Object> joinSnapshot = flattenedArcKey.buildJoinSnapshotForInsert(node);
+
+                if (flattenedArcKey.relationship.isToMany()) {
+                    toManySnapshots.add(joinSnapshot);
+                } else {
+                    ObjectId objectId = flattenedArcKey.id1.getSourceId();
+
+                    Map<String, Object> snapshot = toOneSnapshots.get(objectId);
+
+                    if (snapshot == null) {
+                        toOneSnapshots.put(objectId, joinSnapshot);
+                    } else {
+                        // merge joinSnapshot data with existing snapshot
+                        for (Map.Entry<String, Object> dbValue : joinSnapshot.entrySet()) {
+                            snapshot.put(dbValue.getKey(), dbValue.getValue());
+                        }
+                    }
+                }
+            }
+
+            // apply the merged ToOne snapshots information and possibly merge it with an existing BatchQueryRow
+            for (Map.Entry<ObjectId, Map<String, Object>> flattenedSnapshot : toOneSnapshots.entrySet()) {
+                ObjectId objectId = flattenedSnapshot.getKey();
+                Map<String, Object> snapshot = flattenedSnapshot.getValue();
 
                 if (existingQuery != null) {
 
                     // TODO: O(N) lookup
-                    BatchQueryRow existingRow = findRowForObjectId(existingQuery.getRows(), flattenedArcKey.id1.getSourceId());
+                    BatchQueryRow existingRow = findRowForObjectId(existingQuery.getRows(), objectId);
                     // todo: do we need to worry about flattenedArcKey.id2 ?
 
                     if (existingRow != null) {
@@ -136,7 +161,12 @@ class DataDomainFlattenedBucket {
                     }
                 }
 
-                newQuery.add(snapshot);
+                newQuery.add(snapshot, objectId);
+            }
+
+            // apply the ToMany snapshots as new BatchQueryRows
+            for(Map<String, Object> toManySnapshot : toManySnapshots) {
+                newQuery.add(toManySnapshot);
             }
 
             if (existingQuery != null) {

@@ -56,18 +56,12 @@ public class ExtendedEnumType<T extends Enum<T>> implements ExtendedType<T> {
 
         try {
             Method m = enumerationClass.getMethod("values");
-
             values = (T[]) m.invoke(null);
-
-            for (int i = 0; i < values.length; i++)
-                register(values[i], ((ExtendedEnumeration) values[i])
-                        .getDatabaseValue());
-
-        }
-        catch (Exception e) {
-            throw new IllegalArgumentException("Class "
-                    + enumerationClass.getName()
-                    + " is not an Enum", e);
+            for (T value : values) {
+                register(value, ((ExtendedEnumeration) value).getDatabaseValue());
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Class " + enumerationClass.getName() + " is not an Enum", e);
         }
     }
 
@@ -81,21 +75,18 @@ public class ExtendedEnumType<T extends Enum<T>> implements ExtendedType<T> {
         if (TypesMapping.isNumeric(type)) {
             int i = rs.getInt(index);
             return (rs.wasNull() || index < 0) ? null : lookup(i);
-        }
-        else {
+        } else {
             String string = rs.getString(index);
             return string != null ? lookup(string) : null;
         }
     }
 
     @Override
-    public T materializeObject(CallableStatement rs, int index, int type)
-            throws Exception {
+    public T materializeObject(CallableStatement rs, int index, int type) throws Exception {
         if (TypesMapping.isNumeric(type)) {
             int i = rs.getInt(index);
             return (rs.wasNull() || index < 0) ? null : lookup(i);
-        }
-        else {
+        } else {
             String string = rs.getString(index);
             return string != null ? lookup(string) : null;
         }
@@ -110,13 +101,12 @@ public class ExtendedEnumType<T extends Enum<T>> implements ExtendedType<T> {
             int precision) throws Exception {
         if (value instanceof ExtendedEnumeration) {
             ExtendedEnumeration e = (ExtendedEnumeration) value;
-
-            if (TypesMapping.isNumeric(type))
+            if (TypesMapping.isNumeric(type)) {
                 statement.setInt(pos, (Integer) e.getDatabaseValue());
-            else
+            } else {
                 statement.setString(pos, (String) e.getDatabaseValue());
-        }
-        else {
+            }
+        } else {
             statement.setNull(pos, type);
         }
     }
@@ -128,8 +118,7 @@ public class ExtendedEnumType<T extends Enum<T>> implements ExtendedType<T> {
         // Check for duplicates.
         if (enumerationMappings.containsKey(databaseValue)
                 || enumerationMappings.containsValue(enumeration))
-            throw new CayenneRuntimeException(
-                    "Enumerations/values may not be duplicated.");
+            throw new CayenneRuntimeException("Enumerations/values may not be duplicated.");
 
         // Store by database value/enum because we have to lookup by db value later.
         enumerationMappings.put(databaseValue, enumeration);
@@ -141,13 +130,10 @@ public class ExtendedEnumType<T extends Enum<T>> implements ExtendedType<T> {
     private T lookup(Object databaseValue) {
         if (!enumerationMappings.containsKey(databaseValue)) {
             // All integers enums are mapped. Not necessarily all strings.
-            if (databaseValue instanceof Integer)
-                throw new CayenneRuntimeException("Missing enumeration mapping for "
-                        + getClassName()
-                        + " with value "
-                        + databaseValue
-                        + ".");
-
+            if (databaseValue instanceof Integer) {
+                throw new CayenneRuntimeException("Missing enumeration mapping for %s with value %s."
+                        , getClassName(), databaseValue);
+            }
             // Use the database value (a String) as the enum value.
             return Enum.valueOf(enumerationClass, (String) databaseValue);
         }
@@ -167,13 +153,15 @@ public class ExtendedEnumType<T extends Enum<T>> implements ExtendedType<T> {
         buffer.append(value.name()).append("=");
         if (value instanceof ExtendedEnumeration) {
             Object dbValue = ((ExtendedEnumeration) value).getDatabaseValue();
-            if (dbValue instanceof String)
+            if (dbValue instanceof String) {
                 buffer.append("'");
+            }
             buffer.append(value);
-            if (dbValue instanceof String)
+            if (dbValue instanceof String) {
                 buffer.append("'");
+            }
         } else {
-            buffer.append((value).ordinal());
+            buffer.append(value.ordinal());
             // FIXME -- this isn't quite right
         }
 

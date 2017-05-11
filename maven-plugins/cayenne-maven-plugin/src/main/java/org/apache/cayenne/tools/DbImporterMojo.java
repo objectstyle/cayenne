@@ -29,7 +29,7 @@ import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.util.Util;
-import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -61,7 +61,7 @@ public class DbImporterMojo extends AbstractMojo {
      * @see DbImportDataSourceConfig
      * @since 4.0
      */
-    @Parameter(required = true)
+    @Parameter
     private DbImportDataSourceConfig dataSource = new DbImportDataSourceConfig();
 
     /**
@@ -100,10 +100,18 @@ public class DbImporterMojo extends AbstractMojo {
     @Deprecated @Parameter(name = "defaultPackage", property = "defaultPackage")
     private final String oldDefaultPackage = "";     // TODO remove in 4.0.BETA
 
+    /**
+     * @deprecated renamed to {@code <dbimport>},  remove in 4.0.BETA
+     */
+    @Deprecated @Parameter
+    public OldReverseEngineering reverseEngineering;
 
     public void execute() throws MojoExecutionException, MojoFailureException {
 
-        Log logger = new MavenLogger(this);
+        Logger logger = new MavenLogger(this);
+
+        // check missing data source parameters
+        dataSource.validate();
 
         DbImportConfiguration config = createConfig(logger);
         Injector injector = DIBootstrap.createInjector(
@@ -133,7 +141,7 @@ public class DbImporterMojo extends AbstractMojo {
         }
     }
 
-    DbImportConfiguration createConfig(Log logger) {
+    DbImportConfiguration createConfig(Logger logger) {
 
         DbImportConfiguration config = new DbImportConfiguration();
         config.setAdapter(adapter);
@@ -191,25 +199,25 @@ public class DbImporterMojo extends AbstractMojo {
     // TODO ⬇⬇⬇ All following setters should be removed in 4.0.BETA ⬇⬇⬇
     @Deprecated
     public void setUrl(String url) {
-        throw new UnsupportedOperationException("Connection properties were replaced with <dataSource> tag since 4.0.M5.\n" +
+        throw new UnsupportedOperationException("\nConnection properties were replaced with <dataSource> tag since 4.0.M5.\n" +
                 "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
     }
 
     @Deprecated
     public void setDriver(String driver) {
-        throw new UnsupportedOperationException("Connection properties were replaced with <dataSource> tag since 4.0.M5.\n" +
+        throw new UnsupportedOperationException("\nConnection properties were replaced with <dataSource> tag since 4.0.M5.\n" +
                 "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
     }
 
     @Deprecated
     public void setMeaningfulPkTables(String meaningfulPkTables) {
-        throw new UnsupportedOperationException("meaningfulPkTables property has been moved to <dbimport> tag since 4.0.M5.\n" +
+        throw new UnsupportedOperationException("\nmeaningfulPkTables property has been moved to <dbimport> tag since 4.0.M5.\n" +
                 "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
     }
 
     @Deprecated
     public void setDefaultPackage(String defaultPackage) {
-        throw new UnsupportedOperationException("defaultPackage property has been moved to <dbimport> tag since 4.0.M5.\n" +
+        throw new UnsupportedOperationException("\ndefaultPackage property has been moved to <dbimport> tag since 4.0.M5.\n" +
                 "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
     }
 }

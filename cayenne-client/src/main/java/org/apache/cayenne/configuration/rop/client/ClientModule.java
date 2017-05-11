@@ -23,12 +23,12 @@ import java.util.Map;
 import org.apache.cayenne.DataChannel;
 import org.apache.cayenne.cache.MapQueryCacheProvider;
 import org.apache.cayenne.cache.QueryCache;
-import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.ObjectContextFactory;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.di.Binder;
+import org.apache.cayenne.di.MapBuilder;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.event.DefaultEventManager;
 import org.apache.cayenne.event.EventManager;
@@ -41,11 +41,22 @@ import org.apache.cayenne.rop.http.ClientHessianSerializationServiceProvider;
  * A DI module containing all Cayenne ROP client runtime configurations.
  * 
  * @since 3.1
+ * @since 4.0 this module is auto-loaded by {@link ClientRuntimeBuilder}
  */
 public class ClientModule implements Module {
 
-    protected Map<String, String> properties;
+    /**
+     * @deprecated since 4.0 in favour of {@link ClientRuntimeBuilder}
+     * @see ClientRuntimeBuilder#properties(Map)
+     */
+    @Deprecated
+    protected Map<String, String> properties = null;
 
+    /**
+     * @deprecated since 4.0 in favour of {@link ClientRuntimeBuilder}
+     * @see ClientRuntimeBuilder#properties(Map)
+     */
+    @Deprecated
     public ClientModule(Map<String, String> properties) {
         if (properties == null) {
             throw new NullPointerException("Null 'properties' map");
@@ -54,10 +65,23 @@ public class ClientModule implements Module {
         this.properties = properties;
     }
 
+    /**
+     * @since 4.0
+     */
+    public ClientModule() {
+    }
+
+    @SuppressWarnings("deprecation")
     public void configure(Binder binder) {
 
+        // Contribute always to create binding
+        MapBuilder<String> propertiesBuilder = ServerModule.contributeProperties(binder);
+
         // expose user-provided ROP properties as the main properties map
-        ServerModule.contributeProperties(binder).putAll(properties);
+        // binding here is left only for backward compatibility, should go away with the deprecated code.
+        if(properties != null) {
+            propertiesBuilder.putAll(properties);
+        }
 
         binder.bind(ObjectContextFactory.class).to(CayenneContextFactory.class);
         binder.bind(ROPSerializationService.class).toProvider(ClientHessianSerializationServiceProvider.class);

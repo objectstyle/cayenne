@@ -18,18 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.cache;
 
-import java.util.List;
-
 import org.apache.cayenne.query.QueryMetadata;
 
+import java.util.List;
+
 /**
- * An interface that defines generic QueryCache.
- * <p>
- * Note that depending on implementation, {@link #remove(String)},
- * {@link #removeGroup(String)} and {@link #clear()} methods may mark the matching
- * existing entries as expired instead of actually removing them. So it may appear that
- * the size of the cache, as reported by {@link #size()} method, is unchanged.
- * 
+ * Defines API of a cache that stores query results.
+ *
  * @since 3.0
  */
 public interface QueryCache {
@@ -72,13 +67,28 @@ public interface QueryCache {
     void removeGroup(String groupKey);
 
     /**
-     * Clears all cache entries.
+     * Removes a group of entries identified by group key.
+     * Can be used if cache provider supports strictly typed caches.
+     * @see QueryCache#removeGroup(String)
+     *
+     * @since 4.0
      */
+    void removeGroup(String groupKey, Class<?> keyType, Class<?> valueType);
+
+    /**
+     * Clears all cache entries.
+     *
+     * @deprecated since 4.0. Please use implementation specific methods to perform cache management tasks.
+     */
+    @Deprecated
     void clear();
 
     /**
      * Returns the number of entries currently in the cache, including expired but not
      * removed entries.
+     *
+     * @deprecated since 4.0. Please use implementation specific methods to perform cache management tasks.
      */
+    @Deprecated
     int size();
 }

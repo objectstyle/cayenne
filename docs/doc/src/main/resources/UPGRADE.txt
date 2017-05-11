@@ -4,7 +4,101 @@ Apache Cayenne Upgrade Information
 IMPORTANT: be sure to read all notes for the intermediate releases between your
            current release and the release you are upgrading to.
 -------------------------------------------------------------------------------
+
+UPGRADING TO 4.0.M6
+
+* Per CAY-2280 Cayenne migrated from commons-logging to SLF4J.
+      Here is options you have to upgrade your project accordingly:
+      1) Migrate your logging to SLF4J. Please see https://www.slf4j.org for documentation about
+      inclusion into your project logging backend of you choice.
+
+      2) Other option is to use commons-logging over SLF4J and keep all logging compatible with previous Cayenne versions.
+      In order to do so you need:
+      - remove commons-logging dependency if you have it
+      - add to your project slf4j-jcl dependency
+
+      As a part of this change classes CommonsJdbcEventLogger and FormattedCommonsJdbcEventLogger
+      were renamed to Slf4jJdbcEventLogger and FormattedSlf4jJdbcEventLogger respectively.
+      Internally they are using now org.apache.cayenne.log.JdbcEventLogger interface as a logger name.
+
+* Per CAY-2278 The org.apache.cayenne.lifecycle.audit package (with the exception of AuditableChild annotation) and the
+       org.apache.cayenne.lifecycle.changeset package where deprecated.
+       Weighted graph sorter moved to cayenne-server into org.apache.cayenne.ashwood package.
+       Packages org.apache.cayenne.lifecycle.changemap, org.apache.cayenne.lifecycle.postcommit and Auditable annotation
+       where moved to the new cayenne-postcommit module.
+       Please change your code accordingly.
+
+* Per CAY-2277 ClientRuntime created with ClientRuntimeBuilder, direct instantiation of
+       ClientRuntime is deprecated. Also whole ClientLocalRuntime class is deprecated, use instead
+       ClientRuntimeBuilder.local() method.
+
+* Per CAY-2262 Client modules are now auto-loaded by default to turn off auto-loading use
+       ClientRuntimeBuilder.disableModulesAutoLoading() method.
+
+       List of client modules:
+       - cayenne-client
+       - cayenne-client-jetty
+       - cayenne-protostuff (it also supports auto-loading by ServerRuntimeBuilder)
+
+       Also new modules are extracted from the existing one and should be added to your pom.xml if the corresponding
+       functionality is used by your project:
+       - cayenne-cache-invalidation (was part of cayenne-lifecycle)
+       - cayenne-postcommit (was part of cayenne-lifecycle)
+
+* Per CAY-2259 InvalidationFunction returns CacheGroupDescriptor instead of simple String with cache group name,
+       change your custom functions accordingly.
+
+* Per CAY-2268 DI methods for binding ordered lists, introduced in 4.0.M3 where changed:
+       - method after() replaced by explicit addAfter(), addAllAfter()
+       - method before() replaced by insertBefore(), insertAllBefore()
+
+* Per CAY-2258 Injection of List and Map are made type-safe, if you are using following methods:
+        - bindMap(String bindingName)
+        - bindList(String bindingName)
+  you should change them to corresponding type-safe versions:
+        - bindMap(Class<T> valueType, String bindingName)
+        - bindList(Class<T> valueType, String bindingName)
+
+* Per CAY-1873 and CAY-2266 Cache and remote notification configuration was moved from Modeler into
+  runtime DI settings. To set custom cache size, you should use custom module like this:
+        Module module = binder -> {
+            ServerModule.setSnapshotCacheSize(binder, 20000);
+        };
+  Or you can use cmd line arg: -Dcayenne.DataRowStore.snapshot.size=20000
+
+  If you have used remote notifications, you should include one of the following modules into your project:
+        - cayenne-jgroups
+        - cayenne-jms
+        - cayenne-xmpp
+  For maven users this can be easily done by adding dependency to pom.xml:
+        <dependency>
+            <groupId>org.apache.cayenne</groupId>
+            <artifactId>cayenne-jgroups</artifactId>
+            <version>4.0.M6</version>
+        </dependency>
+
+  Module will be autoloaded and remote notifications enabled, so only thing you need is to provide configuration.
+  Custom DI module should be used for that, e.g. for JGroups:
+        Module module = binder -> {
+            JGroupsModule.contributeMulticastAddress(binder, MCAST_ADDRESS);
+            JGroupsModule.contributeMulticastPort(binder, MCAST_PORT));
+        };
+
+
+* Per CAY-2256 Fix for CAY-2146 was reverted, as it appears that we can't reliably deduce whether
+  relationship is optional or not. So in case of mandatory relationships in vertical inheritance
+  you should perform manual validation before insert by using "prePersist" callback in your
+  object (you can create it in the Cayenne Modeler) or by overriding "validateForSave" method.
+
+
 UPGRADING TO 4.0.M5
+
+* Per CAY-2186 DerbyPkGenerator switched from AUTO_PK_TABLE to sequence-based PK generator
+  If you relied in anyway on AUTO_PK_TABLE usage in derby, you should change your code.
+
+* Per CAY-2228 Support for multiple cache groups has been removed from caching and query API
+  as none of the modern providers supports it. If you relied on this feature you should
+  implement it by yourself or change caching provider
 
 * Per CAY-1980 "maven-cayenne-modeler-plugin" renamed to "cayenne-modeler-maven-plugin"
 
@@ -348,7 +442,10 @@ UPGRADING TO 3.0M3
 
 * Java 5 is now required as a minimum for Cayenne Modeler and the Cayenne libraries.
 
-* After the move to Java 5, generics have been implemented in many of the Cayenne APIs. If you don't use generics in your project this should not affect you, but if you do you will need to review any new compiler errors or warnings. The effect of generics is at compile time only, so their introduction will not change the runtime behaviour of your application once compiled.
+* After the move to Java 5, generics have been implemented in many of the Cayenne APIs. If you don't use generics
+in your project this should not affect you, but if you do you will need to review any new compiler errors or warnings.
+The effect of generics is at compile time only, so their introduction will not change the runtime behaviour of
+your application once compiled.
 
 UPGRADING TO 3.0M2
 

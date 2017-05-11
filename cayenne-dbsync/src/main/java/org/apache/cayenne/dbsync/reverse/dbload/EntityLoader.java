@@ -30,12 +30,12 @@ import org.apache.cayenne.dbsync.reverse.filters.CatalogFilter;
 import org.apache.cayenne.dbsync.reverse.filters.SchemaFilter;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.DetectedDbEntity;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class EntityLoader extends PerCatalogAndSchemaLoader {
 
-    private static final Log LOGGER = LogFactory.getLog(DbLoader.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbLoader.class);
 
     private final String[] types;
 
@@ -54,6 +54,7 @@ class EntityLoader extends PerCatalogAndSchemaLoader {
         String name = rs.getString("TABLE_NAME");
         String catalogName = rs.getString("TABLE_CAT");
         String schemaName = rs.getString("TABLE_SCHEM");
+        String type = rs.getString("TABLE_TYPE");
 
         // Oracle 9i and newer has a nifty recycle bin feature...
         // but we don't want dropped tables to be included here;
@@ -74,6 +75,7 @@ class EntityLoader extends PerCatalogAndSchemaLoader {
         DetectedDbEntity table = new DetectedDbEntity(name);
         table.setCatalog(catalogName);
         table.setSchema(schemaName);
+        table.setType(type);
         addDbEntityToMap(table, map);
     }
 

@@ -25,11 +25,12 @@ import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.QuotingStrategy;
 import org.apache.cayenne.di.Inject;
+import org.apache.cayenne.exp.parser.ASTExtract;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.Procedure;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -53,7 +54,7 @@ import java.util.Map;
  */
 public class UnitDbAdapter {
 
-    private static final Log logger = LogFactory.getLog(UnitDbAdapter.class);
+    private static final Logger logger = LoggerFactory.getLogger(UnitDbAdapter.class);
 
     @Inject
     protected RuntimeProperties runtimeProperties;
@@ -396,6 +397,10 @@ public class UnitDbAdapter {
      * SELECT (intColumn < 10) AS bool FROM table
      */
     public boolean supportsSelectBooleanExpression() {
+        return true;
+    }
+
+    public boolean supportsExtractPart(ASTExtract.DateTimePart part) {
         return true;
     }
 }

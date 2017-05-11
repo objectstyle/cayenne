@@ -304,12 +304,8 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery, XM
 	/**
 	 * Returns an iterator over parameter sets. Each element returned from the
 	 * iterator is a java.util.Map.
-	 * 
-	 * @deprecated since 4.0 as multiple batches of parameters are superseded by
-	 *             the use of {@link QueryChain}.
 	 */
 	@SuppressWarnings("unchecked")
-	@Deprecated
 	public Iterator<Map<String, ?>> parametersIterator() {
 		return (parameters == null || parameters.length == 0) ? IteratorUtils.emptyIterator() : IteratorUtils
 				.transformedIterator(IteratorUtils.arrayIterator(parameters), nullMapTransformer);
@@ -317,11 +313,7 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery, XM
 
 	/**
 	 * Returns the number of parameter sets.
-	 * 
-	 * @deprecated since 4.0 as multiple batches of parameters are superseded by
-	 *             the use of {@link QueryChain}.
 	 */
-	@Deprecated
 	public int parametersSize() {
 		return (parameters != null) ? parameters.length : 0;
 	}
@@ -338,9 +330,6 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery, XM
 		// since named parameters are specified, resetting positional
 		// parameters
 		this.positionalParams = null;
-
-		// calling a deprecated method until we can remove multi-parameter-batch
-		// deprecation.
 		setParameters(params);
 	}
 
@@ -384,12 +373,7 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery, XM
 	/**
 	 * Returns a new query built using this query as a prototype and a new set
 	 * of parameters.
-	 * 
-	 * @deprecated since 4.0 as multiple batches of parameters are superseded by
-	 *             the use of {@link QueryChain}. For an alternative use
-	 *             {@link #createQuery(Map)}.
 	 */
-	@Deprecated
 	public SQLTemplate queryWithParameters(Map<String, ?>... parameters) {
 		// create a query replica
 		SQLTemplate query = new SQLTemplate();
@@ -434,64 +418,9 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery, XM
 		return query;
 	}
 
-	/**
-	 * @since 3.0
-	 */
-	public QueryCacheStrategy getCacheStrategy() {
-		return metaData.getCacheStrategy();
-	}
-
-	/**
-	 * @since 3.0
-	 */
-	public void setCacheStrategy(QueryCacheStrategy strategy) {
-		metaData.setCacheStrategy(strategy);
-	}
-
-	/**
-	 * @since 3.0
-	 */
-	public String[] getCacheGroups() {
-		return metaData.getCacheGroups();
-	}
-
-	/**
-	 * @since 3.0
-	 */
-	public void setCacheGroups(String... cacheGroups) {
-		this.metaData.setCacheGroups(cacheGroups);
-	}
-
-	/**
-	 * Instructs Cayenne to look for query results in the "local" cache when
-	 * running the query. This is a short-hand notation for:
-	 * 
-	 * <pre>
-	 * query.setCacheStrategy(QueryCacheStrategy.LOCAL_CACHE);
-	 * query.setCacheGroups(&quot;group1&quot;, &quot;group2&quot;);
-	 * </pre>
-	 * 
-	 * @since 4.0
-	 */
-	public void useLocalCache(String... cacheGroups) {
-		setCacheStrategy(QueryCacheStrategy.LOCAL_CACHE);
-		setCacheGroups(cacheGroups);
-	}
-
-	/**
-	 * Instructs Cayenne to look for query results in the "shared" cache when
-	 * running the query. This is a short-hand notation for:
-	 * 
-	 * <pre>
-	 * query.setCacheStrategy(QueryCacheStrategy.SHARED_CACHE);
-	 * query.setCacheGroups(&quot;group1&quot;, &quot;group2&quot;);
-	 * </pre>
-	 * 
-	 * @since 4.0
-	 */
-	public void useSharedCache(String... cacheGroups) {
-		setCacheStrategy(QueryCacheStrategy.SHARED_CACHE);
-		setCacheGroups(cacheGroups);
+	@Override
+	protected BaseQueryMetadata getBaseMetaData() {
+		return metaData;
 	}
 
 	public int getFetchLimit() {
@@ -620,25 +549,15 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery, XM
 	/**
 	 * Utility method to get the first set of parameters, since most queries
 	 * will only have one.
-	 * 
-	 * @deprecated since 4.0 in favor of {@link #getParams()}, as multiple
-	 *             batches of parameters are superseded by the use of
-	 *             {@link QueryChain}.
 	 */
-	@Deprecated
 	public Map<String, ?> getParameters() {
 		return getParams();
 	}
 
 	/**
 	 * Utility method to initialize query with one or more sets of parameters.
-	 * 
-	 * @deprecated since 4.0 in favor of {@link #setParams(Map)}, as multiple
-	 *             batches of parameters are superseded by the use of
-	 *             {@link QueryChain}.
 	 */
 	@SuppressWarnings("unchecked")
-	@Deprecated
 	public void setParameters(Map<String, ?>... parameters) {
 
 		if (parameters == null) {

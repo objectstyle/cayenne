@@ -27,8 +27,8 @@ import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.ObjectId;
 import org.apache.cayenne.Persistent;
 import org.apache.commons.collections.collection.CompositeCollection;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @since 4.0
@@ -37,7 +37,7 @@ class MappingCache implements MappingNamespace {
 
     private static final ObjEntity OBJ_DUPLICATE_MARKER = new ObjEntity();
 
-    protected static final Log logger = LogFactory.getLog(MappingCache.class);
+    protected static final Logger logger = LoggerFactory.getLogger(MappingCache.class);
 
     protected Collection<DataMap> maps;
     protected Map<String, QueryDescriptor> queryDesriptors;
@@ -171,8 +171,8 @@ class MappingCache implements MappingNamespace {
         ObjEntity entity = objEntitiesByClassName.get(entityClass.getName());
 
         if (entity == OBJ_DUPLICATE_MARKER) {
-            throw new CayenneRuntimeException("Can't perform lookup. There is more than one ObjEntity mapped to "
-                    + entityClass.getName());
+            throw new CayenneRuntimeException("Can't perform lookup. There is more than one ObjEntity mapped to %s"
+                    , entityClass.getName());
         }
 
         return entity;

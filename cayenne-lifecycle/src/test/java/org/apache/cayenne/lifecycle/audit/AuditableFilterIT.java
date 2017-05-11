@@ -43,6 +43,7 @@ import org.apache.cayenne.lifecycle.relationship.ObjectIdRelationshipHandler;
 import org.apache.cayenne.lifecycle.unit.AuditableServerCase;
 import org.junit.Test;
 
+@Deprecated
 public class AuditableFilterIT extends AuditableServerCase {
 
 	@Test
@@ -234,10 +235,10 @@ public class AuditableFilterIT extends AuditableServerCase {
 
 		void reset() {
 
-			audited = new EnumMap<AuditableOperation, Collection<Object>>(AuditableOperation.class);
+			audited = new EnumMap<>(AuditableOperation.class);
 
 			for (AuditableOperation op : AuditableOperation.values()) {
-				audited.put(op, new ArrayList<Object>());
+				audited.put(op, new ArrayList<>());
 			}
 		}
 

@@ -49,13 +49,12 @@ final class DataDomainIndirectDiffBuilder implements GraphChangeHandler {
         this.parent = parent;
         this.indirectModifications = parent.getResultIndirectlyModifiedIds();
         this.resolver = parent.getDomain().getEntityResolver();
-        this.flattenedInserts = new HashSet<FlattenedArcKey>();
-        this.flattenedDeletes = new HashSet<FlattenedArcKey>();
+        this.flattenedInserts = new HashSet<>();
+        this.flattenedDeletes = new HashSet<>();
     }
 
     void processIndirectChanges(GraphDiff allChanges) {
-        // extract flattened and indirect changes and remove duplicate
-        // changes...
+        // extract flattened and indirect changes and remove duplicate changes...
         allChanges.apply(this);
 
         if (!flattenedInserts.isEmpty()) {
@@ -87,18 +86,14 @@ final class DataDomainIndirectDiffBuilder implements GraphChangeHandler {
 
             if (relationship.isFlattened()) {
                 if (relationship.isReadOnly()) {
-                    throw new CayenneRuntimeException("Cannot set the read-only flattened relationship '"
-                            + relationship.getName() + "' in ObjEntity '" + relationship.getSourceEntity().getName()
-                            + "'.");
+                    throw new CayenneRuntimeException("Cannot set the read-only flattened relationship '%s' in ObjEntity '%s'."
+                            , relationship.getName(), relationship.getSourceEntity().getName());
                 }
 
-                // Register this combination (so we can remove it later if an
-                // insert
-                // occurs before commit)
+                // Register this combination (so we can remove it later if an insert occurs before commit)
                 FlattenedArcKey key = new FlattenedArcKey((ObjectId) nodeId, (ObjectId) targetNodeId, relationship);
 
-                // If this combination has already been deleted, simply undelete
-                // it.
+                // If this combination has already been deleted, simply undelete it.
                 if (!flattenedDeletes.remove(key)) {
                     flattenedInserts.add(key);
                 }
@@ -121,18 +116,14 @@ final class DataDomainIndirectDiffBuilder implements GraphChangeHandler {
 
             if (relationship.isFlattened()) {
                 if (relationship.isReadOnly()) {
-                    throw new CayenneRuntimeException("Cannot unset the read-only flattened relationship "
-                            + relationship.getName());
+                    throw new CayenneRuntimeException("Cannot unset the read-only flattened relationship %s"
+                            , relationship.getName());
                 }
 
-                // Register this combination (so we can remove it later if an
-                // insert
-                // occurs before commit)
+                // Register this combination (so we can remove it later if an insert occurs before commit)
                 FlattenedArcKey key = new FlattenedArcKey((ObjectId) nodeId, (ObjectId) targetNodeId, relationship);
 
-                // If this combination has already been inserted, simply
-                // "uninsert" it
-                // also do not delete it twice
+                // If this combination has already been inserted, simply "uninsert" it also do not delete it twice
                 if (!flattenedInserts.remove(key)) {
                     flattenedDeletes.add(key);
                 }

@@ -21,7 +21,9 @@ package org.apache.cayenne.modeler.action;
 
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.dbsync.merge.context.EntityMergeSupport;
+import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
 import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.map.DbRelationship;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.event.EntityEvent;
 import org.apache.cayenne.map.event.MapEvent;
@@ -33,6 +35,7 @@ import org.apache.cayenne.modeler.util.CayenneAction;
 
 import java.awt.event.ActionEvent;
 import java.util.Collection;
+import java.util.Iterator;
 
 /**
  * Action that synchronizes all ObjEntities with the current state of the
@@ -49,17 +52,17 @@ public class DbEntitySyncAction extends CayenneAction {
 	}
 
 	public String getIconName() {
-		return "icon-sync.gif";
+		return "icon-sync.png";
 	}
 
 	/**
 	 * @see org.apache.cayenne.modeler.util.CayenneAction#performAction(ActionEvent)
 	 */
 	public void performAction(ActionEvent e) {
-		synchDbEntity();
+		syncDbEntity();
 	}
 
-	protected void synchDbEntity() {
+	protected void syncDbEntity() {
 		ProjectController mediator = getProjectController();
 
 		DbEntity dbEntity = mediator.getCurrentDbEntity();
@@ -71,16 +74,20 @@ public class DbEntitySyncAction extends CayenneAction {
 				return;
 			}
 
-			EntityMergeSupport merger = new EntitySyncController(Application.getInstance().getFrameController(),
-					dbEntity).createMerger();
+			EntityMergeSupport merger = new EntitySyncController(Application.getInstance().getFrameController(), dbEntity)
+					.createMerger();
 
 			if (merger == null) {
 				return;
 			}
 
+			merger.setNameGenerator(new PreserveRelationshipNameGenerator());
+
 			DbEntitySyncUndoableEdit undoableEdit = new DbEntitySyncUndoableEdit((DataChannelDescriptor) mediator
 					.getProject().getRootNode(), mediator.getCurrentDataMap());
 
+			// filter out inherited entities, as we need to add attributes only to the roots
+			filterInheritedEntities(entities);
 
 			for(ObjEntity entity : entities) {
 
@@ -104,6 +111,38 @@ public class DbEntitySyncAction extends CayenneAction {
 			}
 
 			application.getUndoManager().addEdit(undoableEdit);
+		}
+	}
+
+	/**
+	 * This method works only for case when all inherited entities bound to same DbEntity
+	 * if this will ever change some additional checks should be performed.
+	 */
+	private void filterInheritedEntities(Collection<ObjEntity> entities) {
+		// entities.removeIf(c -> c.getSuperEntity() != null);
+		Iterator<ObjEntity> it = entities.iterator();
+		while(it.hasNext()) {
+			if(it.next().getSuperEntity() != null) {
+				it.remove();
+			}
+		}
+	}
+
+	static class PreserveRelationshipNameGenerator extends DefaultObjectNameGenerator {
+
+		@Override
+		public String relationshipName(DbRelationship... relationshipChain) {
+			if(relationshipChain.length == 0) {
+				return super.relationshipName(relationshipChain);
+			}
+			DbRelationship last = relationshipChain[relationshipChain.length - 1];
+			// must be in sync with DefaultBaseNameVisitor.visitDbRelationship
+			if(last.getName().startsWith("untitledRel")) {
+				return super.relationshipName(relationshipChain);
+			}
+
+			// keep manually set relationship name
+			return last.getName();
 		}
 	}
 }

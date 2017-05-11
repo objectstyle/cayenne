@@ -21,23 +21,29 @@ package org.apache.cayenne.swing.components.textpane.syntax;
 import java.awt.Color;
 import java.awt.Font;
 
-public interface SyntaxConstant {
+public abstract class SyntaxConstant {
 
-    public static Font DEFAULT_FONT = new Font("Courier", Font.PLAIN, 14);
-    public static Color DEFAULT_COLOR = Color.black;
-    public static String COMMENT_TEXT = "(?:/\\*(?:[^*]|(?:\\*+[^*/]))*\\*+/)|(?://.*)";
+    public static final Font DEFAULT_FONT;
+    static {
+        String fontName = System.getProperty("os.name").toLowerCase().contains("win")
+                ? "Courier New" : "Courier";
+        DEFAULT_FONT = new Font(fontName, Font.PLAIN, 14);
+    }
+
+    public static final Color DEFAULT_COLOR = Color.black;
+    public static final String COMMENT_TEXT = "(?:/\\*(?:[^*]|(?:\\*+[^*/]))*\\*+/)|(?://.*)";
     public static final String COMMENT_TEXT_START = "/\\*.?";
-    public static String STRING_TEXT = "'[^']*'";
-    public static String NUMBER_TEXT = "\\d+";
+    public static final String STRING_TEXT = "'[^']*'";
+    public static final String NUMBER_TEXT = "\\d+";
 
-    public String[] getKEYWORDS();
+    public abstract String[] getKEYWORDS();
 
-    public String[] getKEYWORDS2();
+    public abstract String[] getKEYWORDS2();
 
-    public String[] getTYPES();
+    public abstract String[] getTYPES();
 
-    public String[] getOPERATORS();
-    
-    public String getContentType();
+    public abstract String[] getOPERATORS();
+
+    public abstract String getContentType();
 
 }

@@ -542,7 +542,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         QueryEngine node = domain.lookupDataNode(map);
 
         if (node == null) {
-            throw new CayenneRuntimeException("No DataNode exists for DataMap " + map);
+            throw new CayenneRuntimeException("No DataNode exists for DataMap %s", map);
         }
 
         return node;
@@ -559,7 +559,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         if (name != null) {
             node = domain.getDataNode(name);
             if (node == null) {
-                throw new CayenneRuntimeException("No DataNode exists for name " + name);
+                throw new CayenneRuntimeException("No DataNode exists for name %s", name);
             }
         } else {
             node = domain.getDefaultNode();
@@ -672,8 +672,17 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
         @Override
         void convert(List<DataRow> mainRows) {
 
-            ClassDescriptor descriptor = metadata.getClassDescriptor();
             PrefetchTreeNode prefetchTree = metadata.getPrefetchTree();
+
+            List<Object> rsMapping = metadata.getResultSetMapping();
+            EntityResultSegment resultSegment = null;
+            if(rsMapping != null && !rsMapping.isEmpty()) {
+                resultSegment = (EntityResultSegment)rsMapping.get(0);
+            }
+
+            ClassDescriptor descriptor = resultSegment == null
+                    ? metadata.getClassDescriptor()
+                    : resultSegment.getClassDescriptor();
 
             PrefetchProcessorNode node = toResultsTree(descriptor, prefetchTree, mainRows);
             List<Persistent> objects = node.getObjects();
@@ -714,7 +723,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
                             prefetchTreeNode = new PrefetchTreeNode();
                         }
                         PrefetchTreeNode addPath = prefetchTreeNode.addPath(prefetch.getPath());
-                        addPath.setSemantics(PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS);
+                        addPath.setSemantics(prefetch.getSemantics());
                         addPath.setPhantom(false);
                     }
                 }
@@ -760,11 +769,14 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
                     }
                 }
             }
-            Set<List<?>> seen = new HashSet<>(mainRows.size());
-            Iterator<Object[]> it = mainRows.iterator();
-            while (it.hasNext()) {
-                if (!seen.add(Arrays.asList(it.next()))) {
-                    it.remove();
+
+            if(!metadata.isSuppressingDistinct()) {
+                Set<List<?>> seen = new HashSet<>(mainRows.size());
+                Iterator<Object[]> it = mainRows.iterator();
+                while (it.hasNext()) {
+                    if (!seen.add(Arrays.asList(it.next()))) {
+                        it.remove();
+                    }
                 }
             }
 

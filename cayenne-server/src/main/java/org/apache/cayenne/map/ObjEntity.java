@@ -665,7 +665,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
 
     private Collection<ObjAttribute> getMutablePrimaryKeys() {
         if (getDbEntity() == null) {
-            throw new CayenneRuntimeException("No DbEntity for ObjEntity: " + getName());
+            throw new CayenneRuntimeException("No DbEntity for ObjEntity: %s", getName());
         }
 
         Collection<DbAttribute> pkAttributes = getDbEntity().getPrimaryKeys();
@@ -787,6 +787,13 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     }
 
     /**
+     * @since 4.0
+     */
+    public void removeAttributeOverride(String attributeName) {
+        attributeOverrides.remove(attributeName);
+    }
+
+    /**
      * @since 3.0
      */
     public Map<String, String> getDeclaredAttributeOverrides() {
@@ -811,6 +818,21 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     @SuppressWarnings("unchecked")
     public Collection<ObjAttribute> getDeclaredAttributes() {
         return (Collection<ObjAttribute>) super.getAttributes();
+    }
+
+    /**
+     * Finds attribute declared by this ObjEntity,
+     * excluding inherited attributes.
+     *
+     * @param name of the attribute
+     * @return declared attribute or null if no attribute is found
+     *
+     * @see ObjEntity#getAttribute(String)
+     *
+     * @since 4.0
+     */
+    public ObjAttribute getDeclaredAttribute(String name) {
+        return (ObjAttribute) super.getAttribute(name);
     }
 
     /**
@@ -1070,8 +1092,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
         }
 
         if (getDbEntity() == null) {
-            throw new CayenneRuntimeException("Can't translate expression to DB_PATH, no DbEntity for '" + getName()
-                    + "'.");
+            throw new CayenneRuntimeException("Can't translate expression to DB_PATH, no DbEntity for '%s'.", getName());
         }
 
         // converts all OBJ_PATH expressions to DB_PATH expressions
@@ -1097,7 +1118,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
         }
 
         if (getDbEntity() == null) {
-            throw new CayenneRuntimeException("Can't transform expression, no DbEntity for '" + getName() + "'.");
+            throw new CayenneRuntimeException("Can't transform expression, no DbEntity for '%s'.", getName());
         }
 
         // converts all OBJ_PATH expressions to DB_PATH expressions
@@ -1145,7 +1166,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
                 } else if (component.getRelationship() != null) {
                     dbSubpath = ((ObjRelationship) component.getRelationship()).getDbRelationships().iterator();
                 } else {
-                    throw new CayenneRuntimeException("Unknown path component: " + component);
+                    throw new CayenneRuntimeException("Unknown path component: %s", component);
                 }
 
                 while (dbSubpath.hasNext()) {

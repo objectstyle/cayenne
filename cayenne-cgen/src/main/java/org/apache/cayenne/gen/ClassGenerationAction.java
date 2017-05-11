@@ -19,17 +19,18 @@
 
 package org.apache.cayenne.gen;
 
+import org.apache.cayenne.CayenneException;
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.Embeddable;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.QueryDescriptor;
-import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
-import org.apache.velocity.runtime.log.NullLogSystem;
+import org.apache.velocity.runtime.log.NullLogChute;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -67,7 +68,7 @@ public class ClassGenerationAction {
 	protected ArtifactsGenerationMode artifactsGenerationMode;
 	protected boolean makePairs;
 
-	protected Log logger;
+	protected Logger logger;
 	protected File destDir;
 	protected boolean overwrite;
 	protected boolean usePkgPath;
@@ -231,7 +232,7 @@ public class ClassGenerationAction {
 		TemplateType[] templateTypes = artifact.getTemplateTypes(artifactMode);
 		for (TemplateType type : templateTypes) {
 
-			try (Writer out = openWriter(type);) {
+			try (Writer out = openWriter(type)) {
 				if (out != null) {
 
 					resetContextForArtifactTemplate(artifact, type);
@@ -261,7 +262,7 @@ public class ClassGenerationAction {
 			Properties props = new Properties();
 
 			// null logger that will prevent velocity.log from being generated
-			props.put(RuntimeConstants.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogSystem.class.getName());
+			props.put(RuntimeConstants.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogChute.class.getName());
 			props.put("resource.loader", "cayenne");
 			props.put("cayenne.resource.loader.class", ClassGeneratorResourceLoader.class.getName());
 			props.put("cayenne.resource.loader.cache", "false");
@@ -291,7 +292,7 @@ public class ClassGenerationAction {
 		}
 
 		if (!destDir.canWrite()) {
-			throw new CayenneRuntimeException("Do not have write permissions for " + destDir);
+			throw new CayenneRuntimeException("Do not have write permissions for %s", destDir);
 		}
 	}
 
@@ -513,7 +514,15 @@ public class ClassGenerationAction {
 	/**
 	 * Adds entities to the internal entity list.
 	 */
-	public void addEntities(Collection<ObjEntity> entities) {
+
+	/**
+	 *
+	 * @param entities
+	 * @throws CayenneException
+	 *
+	 * @since 4.0 throws exception
+	 */
+	public void addEntities(Collection<ObjEntity> entities) throws CayenneException {
 		if (artifactsGenerationMode == ArtifactsGenerationMode.ENTITY
 				|| artifactsGenerationMode == ArtifactsGenerationMode.ALL) {
 			if (entities != null) {
@@ -560,7 +569,7 @@ public class ClassGenerationAction {
 	 * Injects an optional logger that will be used to trace generated files at
 	 * the info level.
 	 */
-	public void setLogger(Log logger) {
+	public void setLogger(Logger logger) {
 		this.logger = logger;
 	}
 

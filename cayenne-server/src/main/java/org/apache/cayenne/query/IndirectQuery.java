@@ -47,6 +47,7 @@ public abstract class IndirectQuery implements Query {
 	 * @since 3.1
 	 */
 	@Override
+	@Deprecated
 	public DataMap getDataMap() {
 		return dataMap;
 	}
@@ -54,6 +55,7 @@ public abstract class IndirectQuery implements Query {
 	/**
 	 * @since 3.1
 	 */
+	@Deprecated
 	public void setDataMap(DataMap dataMap) {
 		this.dataMap = dataMap;
 	}
@@ -67,10 +69,12 @@ public abstract class IndirectQuery implements Query {
 	}
 
 	@Override
+	@Deprecated
 	public String getName() {
 		return name;
 	}
 
+	@Deprecated
 	public void setName(String name) {
 		this.name = name;
 	}
@@ -107,8 +111,7 @@ public abstract class IndirectQuery implements Query {
 	 */
 	@Override
 	public SQLAction createSQLAction(SQLActionVisitor visitor) {
-		throw new CayenneRuntimeException(this.getClass().getName()
-				+ " is an indirect query and doesn't support its own sql actions. "
-				+ "It should've been delegated to another " + "query during resolution or routing phase.");
+		throw new CayenneRuntimeException("%s is an indirect query and doesn't support its own sql actions. "
+				+ "It should've been delegated to another query during resolution or routing phase.", getClass().getName());
 	}
 }

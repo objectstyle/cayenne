@@ -31,6 +31,7 @@ import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
 import org.apache.cayenne.access.types.ShortType;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -72,13 +73,15 @@ public class DerbyAdapter extends JdbcAdapter {
             @Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
             @Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
             @Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
-            @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator) {
+            @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator,
+            @Inject ValueObjectTypeRegistry valueObjectTypeRegistry) {
         super(
                 runtimeProperties,
                 defaultExtendedTypes,
                 userExtendedTypes,
                 extendedTypeFactories,
-                resourceLocator);
+                resourceLocator,
+                valueObjectTypeRegistry);
         setSupportsGeneratedKeys(true);
         setSupportsBatchUpdates(true);
     }
@@ -115,10 +118,9 @@ public class DerbyAdapter extends JdbcAdapter {
 
         String[] types = externalTypesForJdbcType(column.getType());
         if (types == null || types.length == 0) {
-            String entityName = column.getEntity() != null ? ((DbEntity) column
-                    .getEntity()).getFullyQualifiedName() : "<null>";
-            throw new CayenneRuntimeException("Undefined type for attribute '"
-                    + entityName + "." + column.getName() + "': " + column.getType());
+            String entityName = column.getEntity() != null ? (column.getEntity()).getFullyQualifiedName() : "<null>";
+            throw new CayenneRuntimeException("Undefined type for attribute '%s.%s': %s"
+                    , entityName, column.getName(), column.getType());
         }
 
 
@@ -187,10 +189,10 @@ public class DerbyAdapter extends JdbcAdapter {
             PreparedStatement statement,
             ParameterBinding binding) throws SQLException, Exception {
 
-        if (binding.getValue() == null && binding.getType() == 0) {
+        if (binding.getValue() == null && binding.getJdbcType() == 0) {
             statement.setNull(binding.getStatementPosition(), Types.VARCHAR);
         } else {
-            binding.setType(convertNTypes(binding.getType()));
+            binding.setJdbcType(convertNTypes(binding.getJdbcType()));
             super.bindParameter(statement, binding);
         }
     }

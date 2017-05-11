@@ -31,8 +31,9 @@ import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.dialog.OverwriteDialog;
 import org.apache.cayenne.modeler.util.FileFilters;
 import org.apache.cayenne.project.Project;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * File chooser panel used to select a directory to store project files.
@@ -40,27 +41,22 @@ import org.apache.commons.logging.LogFactory;
  */
 class ProjectOpener extends JFileChooser {
 
-    private static Log logObj = LogFactory.getLog(ProjectOpener.class);
+    private static Logger logObj = LoggerFactory.getLogger(ProjectOpener.class);
 
     /**
      * Selects a directory to store the project.
      */
     File newProjectDir(Frame f, Project p) {
-        if (p instanceof Project) {
+        if (p != null) {
             StringBuilder nameProject = new StringBuilder("cayenne");
             if(((DataChannelDescriptor)p.getRootNode()).getName()!=null){
                 nameProject.append("-").append(((DataChannelDescriptor)p.getRootNode()).getName());
             }
             nameProject.append(".xml");
             // configure for application project
-            return newProjectDir(f, nameProject.toString(), FileFilters
-                    .getApplicationFilter());
-        }
-        else {
-            String message = (p == null)
-                    ? "Null project."
-                    : "Unrecognized project class: " + p.getClass().getName();
-            throw new CayenneRuntimeException(message);
+            return newProjectDir(f, nameProject.toString(), FileFilters.getApplicationFilter());
+        } else {
+            throw new CayenneRuntimeException("Null project.");
         }
     }
 
@@ -104,16 +100,11 @@ class ProjectOpener extends JFileChooser {
 
                 if (dialog.shouldOverwrite()) {
                     break;
-                }
-                else if (dialog.shouldSelectAnother()) {
-                    continue;
-                }
-                else {
+                } else if (!dialog.shouldSelectAnother()) {
                     // canceled
                     return null;
                 }
-            }
-            else {
+            } else {
                 break;
             }
         }

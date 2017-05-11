@@ -26,21 +26,20 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
-import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.util.Util;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A non-pooling DataSource implementation wrapping a JDBC driver.
  */
 public class DriverDataSource implements DataSource {
 
-	private static final Log LOGGER = LogFactory.getLog(DriverDataSource.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(DriverDataSource.class);
 
 	protected Driver driver;
 	protected String connectionUrl;
@@ -60,15 +59,13 @@ public class DriverDataSource implements DataSource {
 		try {
 			driverClass = Util.getJavaClass(driverClassName);
 		} catch (Exception ex) {
-			throw new CayenneRuntimeException("Can not load JDBC driver named '" + driverClassName + "': "
-					+ ex.getMessage());
+			throw new CayenneRuntimeException("Can not load JDBC driver named '%s': %s", driverClassName, ex.getMessage());
 		}
 
 		try {
 			return (Driver) driverClass.newInstance();
 		} catch (Exception ex) {
-			throw new CayenneRuntimeException("Error instantiating driver '" + driverClassName + "': "
-					+ ex.getMessage());
+			throw new CayenneRuntimeException("Error instantiating driver '%s': %s", driverClassName, ex.getMessage());
 		}
 	}
 
@@ -280,7 +277,7 @@ public class DriverDataSource implements DataSource {
 	 * @since 3.1
 	 */
 	@Override
-	public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+	public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
 		throw new UnsupportedOperationException();
 	}
 }

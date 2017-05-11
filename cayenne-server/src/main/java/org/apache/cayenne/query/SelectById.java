@@ -56,11 +56,11 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 
 	boolean fetchingDataRows;
 	QueryCacheStrategy cacheStrategy;
-	String[] cacheGroups;
+	String cacheGroup;
 	PrefetchTreeNode prefetches;
 
 	public static <T> SelectById<T> query(Class<T> entityType, Object id) {
-		SelectById<T> q = new SelectById<T>();
+		SelectById<T> q = new SelectById<>();
 
 		q.entityType = entityType;
 		q.singleId = id;
@@ -70,7 +70,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 	}
 
 	public static <T> SelectById<T> query(Class<T> entityType, Map<String, ?> id) {
-		SelectById<T> q = new SelectById<T>();
+		SelectById<T> q = new SelectById<>();
 
 		q.entityType = entityType;
 		q.mapId = id;
@@ -82,7 +82,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 	public static <T> SelectById<T> query(Class<T> entityType, ObjectId id) {
 		checkObjectId(id);
 
-		SelectById<T> q = new SelectById<T>();
+		SelectById<T> q = new SelectById<>();
 
 		q.entityName = id.getEntityName();
 		q.mapId = id.getIdSnapshot();
@@ -125,7 +125,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 
 	private static void checkObjectId(ObjectId id) {
 		if (id.isTemporary() && !id.isReplacementIdAttached()) {
-			throw new CayenneRuntimeException("Can't build a query for temporary id: " + id);
+			throw new CayenneRuntimeException("Can't build a query for temporary id: %s", id);
 		}
 	}
 
@@ -146,7 +146,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 
 	@Override
 	public void iterate(ObjectContext context, ResultIteratorCallback<T> callback) {
-		context.iterate((Select<T>) this, callback);
+		context.iterate(this, callback);
 	}
 
 	@Override
@@ -164,13 +164,23 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 	 * running the query. This is a short-hand notation for:
 	 *
 	 * <pre>
-	 * query.cacheStrategy(QueryCacheStrategy.LOCAL_CACHE, cacheGroups);
+	 * query.cacheStrategy(QueryCacheStrategy.LOCAL_CACHE, cacheGroup);
 	 * </pre>
-	 *
-	 * @since 4.0.M3
 	 */
-	public SelectById<T> localCache(String... cacheGroups) {
-		return cacheStrategy(QueryCacheStrategy.LOCAL_CACHE, cacheGroups);
+	public SelectById<T> localCache(String cacheGroup) {
+		return cacheStrategy(QueryCacheStrategy.LOCAL_CACHE, cacheGroup);
+	}
+
+	/**
+	 * Instructs Cayenne to look for query results in the "local" cache when
+	 * running the query. This is a short-hand notation for:
+	 *
+	 * <pre>
+	 * query.cacheStrategy(QueryCacheStrategy.LOCAL_CACHE);
+	 * </pre>
+	 */
+	public SelectById<T> localCache() {
+		return cacheStrategy(QueryCacheStrategy.LOCAL_CACHE);
 	}
 
 	/**
@@ -178,68 +188,50 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 	 * running the query. This is a short-hand notation for:
 	 *
 	 * <pre>
-	 * query.cacheStrategy(QueryCacheStrategy.SHARED_CACHE, cacheGroups);
+	 * query.cacheStrategy(QueryCacheStrategy.SHARED_CACHE, cacheGroup);
 	 * </pre>
-	 *
-	 * @since 4.0.M3
 	 */
-	public SelectById<T> sharedCache(String... cacheGroups) {
-		return cacheStrategy(QueryCacheStrategy.SHARED_CACHE, cacheGroups);
-	}
-
-	/**
-	 * Instructs Cayenne to look for query results in the "local" cache when
-	 * running the query. This is a short-hand notation for:
-	 *
-	 * @deprecated since 4.0.M3 use {@link #localCache(String...)}
-	 */
-	@Deprecated
-	public SelectById<T> useLocalCache(String... cacheGroups) {
-		return localCache(cacheGroups);
+	public SelectById<T> sharedCache(String cacheGroup) {
+		return cacheStrategy(QueryCacheStrategy.SHARED_CACHE, cacheGroup);
 	}
 
 	/**
 	 * Instructs Cayenne to look for query results in the "shared" cache when
 	 * running the query. This is a short-hand notation for:
 	 *
-	 * @deprecated since 4.0.M3 use {@link #sharedCache(String...)}
+	 * <pre>
+	 * query.cacheStrategy(QueryCacheStrategy.SHARED_CACHE);
+	 * </pre>
 	 */
-	@Deprecated
-	public SelectById<T> useSharedCache(String... cacheGroups) {
-		return sharedCache(cacheGroups);
+	public SelectById<T> sharedCache() {
+		return cacheStrategy(QueryCacheStrategy.SHARED_CACHE);
 	}
 
 	public QueryCacheStrategy getCacheStrategy() {
 		return cacheStrategy;
 	}
 
-	public SelectById<T> cacheStrategy(QueryCacheStrategy strategy, String... cacheGroups) {
+	public SelectById<T> cacheStrategy(QueryCacheStrategy strategy) {
 		if (this.cacheStrategy != strategy) {
 			this.cacheStrategy = strategy;
 			this.replacementQuery = null;
 		}
 
-		return cacheGroups(cacheGroups);
-	}
-
-	public String[] getCacheGroups() {
-		return cacheGroups;
-	}
-
-	public SelectById<T> cacheGroups(String... cacheGroups) {
-		this.cacheGroups = cacheGroups != null && cacheGroups.length > 0 ? cacheGroups : null;
-		this.replacementQuery = null;
 		return this;
 	}
 
-	public SelectById<T> cacheGroups(Collection<String> cacheGroups) {
+	public SelectById<T> cacheStrategy(QueryCacheStrategy strategy, String cacheGroup) {
+		return cacheStrategy(strategy).cacheGroup(cacheGroup);
+	}
 
-		if (cacheGroups == null) {
-			return cacheGroups((String) null);
-		}
+	public String getCacheGroup() {
+		return cacheGroup;
+	}
 
-		String[] array = new String[cacheGroups.size()];
-		return cacheGroups(cacheGroups.toArray(array));
+	public SelectById<T> cacheGroup(String cacheGroup) {
+		this.cacheGroup = cacheGroup;
+		this.replacementQuery = null;
+		return this;
 	}
 
 	public boolean isFetchingDataRows() {
@@ -296,7 +288,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 		ObjEntity entity = resolveEntity(resolver);
 		Map<String, ?> id = resolveId(entity);
 
-		SelectQuery<Object> query = new SelectQuery<Object>();
+		SelectQuery<Object> query = new SelectQuery<>();
 		query.setRoot(entity);
 		query.setFetchingDataRows(fetchingDataRows);
 		query.setQualifier(matchAllDbExp(id, Expression.EQUAL_TO));
@@ -304,7 +296,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 		// note on caching... this hits query cache instead of object cache...
 		// until we merge the two this may result in not using the cache
 		// optimally - object cache may have an object, but query cache will not
-		query.setCacheGroups(cacheGroups);
+		query.setCacheGroup(cacheGroup);
 		query.setCacheStrategy(cacheStrategy);
 		query.setPrefetchTree(prefetches);
 
@@ -323,7 +315,7 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 
 		Collection<String> pkAttributes = entity.getPrimaryKeyNames();
 		if (pkAttributes.size() != 1) {
-			throw new CayenneRuntimeException("PK contains " + pkAttributes.size() + " columns, expected 1.");
+			throw new CayenneRuntimeException("PK contains %d columns, expected 1.",  pkAttributes.size());
 		}
 
 		String pk = pkAttributes.iterator().next();
@@ -336,6 +328,6 @@ public class SelectById<T> extends IndirectQuery implements Select<T> {
 			throw new CayenneRuntimeException("Misconfigured query. Either entityName or entityType must be set");
 		}
 
-		return entityName != null ? resolver.getObjEntity(entityName) : resolver.getObjEntity(entityType);
+		return entityName != null ? resolver.getObjEntity(entityName) : resolver.getObjEntity(entityType, true);
 	}
 }

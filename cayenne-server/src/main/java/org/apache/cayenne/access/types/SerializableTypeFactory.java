@@ -25,8 +25,8 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 import org.apache.cayenne.CayenneRuntimeException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ExtendedTypeFactory for handling serializable objects. Returned ExtendedType
@@ -36,7 +36,7 @@ import org.apache.commons.logging.LogFactory;
  */
 class SerializableTypeFactory implements ExtendedTypeFactory {
 
-	private static final Log logger = LogFactory.getLog(SerializableTypeFactory.class);
+	private static final Logger logger = LoggerFactory.getLogger(SerializableTypeFactory.class);
 
 	private ExtendedTypeMap map;
 
@@ -52,13 +52,11 @@ class SerializableTypeFactory implements ExtendedTypeFactory {
 			logger.warn("SerializableType will be used for type conversion.");
 
 			// using a binary stream delegate instead of byte[] may actually
-			// speed up
-			// things in some dbs, but at least byte[] type works consistently
-			// across
-			// adapters...
+			// speed up things in some dbs, but at least byte[] type works consistently
+			// across adapters...
 
-			// note - can't use "getRegisteredType" as it causes infinite
-			// recursion
+			// note - can't use "getRegisteredType" as it causes infinite recursion
+			@SuppressWarnings("unchecked")
 			ExtendedType<byte[]> bytesType = map.getExplictlyRegisteredType("byte[]");
 			return new SerializableType(objectClass, bytesType);
 		}
@@ -86,7 +84,6 @@ class SerializableTypeFactory implements ExtendedTypeFactory {
 		@Override
 		byte[] fromJavaObject(Object object) {
 			ByteArrayOutputStream bytes = new ByteArrayOutputStream() {
-
 				// avoid unneeded array copy...
 				@Override
 				public synchronized byte[] toByteArray() {
@@ -94,7 +91,7 @@ class SerializableTypeFactory implements ExtendedTypeFactory {
 				}
 			};
 
-			try (ObjectOutputStream out = new ObjectOutputStream(bytes);) {
+			try (ObjectOutputStream out = new ObjectOutputStream(bytes)) {
 				out.writeObject(object);
 			} catch (Exception e) {
 				throw new CayenneRuntimeException("Error serializing object", e);
@@ -106,8 +103,8 @@ class SerializableTypeFactory implements ExtendedTypeFactory {
 		@Override
 		Object toJavaObject(byte[] bytes) {
 			try {
-				return bytes != null && bytes.length > 0 ? new ObjectInputStream(new ByteArrayInputStream(bytes))
-						.readObject() : null;
+				return bytes != null && bytes.length > 0
+						? new ObjectInputStream(new ByteArrayInputStream(bytes)).readObject() : null;
 			} catch (Exception e) {
 				throw new CayenneRuntimeException("Error deserializing object", e);
 			}

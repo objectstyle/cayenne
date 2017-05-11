@@ -19,7 +19,13 @@
 
 package org.apache.cayenne.remote;
 
-import org.apache.cayenne.*;
+import org.apache.cayenne.CayenneRuntimeException;
+import org.apache.cayenne.DataChannel;
+import org.apache.cayenne.DataChannelSyncCallbackAction;
+import org.apache.cayenne.ObjectContext;
+import org.apache.cayenne.ObjectId;
+import org.apache.cayenne.Persistent;
+import org.apache.cayenne.QueryResponse;
 import org.apache.cayenne.event.EventBridge;
 import org.apache.cayenne.event.EventManager;
 import org.apache.cayenne.event.EventSubject;
@@ -72,8 +78,7 @@ public class ClientChannel implements DataChannel {
         } else {
             try {
                 setupRemoteChannelListener();
-            }
-            catch (CayenneRuntimeException e) {}
+            } catch (CayenneRuntimeException ignored) {}
         }
     }
 
@@ -95,6 +100,7 @@ public class ClientChannel implements DataChannel {
         return eventManager;
     }
 
+    @SuppressWarnings("unchecked")
     public QueryResponse onQuery(ObjectContext context, Query query) {
 
         QueryResponse response = send( new QueryMessage(query), QueryResponse.class);
@@ -172,8 +178,7 @@ public class ClientChannel implements DataChannel {
 
         // sanity check
         if (id == null) {
-            throw new CayenneRuntimeException("Server returned an object without an id: "
-                    + object);
+            throw new CayenneRuntimeException("Server returned an object without an id: %s", object);
         }
 
         return merger.merge(object);
@@ -234,10 +239,7 @@ public class ClientChannel implements DataChannel {
                         notification.add(replyDiff);
                     }
 
-                    Object postedBy = (originatingContext != null)
-                            ? originatingContext
-                            : this;
-                    GraphEvent e = new GraphEvent(this, postedBy, notification);
+                    GraphEvent e = new GraphEvent(this, originatingContext, notification);
                     eventManager.postEvent(e, subject);
                 }
             }
@@ -302,10 +304,9 @@ public class ClientChannel implements DataChannel {
 
         if (result != null && !resultClass.isInstance(result)) {
             String resultString = new ToStringBuilder(result).toString();
-            throw new CayenneRuntimeException("Expected result type: "
-                    + resultClass.getName()
-                    + ", actual: "
-                    + resultString);
+            throw new CayenneRuntimeException("Expected result type: %s, actual: %s"
+                    , resultClass.getName()
+                    , resultString);
         }
 
         return resultClass.cast(result);

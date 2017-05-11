@@ -116,8 +116,7 @@ public class SQLTemplateAction implements SQLAction {
 		}
 
 		// notify of combined counts of all queries inside SQLTemplate
-		// multiplied by the
-		// number of parameter sets...
+		// multiplied by the number of parameter sets...
 		int[] ints = new int[counts.size()];
 		for (int i = 0; i < ints.length; i++) {
 			ints[i] = counts.get(i).intValue();
@@ -133,13 +132,12 @@ public class SQLTemplateAction implements SQLAction {
 				query.getPositionalParams());
 
 		if (loggable) {
-			dataNode.getJdbcEventLogger().logQuery(compiled.getSql(), Arrays.asList(compiled.getBindings()));
+			dataNode.getJdbcEventLogger().logQuery(compiled.getSql(), compiled.getBindings(), 0);
 		}
 
 		execute(connection, callback, compiled, counts);
 	}
 
-	@SuppressWarnings("deprecation")
 	private void runWithNamedParametersBatch(Connection connection, OperationObserver callback, String template,
 			Collection<Number> counts, boolean loggable) throws Exception {
 
@@ -159,7 +157,7 @@ public class SQLTemplateAction implements SQLAction {
 			SQLStatement compiled = dataNode.getSqlTemplateProcessor().processTemplate(template, nextParameters);
 
 			if (loggable) {
-				dataNode.getJdbcEventLogger().logQuery(compiled.getSql(), Arrays.asList(compiled.getBindings()));
+				dataNode.getJdbcEventLogger().logQuery(compiled.getSql(), compiled.getBindings(), 0);
 			}
 
 			execute(connection, callback, compiled, counts);
@@ -201,9 +199,7 @@ public class SQLTemplateAction implements SQLAction {
 							}
 						}
 
-						// ignore possible following update counts and bail
-						// early on
-						// iterated results
+						// ignore possible following update counts and bail early on iterated results
 						if (iteratedResult) {
 							break;
 						}
@@ -214,7 +210,7 @@ public class SQLTemplateAction implements SQLAction {
 						break;
 					}
 
-					updateCounts.add(Integer.valueOf(updateCount));
+					updateCounts.add(updateCount);
 					dataNode.getJdbcEventLogger().logUpdateCount(updateCount);
 				}
 			}
@@ -274,20 +270,18 @@ public class SQLTemplateAction implements SQLAction {
 	 */
 	protected RowDescriptorBuilder configureRowDescriptorBuilder(SQLStatement compiled, ResultSet resultSet)
 			throws SQLException {
-		RowDescriptorBuilder builder = new RowDescriptorBuilder();
-		builder.setResultSet(resultSet);
+		RowDescriptorBuilder builder = new RowDescriptorBuilder()
+                .setResultSet(resultSet)
+                .validateDuplicateColumnNames();
 
-		// SQLTemplate #result columns take precedence over other ways to
-		// determine the
-		// type
+		// SQLTemplate #result columns take precedence over other ways to determine the type
 		if (compiled.getResultColumns().length > 0) {
 			builder.setColumns(compiled.getResultColumns());
 		}
 
 		ObjEntity entity = queryMetadata.getObjEntity();
 		if (entity != null) {
-			// TODO: andrus 2008/03/28 support flattened attributes with
-			// aliases...
+			// TODO: andrus 2008/03/28 support flattened attributes with aliases...
 			for (ObjAttribute attribute : entity.getAttributes()) {
 				String column = attribute.getDbAttributePath();
 				if (column == null || column.indexOf('.') > 0) {
@@ -297,16 +291,12 @@ public class SQLTemplateAction implements SQLAction {
 			}
 		}
 
-		// override numeric Java types based on JDBC defaults for DbAttributes,
-		// as
-		// Oracle
+		// override numeric Java types based on JDBC defaults for DbAttributes, as Oracle
 		// ResultSetMetadata is not very precise about NUMERIC distinctions...
 		// (BigDecimal vs Long vs. Integer)
 		if (dbEntity != null) {
 			for (DbAttribute attribute : dbEntity.getAttributes()) {
-
 				if (!builder.isOverriden(attribute.getName()) && TypesMapping.isNumeric(attribute.getType())) {
-
 					builder.overrideColumnType(attribute.getName(), TypesMapping.getJavaBySqlType(attribute.getType()));
 				}
 			}
@@ -333,35 +323,26 @@ public class SQLTemplateAction implements SQLAction {
 	protected String extractTemplateString() {
 		String sql = query.getTemplate(dbAdapter.getClass().getName());
 
-		// note that we MUST convert line breaks to spaces. On some databases
-		// (DB2)
-		// queries with breaks simply won't run; the rest are affected by
-		// CAY-726.
+		// note that we MUST convert line breaks to spaces. On some databases (DB2)
+		// queries with breaks simply won't run; the rest are affected by CAY-726.
 		return Util.stripLineBreaks(sql, ' ');
 	}
 
 	/**
 	 * Binds parameters to the PreparedStatement.
 	 */
-	protected void bind(PreparedStatement preparedStatement, SQLParameterBinding[] bindings)
+	protected void bind(PreparedStatement preparedStatement, ParameterBinding[] bindings)
 			throws SQLException, Exception {
 		// bind parameters
-		if (bindings.length > 0) {
-			int len = bindings.length;
-			for (int i = 0; i < len; i++) {
-
-				Object value = bindings[i].getValue();
-				ExtendedType extendedType = value != null
-						? getAdapter().getExtendedTypes().getRegisteredType(value.getClass())
-						: getAdapter().getExtendedTypes().getDefaultType();
-
-				ParameterBinding binding = new ParameterBinding();
-				binding.setType(bindings[i].getJdbcType());
-				binding.setStatementPosition(i + 1);
-				binding.setValue(value);
-				binding.setExtendedType(extendedType);
-				dataNode.getAdapter().bindParameter(preparedStatement, binding);
-			}
+		int i = 1;
+		for (ParameterBinding binding : bindings) {
+			Object value = binding.getValue();
+			ExtendedType extendedType = value != null
+					? getAdapter().getExtendedTypes().getRegisteredType(value.getClass())
+					: getAdapter().getExtendedTypes().getDefaultType();
+			binding.setExtendedType(extendedType);
+			binding.setStatementPosition(i++);
+			dataNode.getAdapter().bindParameter(preparedStatement, binding);
 		}
 
 		if (queryMetadata.getStatementFetchSize() != 0) {

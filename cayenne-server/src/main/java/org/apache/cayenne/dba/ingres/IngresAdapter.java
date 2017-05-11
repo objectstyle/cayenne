@@ -29,6 +29,7 @@ import org.apache.cayenne.access.translator.select.TrimmingQualifierTranslator;
 import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.ExtendedTypeMap;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -67,8 +68,9 @@ public class IngresAdapter extends JdbcAdapter {
 	                     @Inject(Constants.SERVER_DEFAULT_TYPES_LIST) List<ExtendedType> defaultExtendedTypes,
 	                     @Inject(Constants.SERVER_USER_TYPES_LIST) List<ExtendedType> userExtendedTypes,
 	                     @Inject(Constants.SERVER_TYPE_FACTORIES_LIST) List<ExtendedTypeFactory> extendedTypeFactories,
-	                     @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator) {
-		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator);
+	                     @Inject(Constants.SERVER_RESOURCE_LOCATOR) ResourceLocator resourceLocator,
+						 @Inject ValueObjectTypeRegistry valueObjectTypeRegistry) {
+		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator, valueObjectTypeRegistry);
 		setSupportsUniqueConstraints(true);
 		setSupportsGeneratedKeys(true);
 	}
@@ -112,7 +114,7 @@ public class IngresAdapter extends JdbcAdapter {
 	public void bindParameter(PreparedStatement statement, ParameterBinding binding)
 			throws SQLException, Exception {
 
-		if (binding.getValue() == null && (binding.getType() == Types.BIT)) {
+		if (binding.getValue() == null && (binding.getJdbcType() == Types.BIT)) {
 			statement.setNull(binding.getStatementPosition(), Types.SMALLINT);
 		} else {
 			super.bindParameter(statement, binding);
@@ -124,8 +126,8 @@ public class IngresAdapter extends JdbcAdapter {
 
 		String[] types = externalTypesForJdbcType(at.getType());
 		if (types == null || types.length == 0) {
-			throw new CayenneRuntimeException("Undefined type for attribute '" + at.getEntity().getFullyQualifiedName()
-					+ "." + at.getName() + "': " + at.getType());
+			throw new CayenneRuntimeException("Undefined type for attribute '%s.%s': %s"
+					, at.getEntity().getFullyQualifiedName(), at.getName(), at.getType());
 		}
 
 		String type = types[0];

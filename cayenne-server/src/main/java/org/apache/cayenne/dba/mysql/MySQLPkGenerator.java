@@ -29,10 +29,16 @@ import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.dba.JdbcAdapter;
 import org.apache.cayenne.dba.JdbcPkGenerator;
 import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.tx.BaseTransaction;
+import org.apache.cayenne.tx.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  */
 public class MySQLPkGenerator extends JdbcPkGenerator {
+
+	private static final Logger logger = LoggerFactory.getLogger(MySQLPkGenerator.class);
 
 	MySQLPkGenerator(JdbcAdapter adapter) {
 		super(adapter);
@@ -54,6 +60,15 @@ public class MySQLPkGenerator extends JdbcPkGenerator {
 		// chained SQL exception
 		SQLException exception = null;
 		long pk = -1L;
+
+		// Start new transaction if needed, can any way lead to problems when
+		// using external transaction manager. We can only warn about it.
+		// See https://issues.apache.org/jira/browse/CAY-2186 for details.
+		Transaction transaction = BaseTransaction.getThreadTransaction();
+		if(transaction != null && transaction.isExternal()) {
+			logger.warn("Using MysqlPkGenerator with external transaction manager may lead to inconsistent state.");
+		}
+		BaseTransaction.bindThreadTransaction(null);
 
 		try (Connection con = node.getDataSource().getConnection()) {
 
@@ -77,7 +92,7 @@ public class MySQLPkGenerator extends JdbcPkGenerator {
 					// THIS MUST BE EXECUTED NO MATTER WHAT, OR WE WILL LOCK THE PRIMARY KEY TABLE!!
 					try {
 						String unlockString = "UNLOCK TABLES";
-						adapter.getJdbcEventLogger().logQuery(unlockString, Collections.EMPTY_LIST);
+						adapter.getJdbcEventLogger().log(unlockString);
 						st.execute(unlockString);
 					} catch (SQLException unlockEx) {
 						exception = processSQLException(unlockEx, exception);
@@ -86,6 +101,8 @@ public class MySQLPkGenerator extends JdbcPkGenerator {
 			}
 		} catch (SQLException otherEx) {
 			exception = processSQLException(otherEx, null);
+		} finally {
+			BaseTransaction.bindThreadTransaction(transaction);
 		}
 
 		// check errors
@@ -118,7 +135,8 @@ public class MySQLPkGenerator extends JdbcPkGenerator {
 	@Override
 	protected String pkTableCreateString() {
 		return "CREATE TABLE IF NOT EXISTS AUTO_PK_SUPPORT " +
-				"(TABLE_NAME CHAR(100) NOT NULL, NEXT_ID BIGINT NOT NULL, UNIQUE (TABLE_NAME))";
+				"(TABLE_NAME CHAR(100) NOT NULL, NEXT_ID BIGINT NOT NULL, UNIQUE (TABLE_NAME)) " +
+				"ENGINE=" + MySQLAdapter.DEFAULT_STORAGE_ENGINE;
 	}
 
 	/**
@@ -127,12 +145,12 @@ public class MySQLPkGenerator extends JdbcPkGenerator {
 	protected long getLongPrimaryKey(Statement statement, String entityName) throws SQLException {
 		// lock
 		String lockString = "LOCK TABLES AUTO_PK_SUPPORT WRITE";
-		adapter.getJdbcEventLogger().logQuery(lockString, Collections.EMPTY_LIST);
+		adapter.getJdbcEventLogger().log(lockString);
 		statement.execute(lockString);
 
 		// select
 		String selectString = super.pkSelectString(entityName);
-		adapter.getJdbcEventLogger().logQuery(selectString, Collections.EMPTY_LIST);
+		adapter.getJdbcEventLogger().log(selectString);
 		long pk;
 		try(ResultSet rs = statement.executeQuery(selectString)) {
 			if (!rs.next()) {
@@ -147,7 +165,7 @@ public class MySQLPkGenerator extends JdbcPkGenerator {
 
 		// update
 		String updateString = super.pkUpdateString(entityName) + " AND NEXT_ID = " + pk;
-		adapter.getJdbcEventLogger().logQuery(updateString, Collections.EMPTY_LIST);
+		adapter.getJdbcEventLogger().log(updateString);
 		int updated = statement.executeUpdate(updateString);
 		// optimistic lock failure...
 		if (updated != 1) {

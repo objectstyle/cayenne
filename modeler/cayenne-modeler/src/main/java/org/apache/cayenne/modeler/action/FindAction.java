@@ -19,18 +19,24 @@
 package org.apache.cayenne.modeler.action;
 
 import org.apache.cayenne.configuration.DataChannelDescriptor;
+import org.apache.cayenne.dbsync.reverse.dbload.DbRelationshipDetected;
 import org.apache.cayenne.map.Attribute;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.DbRelationship;
+import org.apache.cayenne.map.DetectedDbEntity;
+import org.apache.cayenne.map.EJBQLQueryDescriptor;
 import org.apache.cayenne.map.Embeddable;
 import org.apache.cayenne.map.EmbeddableAttribute;
 import org.apache.cayenne.map.Entity;
 import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.ObjRelationship;
+import org.apache.cayenne.map.ProcedureQueryDescriptor;
 import org.apache.cayenne.map.Relationship;
+import org.apache.cayenne.map.SQLTemplateDescriptor;
+import org.apache.cayenne.map.SelectQueryDescriptor;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.CayenneModelerFrame;
 import org.apache.cayenne.modeler.ProjectTreeModel;
@@ -45,6 +51,7 @@ import org.apache.cayenne.modeler.event.QueryDisplayEvent;
 import org.apache.cayenne.modeler.event.RelationshipDisplayEvent;
 import org.apache.cayenne.modeler.util.CayenneAction;
 import org.apache.cayenne.map.QueryDescriptor;
+import org.apache.cayenne.query.SQLTemplate;
 
 import javax.swing.JTextField;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -56,6 +63,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class FindAction extends CayenneAction {
@@ -65,15 +73,21 @@ public class FindAction extends CayenneAction {
      */
     private static final Map<Class<?>, Integer> PRIORITY_BY_TYPE = new HashMap<>();
     static {
-        PRIORITY_BY_TYPE.put(ObjEntity.class,          1);
-        PRIORITY_BY_TYPE.put(DbEntity.class,           2);
-        PRIORITY_BY_TYPE.put(ObjAttribute.class,       5);
-        PRIORITY_BY_TYPE.put(DbAttribute.class,        6);
-        PRIORITY_BY_TYPE.put(ObjRelationship.class,    7);
-        PRIORITY_BY_TYPE.put(DbRelationship.class,     8);
-        PRIORITY_BY_TYPE.put(QueryDescriptor.class,    9);
-        PRIORITY_BY_TYPE.put(Embeddable.class,         10);
-        PRIORITY_BY_TYPE.put(EmbeddableAttribute.class,11);
+        PRIORITY_BY_TYPE.put(ObjEntity.class,                1);
+        PRIORITY_BY_TYPE.put(DbEntity.class,                 2);
+        PRIORITY_BY_TYPE.put(DetectedDbEntity.class,         2); // this one comes from db reverse engineering
+        PRIORITY_BY_TYPE.put(ObjAttribute.class,             5);
+        PRIORITY_BY_TYPE.put(DbAttribute.class,              6);
+        PRIORITY_BY_TYPE.put(ObjRelationship.class,          7);
+        PRIORITY_BY_TYPE.put(DbRelationship.class,           8);
+        PRIORITY_BY_TYPE.put(DbRelationshipDetected.class,   8); // this one comes from db reverse engineering
+        PRIORITY_BY_TYPE.put(QueryDescriptor.class,          9);
+        PRIORITY_BY_TYPE.put(SelectQueryDescriptor.class,   10);
+        PRIORITY_BY_TYPE.put(EJBQLQueryDescriptor.class,    11);
+        PRIORITY_BY_TYPE.put(SQLTemplateDescriptor.class,   12);
+        PRIORITY_BY_TYPE.put(ProcedureQueryDescriptor.class,13);
+        PRIORITY_BY_TYPE.put(Embeddable.class,              14);
+        PRIORITY_BY_TYPE.put(EmbeddableAttribute.class,     15);
     }
 
     public static String getActionName() {
@@ -322,8 +336,8 @@ public class FindAction extends CayenneAction {
         private final String name;
 
         public SearchResultEntry(Object object, String name) {
-            this.object = object;
-            this.name = name;
+            this.object = Objects.requireNonNull(object);
+            this.name = Objects.requireNonNull(name);
         }
 
         public String getName() {
@@ -349,10 +363,17 @@ public class FindAction extends CayenneAction {
             return result;
         }
 
+        private int getPriority() {
+            Integer priority = PRIORITY_BY_TYPE.get(object.getClass());
+            if(priority == null) {
+                throw new NullPointerException("Unknown type: " + object.getClass().getCanonicalName());
+            }
+            return priority;
+        }
+
         @Override
         public int compareTo(SearchResultEntry o) {
-            int res = PRIORITY_BY_TYPE.get(getObject().getClass())
-                    - PRIORITY_BY_TYPE.get(o.getObject().getClass());
+            int res = getPriority() - o.getPriority();
             if(res != 0) {
                 return res;
             }

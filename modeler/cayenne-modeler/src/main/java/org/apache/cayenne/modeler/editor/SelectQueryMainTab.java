@@ -32,7 +32,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.ListCellRenderer;
 
 import org.apache.cayenne.configuration.event.QueryEvent;
 import org.apache.cayenne.exp.Expression;
@@ -138,7 +137,7 @@ public class SelectQueryMainTab extends JPanel {
 
     private void initController() {
         RootSelectionHandler rootHandler = new RootSelectionHandler();
-        
+
         queryRoot.addActionListener(rootHandler);
         queryRoot.addFocusListener(rootHandler);
         queryRoot.getEditor().getEditorComponent().addFocusListener(rootHandler);
@@ -201,6 +200,9 @@ public class SelectQueryMainTab extends JPanel {
     }
 
     protected SelectQueryDescriptor getQuery() {
+        if(mediator.getCurrentQuery() == null) {
+            return null;
+        }
         return QueryDescriptor.SELECT_QUERY.equals(mediator.getCurrentQuery().getType())
                 ? (SelectQueryDescriptor) mediator.getCurrentQuery()
                 : null;
@@ -215,20 +217,17 @@ public class SelectQueryMainTab extends JPanel {
         }
 
         Expression qualifier = createQualifier(text);
-        if (qualifier != null)
-        {
-            //getQuery() is not null if we reached here
-            getQuery().setQualifier(qualifier);
-            mediator.fireQueryEvent(new QueryEvent(this, getQuery()));
-        }
-        
+
+        //getQuery() is not null if we reached here
+        getQuery().setQualifier((qualifier));
+        mediator.fireQueryEvent(new QueryEvent(this, getQuery()));
     }
-    
+
     /**
      * Method to create and check an expression
      * @param text String to be converted as Expression
      * @return Expression if a new expression was created, null otherwise.
-     * @throws ValidationException if <code>text</code> can't be converted  
+     * @throws ValidationException if <code>text</code> can't be converted
      */
     Expression createQualifier(String text) throws ValidationException
     {
@@ -236,23 +235,23 @@ public class SelectQueryMainTab extends JPanel {
         if (query == null) {
             return null;
         }
-        
+
         ExpressionConvertor convertor = new ExpressionConvertor();
         try {
             String oldQualifier = convertor.valueAsString(query.getQualifier());
             if (!Util.nullSafeEquals(oldQualifier, text)) {
                 Expression exp = (Expression) convertor.stringAsValue(text);
-                
+
                 /*
                  * Advanced checking. See CAY-888 #1
                  */
                 if (query.getRoot() instanceof Entity) {
                     checkExpression((Entity) query.getRoot(), exp);
                 }
-                
+
                 return exp;
             }
-            
+
             return null;
         }
         catch (IllegalArgumentException ex) {
@@ -299,13 +298,13 @@ public class SelectQueryMainTab extends JPanel {
                     + "'. Use a different name.");
         }
     }
-    
+
     /**
      * Advanced checking of an expression, needed because Expression.fromString()
      * might terminate normally, but returned Expression will not be appliable
      * for real Entities.
      * Current implementation assures all attributes in expression are present in
-     * Entity  
+     * Entity
      * @param root Root of a query
      * @param ex Expression to check
      * @throws ValidationException when something's wrong
@@ -317,13 +316,13 @@ public class SelectQueryMainTab extends JPanel {
                  * Try to iterate through path, if some attributes are not present,
                  * exception will be raised
                  */
-                
+
                 Iterator<CayenneMapEntry> path = root.resolvePathComponents(ex);
                 while (path.hasNext()) {
                     path.next();
                 }
             }
-            
+
             if (ex != null) {
                 for (int i = 0; i < ex.getOperandCount(); i++) {
                     if (ex.getOperand(i) instanceof Expression) {

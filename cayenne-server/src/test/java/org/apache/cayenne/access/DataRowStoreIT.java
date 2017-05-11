@@ -21,6 +21,8 @@ package org.apache.cayenne.access;
 
 import org.apache.cayenne.DataRow;
 import org.apache.cayenne.ObjectId;
+import org.apache.cayenne.configuration.Constants;
+import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.testdo.testmap.Artist;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
@@ -59,43 +61,11 @@ public class DataRowStoreIT extends ServerCase {
     public void testDefaultConstructor() {
         cache = new DataRowStore(
                 "cacheXYZ",
-                Collections.EMPTY_MAP,
+                new DefaultRuntimeProperties(Collections.<String, String>emptyMap()),
                 null);
         assertEquals("cacheXYZ", cache.getName());
         assertNotNull(cache.getSnapshotEventSubject());
         assertTrue(cache.getSnapshotEventSubject().getSubjectName().contains("cacheXYZ"));
-
-        assertEquals(DataRowStore.REMOTE_NOTIFICATION_DEFAULT, cache
-                .isNotifyingRemoteListeners());
-    }
-
-    @Test
-    public void testConstructorWithProperties() {
-        Map<Object, Object> props = new HashMap<Object, Object>();
-        props.put(DataRowStore.REMOTE_NOTIFICATION_PROPERTY, String
-                .valueOf(!DataRowStore.REMOTE_NOTIFICATION_DEFAULT));
-        cache = new DataRowStore(
-                "cacheXYZ",
-                props,
-                null);
-        assertEquals("cacheXYZ", cache.getName());
-        assertEquals(!DataRowStore.REMOTE_NOTIFICATION_DEFAULT, cache
-                .isNotifyingRemoteListeners());
-    }
-
-    @Test
-    public void testNotifyingRemoteListeners() {
-        cache = new DataRowStore(
-                "cacheXYZ",
-                Collections.EMPTY_MAP,
-                null);
-
-        assertEquals(DataRowStore.REMOTE_NOTIFICATION_DEFAULT, cache
-                .isNotifyingRemoteListeners());
-
-        cache.setNotifyingRemoteListeners(!DataRowStore.REMOTE_NOTIFICATION_DEFAULT);
-        assertEquals(!DataRowStore.REMOTE_NOTIFICATION_DEFAULT, cache
-                .isNotifyingRemoteListeners());
     }
 
     /**
@@ -103,51 +73,51 @@ public class DataRowStoreIT extends ServerCase {
      */
     @Test
     public void testMaxSize() throws Exception {
-        Map<Object, Object> props = new HashMap<Object, Object>();
-        props.put(DataRowStore.SNAPSHOT_CACHE_SIZE_PROPERTY, String.valueOf(2));
+        Map<String, String> props = new HashMap<>();
+        props.put(Constants.SNAPSHOT_CACHE_SIZE_PROPERTY, String.valueOf(2));
 
         cache = new DataRowStore(
                 "cacheXYZ",
-                props,
+                new DefaultRuntimeProperties(props),
                 null);
         assertEquals(2, cache.maximumSize());
         assertEquals(0, cache.size());
 
         ObjectId key1 = new ObjectId("Artist", Artist.ARTIST_ID_PK_COLUMN, 1);
-        Map<Object, Object> diff1 = new HashMap<Object, Object>();
+        Map<ObjectId, DataRow> diff1 = new HashMap<>();
         diff1.put(key1, new DataRow(1));
 
         ObjectId key2 = new ObjectId("Artist", Artist.ARTIST_ID_PK_COLUMN, 2);
-        Map<Object, Object> diff2 = new HashMap<Object, Object>();
+        Map<ObjectId, DataRow> diff2 = new HashMap<>();
         diff2.put(key2, new DataRow(1));
 
         ObjectId key3 = new ObjectId("Artist", Artist.ARTIST_ID_PK_COLUMN, 3);
-        Map<Object, Object> diff3 = new HashMap<Object, Object>();
+        Map<ObjectId, DataRow> diff3 = new HashMap<>();
         diff3.put(key3, new DataRow(1));
 
         cache.processSnapshotChanges(
                 this,
                 diff1,
-                Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST);
+                Collections.<ObjectId>emptyList(),
+                Collections.<ObjectId>emptyList(),
+                Collections.<ObjectId>emptyList());
         assertEquals(1, cache.size());
 
         cache.processSnapshotChanges(
                 this,
                 diff2,
-                Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST);
+                Collections.<ObjectId>emptyList(),
+                Collections.<ObjectId>emptyList(),
+                Collections.<ObjectId>emptyList());
         assertEquals(2, cache.size());
 
         // this addition must overflow the cache, and throw out the first item
         cache.processSnapshotChanges(
                 this,
                 diff3,
-                Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST,
-                Collections.EMPTY_LIST);
+                Collections.<ObjectId>emptyList(),
+                Collections.<ObjectId>emptyList(),
+                Collections.<ObjectId>emptyList());
         assertEquals(2, cache.size());
         assertNotNull(cache.getCachedSnapshot(key2));
         assertNotNull(cache.getCachedSnapshot(key3));

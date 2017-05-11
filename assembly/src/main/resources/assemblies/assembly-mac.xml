@@ -44,6 +44,10 @@
 				<exclude>**/.project</exclude>
 			</excludes>
 		</fileSet>
+		<fileSet>
+			<directory>../cayenne-cgen/src/main/resources/templates/v1_2</directory>
+			<outputDirectory>templates</outputDirectory>
+		</fileSet>
 	</fileSets>
 
 	<files>
@@ -78,6 +82,7 @@
 				<include>org.apache.cayenne:cayenne-di</include>
 				<include>org.apache.cayenne:cayenne-joda</include>
 				<include>org.apache.cayenne:cayenne-lifecycle</include>
+				<include>org.apache.cayenne:cayenne-postcommit</include>
 				<include>org.apache.cayenne:cayenne-project</include>
 				<include>org.apache.cayenne:cayenne-server</include>
 				<include>org.apache.cayenne:cayenne-dbsync</include>
@@ -86,6 +91,10 @@
 				<include>org.apache.cayenne:cayenne-dbcp2</include>
 				<include>org.apache.cayenne:cayenne-java8</include>
 				<include>org.apache.cayenne:cayenne-jcache</include>
+				<include>org.apache.cayenne:cayenne-cache-invalidation</include>
+				<include>org.apache.cayenne:cayenne-jgroups</include>
+				<include>org.apache.cayenne:cayenne-jms</include>
+				<include>org.apache.cayenne:cayenne-xmpp</include>
 			</includes>
 		</dependencySet>
 		<dependencySet>
@@ -93,7 +102,8 @@
 			<!-- Include only a minimal set of dependencies to run cayenne-server and ant tasks -->
 			<includes>
 				<include>commons-collections:commons-collections</include>
-				<include>commons-logging:commons-logging</include>
+				<include>org.slf4j:slf4j-api</include>
+				<include>commons-lang:commons-lang</include>
 				<include>org.apache.velocity:velocity</include>
 				<include>foundrylogic.vpp:vpp</include>
 			</includes>

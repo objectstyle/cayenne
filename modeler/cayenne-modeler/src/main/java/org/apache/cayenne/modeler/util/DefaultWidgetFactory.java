@@ -29,6 +29,7 @@ import javax.swing.DefaultCellEditor;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
 import javax.swing.table.TableCellEditor;
 import java.awt.Color;
 import java.awt.Font;
@@ -63,7 +64,7 @@ public class DefaultWidgetFactory implements WidgetFactory {
      */
     public <T> JComboBox<T> createComboBox() {
         JComboBox<T> comboBox = new JComboBox<>();
-        comboBox.setFont(new Font("Verdana", Font.PLAIN , 12));
+        comboBox.setFont(UIManager.getFont("Label.font"));
         comboBox.setBackground(Color.WHITE);
         comboBox.setMaximumRowCount(ModelerPreferences.COMBOBOX_MAX_VISIBLE_SIZE);
         return comboBox;
@@ -97,8 +98,7 @@ public class DefaultWidgetFactory implements WidgetFactory {
      */
     public TableCellEditor createCellEditor(JComboBox<?> combo) {
         combo.setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
-        if (Boolean.TRUE.equals(combo
-                .getClientProperty(AutoCompletion.AUTOCOMPLETION_PROPERTY))) {
+        if (Boolean.TRUE.equals(combo.getClientProperty(AutoCompletion.AUTOCOMPLETION_PROPERTY))) {
             return new ComboBoxCellEditor(combo);
         }
 

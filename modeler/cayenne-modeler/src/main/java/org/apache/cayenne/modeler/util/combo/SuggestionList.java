@@ -18,11 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.util.combo;
 
+import java.awt.Color;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
+import javax.swing.BorderFactory;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JComboBox;
@@ -58,6 +60,7 @@ public class SuggestionList extends BasicComboPopup {
         
         this.strict = strict;
         list.addMouseListener(new MouseHandler());
+        setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
     }
     
     /**
@@ -85,8 +88,7 @@ public class SuggestionList extends BasicComboPopup {
     protected boolean matches(String item, String pattern) {
         if (strict) {
             return item.toLowerCase().startsWith(pattern.toLowerCase());
-        }
-        else {
+        } else {
             return item.toLowerCase().contains(pattern.toLowerCase());
         }
     }
@@ -99,9 +101,7 @@ public class SuggestionList extends BasicComboPopup {
      */
     @Override
     protected int getPopupHeightForRowCount(int maxRowCount) {
-        int h = super.getPopupHeightForRowCount(Math.min(maxRowCount, list.getModel().getSize()));
-
-        return h;
+        return super.getPopupHeightForRowCount(Math.min(maxRowCount, list.getModel().getSize()));
     }
 
     /**
@@ -150,10 +150,9 @@ public class SuggestionList extends BasicComboPopup {
      */
     @Override
     protected ItemListener createItemListener() {
-        return 
-          new ItemListener() {
+        return new ItemListener() {
             public void itemStateChanged(ItemEvent e) {}
-          };
+        };
     }
     
     /**

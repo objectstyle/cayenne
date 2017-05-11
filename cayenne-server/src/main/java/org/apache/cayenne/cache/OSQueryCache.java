@@ -65,7 +65,7 @@ import com.opensymphony.oscache.general.GeneralCacheAdministrator;
  * # expire entries every hour on the 10's minute
  * cayenne.default.cron = 10 * * * *
  *                        
- * # Same parameters can be overriden per query
+ * # Same parameters can be overridden per query
  * cayenne.group.xyz.refresh = 120
  * cayenne.group.xyz.cron = 10 1 * * *
  * </pre>
@@ -73,7 +73,9 @@ import com.opensymphony.oscache.general.GeneralCacheAdministrator;
  * Further extension of OSQueryCache is possible by using OSCache listener API.
  * 
  * @since 3.0
+ * @deprecated since 4.0 as OSCache project is abandoned
  */
+@Deprecated
 public class OSQueryCache implements QueryCache {
 
     public static final int DEFAULT_REFRESH_PERIOD = CacheEntry.INDEFINITE_EXPIRY;
@@ -281,27 +283,14 @@ public class OSQueryCache implements QueryCache {
         catch (NeedsRefreshException e) {
             boolean updated = false;
             try {
-                Object result = factory.createObject();
-
-                if (!(result instanceof List)) {
-                    if (result == null) {
-                        throw new CayenneRuntimeException("Null on cache rebuilding: "
-                                + metadata.getCacheKey());
-                    }
-                    else {
-                        throw new CayenneRuntimeException(
-                                "Invalid query result, expected List, got "
-                                        + result.getClass().getName());
-                    }
+                List result = factory.createObject();
+                if (result == null) {
+                    throw new CayenneRuntimeException("Null on cache rebuilding: %s", metadata.getCacheKey());
                 }
-
-                List list = (List) result;
-
-                put(metadata, list);
+                put(metadata, result);
                 updated = true;
-                return list;
-            }
-            finally {
+                return result;
+            } finally {
                 if (!updated) {
                     // It is essential that cancelUpdate is called if the
                     // cached content could not be rebuilt
@@ -319,9 +308,9 @@ public class OSQueryCache implements QueryCache {
         RefreshSpecification refresh = null;
 
         if (refreshSpecifications != null) {
-            String[] groups = metadata.getCacheGroups();
-            if (groups != null && groups.length > 0) {
-                refresh = refreshSpecifications.get(groups[0]);
+            String group = metadata.getCacheGroup();
+            if (group != null) {
+                refresh = refreshSpecifications.get(group);
             }
         }
 
@@ -332,7 +321,7 @@ public class OSQueryCache implements QueryCache {
     public void put(QueryMetadata metadata, List results) {
         String key = metadata.getCacheKey();
         if (key != null) {
-            osCache.putInCache(key, results, metadata.getCacheGroups());
+            osCache.putInCache(key, results, new String[]{metadata.getCacheGroup()});
         }
     }
 
@@ -346,6 +335,10 @@ public class OSQueryCache implements QueryCache {
         if (groupKey != null) {
             osCache.flushGroup(groupKey);
         }
+    }
+
+    public void removeGroup(String groupKey, Class<?> keyType, Class<?> valueType) {
+        removeGroup(groupKey);
     }
 
     public void clear() {

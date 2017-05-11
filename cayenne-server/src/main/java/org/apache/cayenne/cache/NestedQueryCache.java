@@ -65,12 +65,13 @@ public class NestedQueryCache implements QueryCache {
 
     /**
      * Clears the underlying shared cache.
+     * @see QueryCache#clear()
+     * @deprecated since 4.0
      */
     @Override
+    @Deprecated
     public void clear() {
-        // seems pretty evil - it clears the keys that do not belong to our
-        // subset of the
-        // cache
+        // seems pretty evil - it clears the keys that do not belong to our subset of the cache
         delegate.clear();
     }
 
@@ -108,10 +109,18 @@ public class NestedQueryCache implements QueryCache {
         delegate.removeGroup(groupKey);
     }
 
+    @Override
+    public void removeGroup(String groupKey, Class<?> keyType, Class<?> valueType) {
+        delegate.removeGroup(groupKey, keyType, valueType);
+    }
+
     /**
      * Returns a shared cache size.
+     * @see QueryCache#size()
+     * @deprecated since 4.0
      */
     @Override
+    @Deprecated
     public int size() {
         return delegate.size();
     }

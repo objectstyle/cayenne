@@ -19,12 +19,15 @@
 
 package org.apache.cayenne.exp.parser;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.cayenne.exp.Expression;
 
 /**
  * @since 4.0
  */
-public abstract class ASTFunctionCall extends SimpleNode {
+public abstract class ASTFunctionCall extends EvaluatedNode {
 
     private String functionName;
 
@@ -57,12 +60,9 @@ public abstract class ASTFunctionCall extends SimpleNode {
         return functionName;
     }
 
-    /**
-     * TODO what should this method return?
-     */
     @Override
     protected String getExpressionOperator(int index) {
-        return functionName;
+        return ",";
     }
 
     @Override
@@ -77,5 +77,52 @@ public abstract class ASTFunctionCall extends SimpleNode {
     @Override
     public int hashCode() {
         return 31 * super.hashCode() + functionName.hashCode();
+    }
+
+    protected void appendFunctionNameAsString(Appendable out) throws IOException {
+        out.append(nameToCamelCase(getFunctionName()));
+    }
+
+    @Override
+    public void appendAsString(Appendable out) throws IOException {
+        appendFunctionNameAsString(out);
+        if(parent == null) {
+            // else call to super method will append parenthesis
+            out.append("(");
+        }
+        super.appendAsString(out);
+        if(parent == null) {
+            out.append(")");
+        }
+    }
+
+    @Override
+    public void appendAsEJBQL(List<Object> parameterAccumulator, Appendable out, String rootId) throws IOException {
+        out.append(getFunctionName());
+        out.append("(");
+        super.appendChildrenAsEJBQL(parameterAccumulator, out, rootId);
+        out.append(")");
+    }
+
+    /**
+     *
+     * @param functionName in UPPER_UNDERSCORE convention
+     * @return functionName in camelCase convention
+     */
+    protected static String nameToCamelCase(String functionName) {
+        String[] parts = functionName.split("_");
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for(String part : parts) {
+            if(first) {
+                sb.append(part.toLowerCase());
+                first = false;
+            } else {
+                char[] chars = part.toLowerCase().toCharArray();
+                chars[0] = Character.toTitleCase(chars[0]);
+                sb.append(chars);
+            }
+        }
+        return sb.toString();
     }
 }

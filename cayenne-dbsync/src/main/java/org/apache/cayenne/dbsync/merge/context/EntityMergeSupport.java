@@ -35,8 +35,8 @@ import org.apache.cayenne.map.ObjRelationship;
 import org.apache.cayenne.map.Relationship;
 import org.apache.cayenne.util.DeleteRuleUpdater;
 import org.apache.cayenne.util.EntityMergeListener;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Types;
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ import java.util.Map;
  */
 public class EntityMergeSupport {
 
-    private static final Log LOGGER = LogFactory.getLog(EntityMergeSupport.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EntityMergeSupport.class);
 
     private static final Map<String, String> CLASS_TO_PRIMITIVE = new HashMap<>();
 
@@ -74,7 +74,7 @@ public class EntityMergeSupport {
         SQL_TYPE_TO_JAVA8_TYPE.put(Types.TIMESTAMP, "java.time.LocalDateTime");
     }
 
-    private final ObjectNameGenerator nameGenerator;
+    private ObjectNameGenerator nameGenerator;
     private final List<EntityMergeListener> listeners;
     private final boolean removingMeaningfulFKs;
     private final NameFilter meaningfulPKsFilter;
@@ -499,5 +499,9 @@ public class EntityMergeSupport {
         for (EntityMergeListener listener : listeners) {
             listener.objRelationshipAdded(rel);
         }
+    }
+
+    public void setNameGenerator(ObjectNameGenerator nameGenerator) {
+        this.nameGenerator = nameGenerator;
     }
 }

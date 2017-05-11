@@ -19,6 +19,7 @@
 
 package org.apache.cayenne.exp.parser;
 
+import java.io.IOException;
 import java.util.Date;
 
 import org.apache.cayenne.exp.Expression;
@@ -29,7 +30,7 @@ import org.apache.cayenne.exp.Expression;
 public class ASTCurrentDate extends ASTFunctionCall {
 
     public ASTCurrentDate() {
-        this(0);
+        this(ExpressionParserTreeConstants.JJTCURRENTDATE);
     }
 
     ASTCurrentDate(int id) {
@@ -42,7 +43,12 @@ public class ASTCurrentDate extends ASTFunctionCall {
     }
 
     @Override
-    protected Object evaluateNode(Object o) throws Exception {
+    protected int getRequiredChildrenCount() {
+        return 0;
+    }
+
+    @Override
+    protected Object evaluateSubNode(Object o, Object[] evaluatedChildren) throws Exception {
         return new Date();
     }
 

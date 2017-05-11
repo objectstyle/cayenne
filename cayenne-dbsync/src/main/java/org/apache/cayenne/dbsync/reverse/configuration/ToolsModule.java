@@ -21,6 +21,8 @@ package org.apache.cayenne.dbsync.reverse.configuration;
 
 import org.apache.cayenne.access.translator.batch.BatchTranslatorFactory;
 import org.apache.cayenne.access.translator.batch.DefaultBatchTranslatorFactory;
+import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.RuntimeProperties;
@@ -49,11 +51,11 @@ import org.apache.cayenne.di.Key;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
-import org.apache.cayenne.log.CommonsJdbcEventLogger;
+import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
-import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
 
 /**
  * A DI module to bootstrap DI container for Cayenne Ant tasks and Maven
@@ -63,9 +65,9 @@ import org.apache.commons.logging.Log;
  */
 public class ToolsModule implements Module {
 
-    private Log logger;
+    private Logger logger;
 
-    public ToolsModule(Log logger) {
+    public ToolsModule(Logger logger) {
 
         if (logger == null) {
             throw new NullPointerException("Null logger");
@@ -76,7 +78,7 @@ public class ToolsModule implements Module {
 
     public void configure(Binder binder) {
 
-        binder.bind(Log.class).toInstance(logger);
+        binder.bind(Logger.class).toInstance(logger);
 
         // configure empty global stack properties
         ServerModule.contributeProperties(binder);
@@ -84,6 +86,8 @@ public class ToolsModule implements Module {
         ServerModule.contributeDefaultTypes(binder);
         ServerModule.contributeUserTypes(binder);
         ServerModule.contributeTypeFactories(binder);
+        ServerModule.contributeValueObjectTypes(binder);
+        binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
         binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
@@ -92,7 +96,7 @@ public class ToolsModule implements Module {
 
         binder.bind(RuntimeProperties.class).to(DefaultRuntimeProperties.class);
         binder.bind(BatchTranslatorFactory.class).to(DefaultBatchTranslatorFactory.class);
-        binder.bind(JdbcEventLogger.class).to(CommonsJdbcEventLogger.class);
+        binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
 
         ServerModule.contributeAdapterDetectors(binder).add(FirebirdSniffer.class).add(OpenBaseSniffer.class)
                 .add(FrontBaseSniffer.class).add(IngresSniffer.class).add(SQLiteSniffer.class).add(DB2Sniffer.class)

@@ -30,19 +30,23 @@ import org.apache.cayenne.util.ToStringBuilder;
 /**
  * A common superclass of Cayenne queries.
  */
-public abstract class AbstractQuery implements Query {
+public abstract class AbstractQuery extends CacheableQuery {
 
     /**
      * The root object this query. May be an entity name, Java class, ObjEntity or
      * DbEntity, depending on the specific query and how it was constructed.
      */
     protected Object root;
+
+    @Deprecated
     protected String name;
+    @Deprecated
     protected DataMap dataMap;
 
     /**
      * @since 3.1
      */
+    @Deprecated
     public DataMap getDataMap() {
         return dataMap;
     }
@@ -50,6 +54,7 @@ public abstract class AbstractQuery implements Query {
     /**
      * @since 3.1
      */
+    @Deprecated
     public void setDataMap(DataMap dataMap) {
         this.dataMap = dataMap;
     }
@@ -59,6 +64,7 @@ public abstract class AbstractQuery implements Query {
      * 
      * @since 1.1
      */
+    @Deprecated
     public String getName() {
         return name;
     }
@@ -68,6 +74,7 @@ public abstract class AbstractQuery implements Query {
      * 
      * @since 1.1
      */
+    @Deprecated
     public void setName(String name) {
         this.name = name;
     }
@@ -145,8 +152,7 @@ public abstract class AbstractQuery implements Query {
         DataMap map = getMetaData(resolver).getDataMap();
 
         if (map == null) {
-            throw new CayenneRuntimeException("No DataMap found, can't route query "
-                    + this);
+            throw new CayenneRuntimeException("No DataMap found, can't route query %s", this);
         }
 
         router.route(router.engineForDataMap(map), this, substitutedQuery);

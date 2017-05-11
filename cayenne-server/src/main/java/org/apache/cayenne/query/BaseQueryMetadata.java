@@ -56,7 +56,11 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 
 	PrefetchTreeNode prefetchTree;
 	String cacheKey;
-	String[] cacheGroups;
+
+	/**
+	 * @since 4.0 cacheGroups array replaced with single cache group
+	 */
+	String cacheGroup;
 
 	transient List<Object> resultSetMapping;
 	transient DbEntity dbEntity;
@@ -80,7 +84,7 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 		this.pageSize = info.getPageSize();
 		this.cacheStrategy = info.getCacheStrategy();
 		this.cacheKey = info.getCacheKey();
-		this.cacheGroups = info.getCacheGroups();
+		this.cacheGroup = info.getCacheGroup();
 		this.resultSetMapping = info.getResultSetMapping();
 
 		setPrefetchTree(info.getPrefetchTree());
@@ -100,20 +104,7 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 
 			if (root != null) {
 				if (root instanceof Class<?>) {
-					entity = resolver.getObjEntity((Class<?>) root);
-					if (entity == null) { // entity not found, try to resolve it
-											// with
-						// client resolver
-						EntityResolver clientResolver = resolver.getClientEntityResolver();
-						if (clientResolver != resolver) {
-							ObjEntity clientEntity = clientResolver.getObjEntity((Class<?>) root);
-
-							if (clientEntity != null) {
-								entity = resolver.getObjEntity(clientEntity.getName());
-							}
-						}
-					}
-
+					entity = resolver.getObjEntity((Class<?>) root, true);
 					if (entity != null) {
 						this.dbEntity = entity.getDbEntity();
 						this.dataMap = entity.getDataMap();
@@ -189,15 +180,18 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 		this.cacheStrategy = (cacheStrategy != null) ? QueryCacheStrategy.safeValueOf(cacheStrategy.toString())
 				: QueryCacheStrategy.getDefaultStrategy();
 
-		this.cacheGroups = null;
-		if (cacheGroups instanceof String[]) {
-			this.cacheGroups = (String[]) cacheGroups;
-		} else if (cacheGroups instanceof String) {
-			StringTokenizer toks = new StringTokenizer(cacheGroups.toString(), ",");
-			this.cacheGroups = new String[toks.countTokens()];
-			for (int i = 0; i < this.cacheGroups.length; i++) {
-				this.cacheGroups[i] = toks.nextToken();
+		this.cacheGroup = null;
+		if(cacheGroups instanceof String) {
+			if(((String) cacheGroups).contains(",")) {
+				StringTokenizer toks = new StringTokenizer(cacheGroups.toString(), ",");
+				if(toks.countTokens() > 0) {
+					this.cacheGroup = toks.nextToken();
+				}
+			} else {
+				this.cacheGroup = (String) cacheGroups;
 			}
+		} else if (cacheGroups instanceof String[]) {
+			this.cacheGroup = ((String[]) cacheGroups)[0];
 		}
 	}
 
@@ -231,12 +225,8 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 			prefetchTree.encodeAsXML(encoder);
 		}
 
-		if (cacheGroups != null && cacheGroups.length > 0) {
-			StringBuilder buffer = new StringBuilder(cacheGroups[0]);
-			for (int i = 1; i < cacheGroups.length; i++) {
-				buffer.append(',').append(cacheGroups[i]);
-			}
-			encoder.printProperty(QueryMetadata.CACHE_GROUPS_PROPERTY, buffer.toString());
+		if (cacheGroup != null) {
+			encoder.printProperty(QueryMetadata.CACHE_GROUPS_PROPERTY, cacheGroup);
 		}
 	}
 
@@ -346,16 +336,40 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 
 	/**
 	 * @since 3.0
+	 * @deprecated since 4.0, use {@link BaseQueryMetadata#getCacheGroup()}
 	 */
+	@Deprecated
 	public String[] getCacheGroups() {
-		return cacheGroups;
+		if(cacheGroup == null) {
+			return null;
+		}
+		return new String[]{cacheGroup};
 	}
 
 	/**
 	 * @since 3.0
+	 * @deprecated since 4.0, use {@link BaseQueryMetadata#setCacheGroup(String)}
 	 */
+	@Deprecated
 	void setCacheGroups(String... groups) {
-		this.cacheGroups = groups;
+		if(groups.length > 0) {
+			this.cacheGroup = groups[0];
+		}
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	@Override
+	public String getCacheGroup() {
+		return cacheGroup;
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	public void setCacheGroup(String group) {
+		this.cacheGroup = group;
 	}
 
 	public boolean isFetchingDataRows() {
@@ -370,7 +384,18 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 		return pageSize;
 	}
 
+	/**
+	 * @deprecated since 4.0, use {@link BaseQueryMetadata#getOriginatingQuery()}
+	 */
+	@Deprecated
 	public Query getOrginatingQuery() {
+		return null;
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	public Query getOriginatingQuery() {
 		return null;
 	}
 
@@ -478,5 +503,13 @@ class BaseQueryMetadata implements QueryMetadata, XMLSerializable, Serializable 
 		if (prefetchTree != null) {
 			prefetchTree.removePath(prefetch);
 		}
+	}
+
+	/**
+	 * @since 4.0
+	 */
+	@Override
+	public boolean isSuppressingDistinct() {
+		return false;
 	}
 }

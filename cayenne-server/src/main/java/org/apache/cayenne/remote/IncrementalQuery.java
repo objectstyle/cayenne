@@ -53,7 +53,7 @@ class IncrementalQuery implements Query {
         // overriding caching settings in the metadata will only affect
         // ClientServerChannel behavior
         return new QueryMetadataProxy(metadata) {
-            public Query getOrginatingQuery() {
+            public Query getOriginatingQuery() {
                 return null;
             }
 
@@ -71,13 +71,16 @@ class IncrementalQuery implements Query {
         return query.createSQLAction(visitor);
     }
 
+    @Deprecated
     public String getName() {
         return query.getName();
     }
 
     /**
      * @since 3.1
+     * @deprecated since 4.0
      */
+    @Deprecated
     public DataMap getDataMap() {
         return query.getDataMap();
     }

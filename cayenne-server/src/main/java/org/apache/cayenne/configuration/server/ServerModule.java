@@ -21,6 +21,8 @@ package org.apache.cayenne.configuration.server;
 import org.apache.cayenne.DataChannel;
 import org.apache.cayenne.DataChannelFilter;
 import org.apache.cayenne.access.DataDomain;
+import org.apache.cayenne.access.DataRowStoreFactory;
+import org.apache.cayenne.access.DefaultDataRowStoreFactory;
 import org.apache.cayenne.access.DefaultObjectMapRetainStrategy;
 import org.apache.cayenne.access.ObjectMapRetainStrategy;
 import org.apache.cayenne.access.dbsync.DefaultSchemaUpdateStrategyFactory;
@@ -32,7 +34,28 @@ import org.apache.cayenne.access.translator.batch.BatchTranslatorFactory;
 import org.apache.cayenne.access.translator.batch.DefaultBatchTranslatorFactory;
 import org.apache.cayenne.access.translator.select.DefaultSelectTranslatorFactory;
 import org.apache.cayenne.access.translator.select.SelectTranslatorFactory;
-import org.apache.cayenne.access.types.*;
+import org.apache.cayenne.access.types.BigDecimalType;
+import org.apache.cayenne.access.types.BigIntegerValueType;
+import org.apache.cayenne.access.types.BooleanType;
+import org.apache.cayenne.access.types.ByteArrayType;
+import org.apache.cayenne.access.types.ByteType;
+import org.apache.cayenne.access.types.CalendarType;
+import org.apache.cayenne.access.types.CharType;
+import org.apache.cayenne.access.types.DateType;
+import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
+import org.apache.cayenne.access.types.DoubleType;
+import org.apache.cayenne.access.types.ExtendedType;
+import org.apache.cayenne.access.types.ExtendedTypeFactory;
+import org.apache.cayenne.access.types.FloatType;
+import org.apache.cayenne.access.types.IntegerType;
+import org.apache.cayenne.access.types.LongType;
+import org.apache.cayenne.access.types.ShortType;
+import org.apache.cayenne.access.types.TimeType;
+import org.apache.cayenne.access.types.TimestampType;
+import org.apache.cayenne.access.types.UUIDValueType;
+import org.apache.cayenne.access.types.UtilDateType;
+import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
+import org.apache.cayenne.access.types.VoidType;
 import org.apache.cayenne.ashwood.AshwoodEntitySorter;
 import org.apache.cayenne.cache.MapQueryCacheProvider;
 import org.apache.cayenne.cache.QueryCache;
@@ -64,14 +87,23 @@ import org.apache.cayenne.dba.postgres.PostgresSniffer;
 import org.apache.cayenne.dba.sqlite.SQLiteSniffer;
 import org.apache.cayenne.dba.sqlserver.SQLServerSniffer;
 import org.apache.cayenne.dba.sybase.SybaseSniffer;
-import org.apache.cayenne.di.*;
+import org.apache.cayenne.di.AdhocObjectFactory;
+import org.apache.cayenne.di.Binder;
+import org.apache.cayenne.di.ClassLoaderManager;
+import org.apache.cayenne.di.Key;
+import org.apache.cayenne.di.ListBuilder;
+import org.apache.cayenne.di.MapBuilder;
+import org.apache.cayenne.di.Module;
 import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
 import org.apache.cayenne.event.DefaultEventManager;
+import org.apache.cayenne.event.NoopEventBridgeProvider;
+import org.apache.cayenne.event.EventBridge;
 import org.apache.cayenne.event.EventManager;
-import org.apache.cayenne.log.CommonsJdbcEventLogger;
+import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.map.EntitySorter;
+import org.apache.cayenne.access.types.ValueObjectType;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
 import org.apache.cayenne.tx.DefaultTransactionFactory;
@@ -108,6 +140,17 @@ public class ServerModule implements Module {
     }
 
     /**
+     * Sets max size of snapshot cache, in pre 4.0 version this was set in the Modeler.
+     *
+     * @param binder DI binder passed to the module during injector startup.
+     * @param size max size of snapshot cache
+     * @since 4.0
+     */
+    public static void setSnapshotCacheSize(Binder binder, int size) {
+        contributeProperties(binder).put(Constants.SNAPSHOT_CACHE_SIZE_PROPERTY, Integer.toString(size));
+    }
+
+    /**
      * Provides access to a DI collection builder for String locations that allows downstream modules to
      * "contribute" their own Cayenne project locations.
      *
@@ -116,7 +159,7 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static ListBuilder<String> contributeProjectLocations(Binder binder) {
-        return binder.bindList(Constants.SERVER_PROJECT_LOCATIONS_LIST);
+        return binder.bindList(String.class, Constants.SERVER_PROJECT_LOCATIONS_LIST);
     }
 
     /**
@@ -128,7 +171,18 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static ListBuilder<DataChannelFilter> contributeDomainFilters(Binder binder) {
-        return binder.bindList(Constants.SERVER_DOMAIN_FILTERS_LIST);
+        return binder.bindList(DataChannelFilter.class, Constants.SERVER_DOMAIN_FILTERS_LIST);
+    }
+
+    /**
+     * Provides access to a DI collection builder for lifecycle events listeners.
+     *
+     * @param binder DI binder passed to the module during injector startup.
+     * @return ListBuilder for listener Objects.
+     * @since 4.0
+     */
+    public static ListBuilder<Object> contributeDomainListeners(Binder binder) {
+        return binder.bindList(Object.class, Constants.SERVER_DOMAIN_LISTENERS_LIST);
     }
 
     /**
@@ -140,7 +194,7 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static ListBuilder<DbAdapterDetector> contributeAdapterDetectors(Binder binder) {
-        return binder.bindList(Constants.SERVER_ADAPTER_DETECTORS_LIST);
+        return binder.bindList(DbAdapterDetector.class, Constants.SERVER_ADAPTER_DETECTORS_LIST);
     }
 
     /**
@@ -152,7 +206,7 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static MapBuilder<String> contributeProperties(Binder binder) {
-        return binder.bindMap(Constants.PROPERTIES_MAP);
+        return binder.bindMap(String.class, Constants.PROPERTIES_MAP);
     }
 
     /**
@@ -164,7 +218,7 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static ListBuilder<ExtendedTypeFactory> contributeTypeFactories(Binder binder) {
-        return binder.bindList(Constants.SERVER_TYPE_FACTORIES_LIST);
+        return binder.bindList(ExtendedTypeFactory.class, Constants.SERVER_TYPE_FACTORIES_LIST);
     }
 
     /**
@@ -177,7 +231,7 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static ListBuilder<ExtendedType> contributeDefaultTypes(Binder binder) {
-        return binder.bindList(Constants.SERVER_DEFAULT_TYPES_LIST);
+        return binder.bindList(ExtendedType.class, Constants.SERVER_DEFAULT_TYPES_LIST);
     }
 
     /**
@@ -190,7 +244,17 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public static ListBuilder<ExtendedType> contributeUserTypes(Binder binder) {
-        return binder.bindList(Constants.SERVER_USER_TYPES_LIST);
+        return binder.bindList(ExtendedType.class, Constants.SERVER_USER_TYPES_LIST);
+    }
+
+    /**
+     *
+     * @param binder DI binder passed to module during injector startup
+     * @return ListBuilder for user-contributed ValueObjectTypes
+     * @since 4.0
+     */
+    public static ListBuilder<ValueObjectType> contributeValueObjectTypes(Binder binder) {
+        return binder.bindList(ValueObjectType.class);
     }
 
     /**
@@ -229,7 +293,7 @@ public class ServerModule implements Module {
         contributeProperties(binder)
                 .put(Constants.SERVER_MAX_ID_QUALIFIER_SIZE_PROPERTY, String.valueOf(DEFAULT_MAX_ID_QUALIFIER_SIZE));
 
-        binder.bind(JdbcEventLogger.class).to(CommonsJdbcEventLogger.class);
+        binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
         binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
         binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
 
@@ -245,16 +309,27 @@ public class ServerModule implements Module {
         // configure a filter chain with only one TransactionFilter as default
         contributeDomainFilters(binder).add(TransactionFilter.class);
 
+        // init listener list
+        contributeDomainListeners(binder);
+
         // configure extended types
-        contributeDefaultTypes(binder).add(new VoidType()).add(new BigDecimalType())
-                .add(new BigIntegerType()).add(new BooleanType()).add(new ByteArrayType(false, true))
-                .add(new ByteType(false)).add(new CharType(false, true)).add(new DateType()).add(new DoubleType())
-                .add(new FloatType()).add(new IntegerType()).add(new LongType()).add(new ShortType(false))
-                .add(new TimeType()).add(new TimestampType()).add(new UtilDateType())
-                .add(new CalendarType<GregorianCalendar>(GregorianCalendar.class))
-                .add(new CalendarType<Calendar>(Calendar.class)).add(new UUIDType());
+        contributeDefaultTypes(binder)
+                .add(new VoidType())
+                .add(new BigDecimalType())
+                .add(new BooleanType()).add(new ByteType(false)).add(new CharType(false, true))
+                .add(new DoubleType()).add(new FloatType()).add(new IntegerType()).add(new LongType()).add(new ShortType(false))
+                .add(new ByteArrayType(false, true))
+                .add(new DateType()).add(new TimeType()).add(new TimestampType())
+                // should be converted from ExtendedType to ValueType
+                .add(new UtilDateType()).add(new CalendarType<>(GregorianCalendar.class)).add(new CalendarType<>(Calendar.class));
         contributeUserTypes(binder);
         contributeTypeFactories(binder);
+
+        // Custom ValueObjects types contribution
+        contributeValueObjectTypes(binder)
+                .add(BigIntegerValueType.class)
+                .add(UUIDValueType.class);
+        binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         // configure explicit configurations
         ListBuilder<String> locationsListBuilder = contributeProjectLocations(binder);
@@ -268,8 +343,12 @@ public class ServerModule implements Module {
 
         binder.bind(QueryCache.class).toProvider(MapQueryCacheProvider.class);
 
-        // a service to provide the main stack DataDomain
-        binder.bind(DataDomain.class).toProvider(DataDomainProvider.class);
+        binder.bind(EventBridge.class).toProvider(NoopEventBridgeProvider.class);
+
+        binder.bind(DataRowStoreFactory.class).to(DefaultDataRowStoreFactory.class);
+
+		// a service to provide the main stack DataDomain
+		binder.bind(DataDomain.class).toProvider(DataDomainProvider.class);
 
         binder.bind(DataNodeFactory.class).to(DefaultDataNodeFactory.class);
 

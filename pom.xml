@@ -59,7 +59,7 @@
 		<module>cayenne-ant</module>
 		<module>cayenne-project</module>
 		<module>cayenne-lifecycle</module>
-		<module>cayenne-postcommit</module>
+		<module>cayenne-commitlog</module>
 		<module>cayenne-crypto</module>
 		<module>cayenne-joda</module>
 		<module>cayenne-dbcp2</module>
@@ -450,6 +450,30 @@
     			<artifactId>slf4j-simple</artifactId>
     			<version>${slf4j.version}</version>
 				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>jgroups</groupId>
+				<artifactId>jgroups-all</artifactId>
+				<version>2.2.7</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>jivesoftware</groupId>
+				<artifactId>smack</artifactId>
+				<version>2.2.1</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>jivesoftware</groupId>
+				<artifactId>smackx</artifactId>
+				<version>2.2.1</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.geronimo.specs</groupId>
+				<artifactId>geronimo-jms_1.1_spec</artifactId>
+				<version>1.1</version>
+				<scope>provided</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

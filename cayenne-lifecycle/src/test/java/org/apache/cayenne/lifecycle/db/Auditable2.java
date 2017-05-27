@@ -21,7 +21,7 @@ package org.apache.cayenne.lifecycle.db;
 import org.apache.cayenne.lifecycle.audit.Auditable;
 import org.apache.cayenne.lifecycle.db.auto._Auditable2;
 
-@Auditable(ignoredProperties = "charProperty1", confidential = "charProperty2")
+@Auditable(ignoredProperties = "charProperty1")
 public class Auditable2 extends _Auditable2 {
 
 	private static final long serialVersionUID = 5203324250911707978L;

@@ -39,6 +39,7 @@ import org.apache.cayenne.modeler.event.EntityDisplayEvent;
 import org.apache.cayenne.modeler.event.TablePopupHandler;
 import org.apache.cayenne.modeler.pref.TableColumnPreferences;
 import org.apache.cayenne.modeler.util.BoardTableCellRenderer;
+import org.apache.cayenne.modeler.util.CayenneAction;
 import org.apache.cayenne.modeler.util.CayenneTable;
 import org.apache.cayenne.modeler.util.CellRenderers;
 import org.apache.cayenne.modeler.util.ModelerUtil;
@@ -50,18 +51,24 @@ import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.JComboBox;
+import javax.swing.JCheckBox;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.Component;
+import java.awt.Color;
 import java.util.List;
 
 /**
@@ -111,7 +118,7 @@ public class DbEntityRelationshipPanel extends JPanel implements DbEntityDisplay
 
         // Create and install a popup
         Icon ico = ModelerUtil.buildIcon("icon-edit.png");
-        resolveMenu = new JMenuItem("Database Mapping", ico);
+        resolveMenu = new CayenneAction.CayenneMenuItem("Database Mapping", ico);
 
         JPopupMenu popup = new JPopupMenu();
         popup.add(resolveMenu);
@@ -221,8 +228,10 @@ public class DbEntityRelationshipPanel extends JPanel implements DbEntityDisplay
         targetCombo = Application.getWidgetFactory().createComboBox();
         AutoCompletion.enable(targetCombo);
 
-        targetCombo.setRenderer(CellRenderers.entityListRendererWithIcons(entity
-                .getDataMap()));
+        table.getColumnModel().getColumn(DbRelationshipTableModel.TO_DEPENDENT_KEY)
+                .setCellRenderer(new CheckBoxCellRenderer());
+
+        targetCombo.setRenderer(CellRenderers.entityListRendererWithIcons(entity.getDataMap()));
         targetCombo.setModel(createComboModel(entity));
         col.setCellEditor(Application.getWidgetFactory().createCellEditor(targetCombo));
 
@@ -345,6 +354,26 @@ public class DbEntityRelationshipPanel extends JPanel implements DbEntityDisplay
 
             mediator.setCurrentDbRelationships(rels);
             parentPanel.updateActions(rels);
+        }
+    }
+
+    private class CheckBoxCellRenderer implements TableCellRenderer {
+
+        private final JCheckBox renderer;
+
+        public CheckBoxCellRenderer() {
+            renderer = new JCheckBox();
+            renderer.setHorizontalAlignment(SwingConstants.CENTER);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            Color color = isSelected ? table.getSelectionBackground() : table.getBackground();
+            renderer.setBackground(color);
+            renderer.setEnabled(table.isCellEditable(row, column));
+            renderer.setSelected(value != null && (Boolean)value);
+            return renderer;
         }
     }
 }

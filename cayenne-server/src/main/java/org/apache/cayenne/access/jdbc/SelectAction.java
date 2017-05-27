@@ -89,8 +89,10 @@ public class SelectAction extends BaseSQLAction {
 		JdbcEventLogger logger = dataNode.getJdbcEventLogger();
 		SelectTranslator translator = dataNode.selectTranslator(query);
 		final String sql = translator.getSql();
+		final DbAttributeBinding[] bindings = translator.getBindings();
 
-		DbAttributeBinding[] bindings = translator.getBindings();
+		logger.logQuery(sql, bindings);
+
 		PreparedStatement statement = connection.prepareStatement(sql);
 		bind(dataNode.getAdapter(), statement, bindings);
 
@@ -98,8 +100,6 @@ public class SelectAction extends BaseSQLAction {
 		if (fetchSize != 0) {
 			statement.setFetchSize(fetchSize);
 		}
-
-		logger.logQuery(sql, bindings, System.currentTimeMillis() - t1);
 
 		ResultSet rs;
 
@@ -155,8 +155,7 @@ public class SelectAction extends BaseSQLAction {
 		return new ConnectionAwareResultIterator<T>(iterator, connection) {
 			@Override
 			protected void doClose() {
-				dataNode.getJdbcEventLogger().logSelectCount(rowCounter, System.currentTimeMillis() - queryStartedAt,
-						sql);
+				dataNode.getJdbcEventLogger().logSelectCount(rowCounter, System.currentTimeMillis() - queryStartedAt, sql);
 				super.doClose();
 			}
 		};
@@ -173,7 +172,7 @@ public class SelectAction extends BaseSQLAction {
 				.getFetchOffset());
 
 		if (fetchLimit > 0 || offset > 0) {
-			return new LimitResultIterator<T>(iterator, offset, fetchLimit);
+			return new LimitResultIterator<>(iterator, offset, fetchLimit);
 		} else {
 			return iterator;
 		}

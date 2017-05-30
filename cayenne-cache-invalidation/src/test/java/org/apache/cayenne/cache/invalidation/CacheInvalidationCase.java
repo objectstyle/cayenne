@@ -16,7 +16,7 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
-package org.apache.cayenne.lifecycle.unit;
+package org.apache.cayenne.cache.invalidation;
 
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.configuration.server.ServerRuntimeBuilder;
@@ -48,7 +48,7 @@ public abstract class CacheInvalidationCase {
 		this.e2.deleteAll();
 	}
 
-	protected abstract Module buildInvalidationModule();
+	protected abstract Module extendInvalidationModule();
 
 	protected Module buildCustomModule() {
 		return new Module() {
@@ -60,7 +60,7 @@ public abstract class CacheInvalidationCase {
 
 	protected ServerRuntimeBuilder configureCayenne() {
 		return ServerRuntime.builder()
-				.addModule(buildInvalidationModule())
+				.addModule(extendInvalidationModule())
 				.addModule(buildCustomModule())
 				.addConfig("cayenne-lifecycle.xml");
 	}

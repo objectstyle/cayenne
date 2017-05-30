@@ -26,74 +26,45 @@ import java.util.Map.Entry;
 /**
  * @since 3.1
  */
-class DefaultMapBuilder<T> implements MapBuilder<T> {
-
-    private DefaultInjector injector;
-    private Key<Map<String, T>> bindingKey;
+class DefaultMapBuilder<T> extends DICollectionBuilder<Map<String, T>, T> implements MapBuilder<T> {
 
     DefaultMapBuilder(Key<Map<String, T>> bindingKey, DefaultInjector injector) {
-        this.injector = injector;
-        this.bindingKey = bindingKey;
+        super(bindingKey, injector);
 
         // trigger initialization of the MapProvider right away, as we need to bind an
         // empty map even if the user never calls 'put'
-        getMapProvider();
+        findOrCreateMapProvider();
     }
 
     @Override
-    public MapBuilder<T> put(String key, Class<? extends T> interfaceType)
-            throws DIRuntimeException {
+    public MapBuilder<T> put(String key, Class<? extends T> interfaceType) throws DIRuntimeException {
 
-        Key<? extends T> bindingKey = Key.get(interfaceType);
-        Binding<? extends T> binding = injector.getBinding(bindingKey);
-
-        if (binding == null) {
-            return putWithBinding(key, interfaceType);
-        }
-
+        Provider<? extends T> provider = createTypeProvider(interfaceType);
         // TODO: andrus 11/15/2009 - report overriding the key??
-        getMapProvider().put(key, binding.getScoped());
-        return this;
-    }
-
-    <K extends T> MapBuilder<T> putWithBinding(String key, Class<K> interfaceType) {
-        Key<K> bindingKey = Key.get(interfaceType);
-
-        Provider<K> provider0 = new ConstructorInjectingProvider<>(interfaceType, injector);
-        Provider<K> provider1 = new FieldInjectingProvider<>(provider0, injector);
-        injector.putBinding(bindingKey, provider1);
-
-        getMapProvider().put(key, injector.getProvider(bindingKey));
+        findOrCreateMapProvider().put(key, provider);
         return this;
     }
 
     @Override
     public MapBuilder<T> put(String key, T value) throws DIRuntimeException {
-
-        Provider<T> provider0 = new InstanceProvider<T>(value);
-        Provider<T> provider1 = new FieldInjectingProvider<T>(provider0, injector);
-
         // TODO: andrus 11/15/2009 - report overriding the key??
-        getMapProvider().put(key, provider1);
+        findOrCreateMapProvider().put(key, createInstanceProvider(value));
         return this;
     }
 
     @Override
     public MapBuilder<T> putAll(Map<String, T> map) throws DIRuntimeException {
 
-        MapProvider<T> provider = getMapProvider();
+        MapProvider<T> provider = findOrCreateMapProvider();
 
         for (Entry<String, T> entry : map.entrySet()) {
-
-            Provider<T> provider0 = new InstanceProvider<T>(entry.getValue());
-            Provider<T> provider1 = new FieldInjectingProvider<T>(provider0, injector);
-            provider.put(entry.getKey(), provider1);
+            provider.put(entry.getKey(), createInstanceProvider(entry.getValue()));
         }
 
         return this;
     }
 
-    private MapProvider<T> getMapProvider() {
+    private MapProvider<T> findOrCreateMapProvider() {
         MapProvider<T> provider;
 
         Binding<Map<String, T>> binding = injector.getBinding(bindingKey);
@@ -105,10 +76,5 @@ class DefaultMapBuilder<T> implements MapBuilder<T> {
         }
 
         return provider;
-    }
-
-    @Override
-    public void in(Scope scope) {
-        injector.changeBindingScope(bindingKey, scope);
     }
 }

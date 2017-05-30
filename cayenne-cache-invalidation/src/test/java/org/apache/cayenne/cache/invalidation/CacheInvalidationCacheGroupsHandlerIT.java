@@ -17,21 +17,20 @@
  *  under the License.
  ****************************************************************/
 
-package org.apache.cayenne.lifecycle.cache;
-
-import java.util.concurrent.atomic.AtomicInteger;
+package org.apache.cayenne.cache.invalidation;
 
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.cache.MapQueryCache;
 import org.apache.cayenne.cache.QueryCache;
 import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.Module;
-import org.apache.cayenne.lifecycle.db.E1;
-import org.apache.cayenne.lifecycle.db.E2;
-import org.apache.cayenne.lifecycle.unit.CacheInvalidationCase;
+import org.apache.cayenne.cache.invalidation.db.E1;
+import org.apache.cayenne.cache.invalidation.db.E2;
 import org.apache.cayenne.query.ObjectSelect;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 
@@ -50,8 +49,13 @@ public class CacheInvalidationCacheGroupsHandlerIT extends CacheInvalidationCase
     }
 
     @Override
-    protected Module buildInvalidationModule() {
-        return CacheInvalidationModuleBuilder.builder().build();
+    protected Module extendInvalidationModule() {
+        return new Module() {
+            @Override
+            public void configure(Binder binder) {
+                // do nothing module
+            }
+        };
     }
 
     @Override

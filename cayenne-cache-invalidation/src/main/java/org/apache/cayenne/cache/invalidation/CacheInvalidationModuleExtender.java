@@ -17,65 +17,69 @@
  *  under the License.
  ****************************************************************/
 
-package org.apache.cayenne.lifecycle.cache;
+package org.apache.cayenne.cache.invalidation;
 
-import java.util.Collection;
-import java.util.HashSet;
-
+import org.apache.cayenne.Persistent;
 import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.ListBuilder;
 import org.apache.cayenne.di.Module;
 
+import java.util.Collection;
+import java.util.HashSet;
+
 /**
  * @since 4.0
  */
-public class CacheInvalidationModuleBuilder {
+public class CacheInvalidationModuleExtender {
 
     private Collection<Class<? extends InvalidationHandler>> handlerTypes;
-
     private Collection<InvalidationHandler> handlerInstances;
-
     private boolean noCacheGroupsHandler;
 
-    public static CacheInvalidationModuleBuilder builder() {
-        return new CacheInvalidationModuleBuilder();
-    }
-
-    CacheInvalidationModuleBuilder() {
+    CacheInvalidationModuleExtender() {
         this.handlerTypes = new HashSet<>();
         this.handlerInstances = new HashSet<>();
     }
 
     /**
-     * Disable {@link CacheGroupsHandler} based on {@link CacheGroups} annotation.
+     * Disable the default {@link CacheGroupsHandler} that is tied to {@link CacheGroups} and {@link CacheGroup}
+     * annotations.
      */
-    public CacheInvalidationModuleBuilder noCacheGroupsHandler() {
+    public CacheInvalidationModuleExtender noCacheGroupsHandler() {
         noCacheGroupsHandler = true;
         return this;
     }
 
-    public CacheInvalidationModuleBuilder invalidationHandler(Class<? extends InvalidationHandler> handlerType) {
+    public CacheInvalidationModuleExtender addHandler(Class<? extends InvalidationHandler> handlerType) {
         handlerTypes.add(handlerType);
         return this;
     }
 
-    public CacheInvalidationModuleBuilder invalidationHandler(InvalidationHandler handlerInstance) {
+    public CacheInvalidationModuleExtender addHandler(InvalidationHandler handlerInstance) {
         handlerInstances.add(handlerInstance);
         return this;
     }
 
-    public Module build() {
+    public Module module() {
         return new Module() {
             @Override
             public void configure(Binder binder) {
+
+                if (noCacheGroupsHandler) {
+                    // replace CacheGroupsHandler with a dummy no op handler
+                    binder.bind(CacheGroupsHandler.class).toInstance(new CacheGroupsHandler() {
+                        @Override
+                        public InvalidationFunction canHandle(Class<? extends Persistent> type) {
+                            return null;
+                        }
+                    });
+                }
+
                 ListBuilder<InvalidationHandler> handlers = CacheInvalidationModule.contributeInvalidationHandler(binder);
 
-                if(!noCacheGroupsHandler) {
-                    handlers.add(CacheGroupsHandler.class);
-                }
                 handlers.addAll(handlerInstances);
 
-                for(Class<? extends InvalidationHandler> handlerType : handlerTypes) {
+                for (Class<? extends InvalidationHandler> handlerType : handlerTypes) {
                     handlers.add(handlerType);
                 }
             }

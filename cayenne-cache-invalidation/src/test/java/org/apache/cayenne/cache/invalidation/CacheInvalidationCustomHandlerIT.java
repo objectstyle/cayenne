@@ -17,19 +17,17 @@
  *  under the License.
  ****************************************************************/
 
-package org.apache.cayenne.lifecycle.cache;
-
-import java.util.Collection;
-import java.util.Collections;
+package org.apache.cayenne.cache.invalidation;
 
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.Persistent;
 import org.apache.cayenne.di.Module;
-import org.apache.cayenne.lifecycle.db.E1;
-import org.apache.cayenne.lifecycle.unit.CacheInvalidationCase;
+import org.apache.cayenne.cache.invalidation.db.E1;
 import org.apache.cayenne.query.ObjectSelect;
-
 import org.junit.Test;
+
+import java.util.Collection;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
@@ -39,11 +37,11 @@ import static org.junit.Assert.assertEquals;
 public class CacheInvalidationCustomHandlerIT extends CacheInvalidationCase {
 
     @Override
-    protected Module buildInvalidationModule() {
-        return CacheInvalidationModuleBuilder.builder()
+    protected Module extendInvalidationModule() {
+        return CacheInvalidationModule.extend()
                 .noCacheGroupsHandler()
-                .invalidationHandler(G1InvalidationHandler.class)
-                .build();
+                .addHandler(G1InvalidationHandler.class)
+                .module();
     }
 
     @Test

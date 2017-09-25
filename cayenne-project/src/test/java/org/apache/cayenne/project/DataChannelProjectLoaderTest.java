@@ -23,10 +23,14 @@ import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.configuration.DataChannelDescriptorLoader;
 import org.apache.cayenne.configuration.DataMapLoader;
 import org.apache.cayenne.configuration.DefaultConfigurationNameMapper;
-import org.apache.cayenne.configuration.XMLDataChannelDescriptorLoader;
-import org.apache.cayenne.configuration.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
+import org.apache.cayenne.configuration.xml.DefaultHandlerFactory;
+import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.NoopDataChannelMetaData;
+import org.apache.cayenne.configuration.xml.XMLDataChannelDescriptorLoader;
+import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.di.AdhocObjectFactory;
-import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.ClassLoaderManager;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
@@ -36,12 +40,11 @@ import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
 import org.apache.cayenne.resource.Resource;
 import org.apache.cayenne.resource.URLResource;
 import org.junit.Test;
+import org.xml.sax.XMLReader;
 
 import java.net.URL;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.*;
 
 public class DataChannelProjectLoaderTest {
 
@@ -50,19 +53,16 @@ public class DataChannelProjectLoaderTest {
 
         DataChannelProjectLoader loader = new DataChannelProjectLoader();
 
-        Module testModule = new Module() {
+        Module testModule = binder -> {
+            binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
+            binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
 
-            @Override
-            public void configure(Binder binder) {
-                binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
-                binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
-
-                binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
-                binder.bind(DataChannelDescriptorLoader.class).to(
-                        XMLDataChannelDescriptorLoader.class);
-                binder.bind(ConfigurationNameMapper.class).to(
-                        DefaultConfigurationNameMapper.class);
-            }
+            binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
+            binder.bind(DataChannelDescriptorLoader.class).to(XMLDataChannelDescriptorLoader.class);
+            binder.bind(ConfigurationNameMapper.class).to(DefaultConfigurationNameMapper.class);
+            binder.bind(HandlerFactory.class).to(DefaultHandlerFactory.class);
+            binder.bind(DataChannelMetaData.class).to(NoopDataChannelMetaData.class);
+            binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(false)).withoutScope();
         };
 
         Injector injector = DIBootstrap.createInjector(testModule);
@@ -70,8 +70,7 @@ public class DataChannelProjectLoaderTest {
 
         String testConfigName = "PROJECT1";
         String baseUrl = getClass().getPackage().getName().replace('.', '/');
-        URL url = getClass().getClassLoader().getResource(
-                baseUrl + "/cayenne-" + testConfigName + ".xml");
+        URL url = getClass().getClassLoader().getResource(baseUrl + "/cayenne-" + testConfigName + ".xml");
 
         Resource rootSource = new URLResource(url);
 

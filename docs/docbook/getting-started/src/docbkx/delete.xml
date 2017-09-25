@@ -41,7 +41,7 @@
                     exist without being displayed in a gallery.</para>
             </listitem>
             <listitem>
-                <para>For Painting et both relationships rules to "Nullify".</para>
+                <para>For Painting set both relationships rules to "Nullify".</para>
             </listitem>
         </itemizedlist>
         <para>Now save the mapping.</para>
@@ -52,7 +52,8 @@
             more common way in Cayenne (or ORM in general) is to get a hold of the object first, and
             then delete it via the context. Let's use utility class Cayenne to find an
             artist:</para>
-        <programlisting language="java">Artist picasso = ObjectSelect.query(Artist.class).where(Artist.NAME.eq("Pablo Picasso")).selectOne(context);</programlisting>
+        <programlisting language="java">Artist picasso = ObjectSelect.query(Artist.class)
+            .where(Artist.NAME.eq("Pablo Picasso")).selectOne(context);</programlisting>
         <para>Now let's delete the artist:</para>
         <programlisting language="java">if (picasso != null) {
     context.deleteObject(picasso);

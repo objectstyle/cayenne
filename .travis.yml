@@ -33,10 +33,9 @@ env:
 
 jdk:
   - oraclejdk8
-  - oraclejdk7
 
 script:
-  - mvn install -q -DcayenneTestConnection=$DB_PROFILE -DcayenneLogLevel=ERROR
+  - mvn verify -q -DcayenneTestConnection=$DB_PROFILE -DcayenneLogLevel=ERROR
 
 # prevent Travis from unneeded "mvn install" run
 install: /bin/true

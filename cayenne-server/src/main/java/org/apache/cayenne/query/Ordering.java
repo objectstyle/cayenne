@@ -19,16 +19,6 @@
 
 package org.apache.cayenne.query;
 
-import org.apache.cayenne.exp.Expression;
-import org.apache.cayenne.exp.ExpressionException;
-import org.apache.cayenne.exp.parser.ASTDbPath;
-import org.apache.cayenne.exp.parser.ASTObjPath;
-import org.apache.cayenne.util.ConversionUtil;
-import org.apache.cayenne.util.Util;
-import org.apache.cayenne.util.XMLEncoder;
-import org.apache.cayenne.util.XMLSerializable;
-import org.apache.commons.collections.ComparatorUtils;
-
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
@@ -37,6 +27,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+import org.apache.cayenne.configuration.EmptyConfigurationNodeVisitor;
+import org.apache.cayenne.exp.Expression;
+import org.apache.cayenne.exp.ExpressionException;
+import org.apache.cayenne.exp.parser.ASTDbPath;
+import org.apache.cayenne.exp.parser.ASTObjPath;
+import org.apache.cayenne.util.ConversionUtil;
+import org.apache.cayenne.util.Util;
+import org.apache.cayenne.util.XMLEncoder;
+import org.apache.cayenne.util.XMLSerializable;
 
 /**
  * Defines object sorting criteria, used either for in-memory sorting of object
@@ -65,7 +66,14 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 	 */
 	@SuppressWarnings("unchecked")
 	public static void orderList(List<?> objects, List<? extends Ordering> orderings) {
-		Collections.sort(objects, ComparatorUtils.chainedComparator(orderings));
+		if(objects == null || orderings == null || orderings.isEmpty()) {
+			return;
+		}
+		Comparator<Object> comparator = orderings.get(0);
+		for(int i=1; i<orderings.size(); i++) {
+			comparator = comparator.thenComparing(orderings.get(i));
+		}
+		objects.sort(comparator);
 	}
 
 	/**
@@ -431,22 +439,12 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 	 * @since 1.1
 	 */
 	@Override
-	public void encodeAsXML(XMLEncoder encoder) {
-		encoder.print("<ordering");
-
-		if (isDescending()) {
-			encoder.print(" descending=\"true\"");
-		}
-
-		if (isCaseInsensitive()) {
-			encoder.print(" ignore-case=\"true\"");
-		}
-
-		encoder.print(">");
-		if (getSortSpec() != null) {
-			getSortSpec().encodeAsXML(encoder);
-		}
-		encoder.println("</ordering>");
+	public void encodeAsXML(XMLEncoder encoder, ConfigurationNodeVisitor delegate) {
+		encoder.start("ordering")
+				.attribute("descending", isDescending())
+				.attribute("ignore-case", isCaseInsensitive())
+				.nested(getSortSpec(), delegate)
+				.end();
 	}
 
 	@Override
@@ -454,7 +452,7 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 		StringWriter buffer = new StringWriter();
 		PrintWriter pw = new PrintWriter(buffer);
 		XMLEncoder encoder = new XMLEncoder(pw);
-		encodeAsXML(encoder);
+		encodeAsXML(encoder, new EmptyConfigurationNodeVisitor());
 		pw.close();
 		buffer.flush();
 		return buffer.toString();
@@ -468,4 +466,43 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
 	public SortOrder getSortOrder() {
 		return sortOrder;
 	}
+	
+	
+	 /**
+	  * Returns Orderings with this Ordering followed by the provided
+	  * next Ordering.
+	  * 
+	  * @param nextOrdering the next Ordering to chain to this
+	  * @return a new Orderings with both Ordering
+	  * @since 4.1
+	  */
+	 public Orderings then(Ordering nextOrdering) {
+	 	return new Orderings(this, nextOrdering);
+	 }
+
+	 /**
+	  * Returns Orderings with this Ordering followed by the provided
+	  * list of next Orderings.
+	  * 
+	  * @param nextOrderings the next Orderings to chain to this
+	  * @return an array of sort orderings
+	  * @since 4.1
+	  */
+	 public Orderings then(Orderings nextOrderings) {
+	 	Orderings newOrderings = new Orderings(this);
+	 	
+	 	return newOrderings.then(nextOrderings);
+	 }
+	 
+	 /**
+	  * @see Orderings#then(Orderings)
+	  * @param nextOrderings the next Orderings to chain to this
+	  * @return an array of sort orderings
+	  * @since 4.1
+	  */
+	 public Orderings then(List<Ordering> nextOrderings) {
+	 	Orderings newOrderings = new Orderings(this);
+	 	
+	 	return newOrderings.then(nextOrderings);
+	 }
 }

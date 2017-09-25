@@ -24,7 +24,7 @@
 	<parent>
 		<groupId>org.apache.cayenne.modeler</groupId>
 		<artifactId>cayenne-modeler-parent</artifactId>
-		<version>4.0.M6-SNAPSHOT</version>
+		<version>4.1.M2-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>cayenne-modeler</artifactId>
@@ -32,24 +32,10 @@
 	<packaging>jar</packaging>
 
 	<dependencies>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>commons-collections</groupId>
-			<artifactId>commons-collections</artifactId>
-		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.velocity</groupId>
-			<artifactId>velocity</artifactId>
 		</dependency>
 
 		<dependency>
@@ -93,20 +79,30 @@
 		</dependency>
 
 		<dependency>
-			<groupId>mockrunner</groupId>
-			<artifactId>mockrunner</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>net.sf.jedit-syntax</groupId>
-			<artifactId>jedit-syntax</artifactId>
-		</dependency>
-
-		<dependency>
 			<groupId>jgraph</groupId>
 			<artifactId>jgraph</artifactId>
 		</dependency>
+
+		<dependency>
+			<groupId>com.mockrunner</groupId>
+			<artifactId>mockrunner-jdbc</artifactId>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<!-- this one have old Xerces dependency that clashes with JDK's one -->
+					<groupId>nekohtml</groupId>
+					<artifactId>nekohtml</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
+
 
     <profiles>
         <profile>

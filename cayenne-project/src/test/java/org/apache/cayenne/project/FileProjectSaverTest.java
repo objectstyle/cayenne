@@ -23,11 +23,11 @@ import org.apache.cayenne.configuration.ConfigurationTree;
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.configuration.DefaultConfigurationNameMapper;
-import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.map.DataMap;
+import org.apache.cayenne.project.extension.ProjectExtension;
 import org.apache.cayenne.project.unit.Project2Case;
 import org.apache.cayenne.resource.URLResource;
 import org.junit.Before;
@@ -41,6 +41,7 @@ import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -51,15 +52,11 @@ public class FileProjectSaverTest extends Project2Case {
 
     @Before
     public void setUp() throws Exception {
-        Module testModule = new Module() {
+        Module testModule = binder -> binder
+                .bind(ConfigurationNameMapper.class)
+                .to(DefaultConfigurationNameMapper.class);
 
-            public void configure(Binder binder) {
-                binder.bind(ConfigurationNameMapper.class).to(
-                        DefaultConfigurationNameMapper.class);
-            }
-        };
-
-        saver = new FileProjectSaver();
+        saver = new FileProjectSaver(Collections.<ProjectExtension>emptyList());
         Injector injector = DIBootstrap.createInjector(testModule);
         injector.injectMembers(saver);
     }
@@ -140,6 +137,7 @@ public class FileProjectSaverTest extends Project2Case {
     /**
      * Method test fix for CAY-1780. If specify related fragments (for example ./../)
      * in target file path then file must be created successfully.
+     *
      * @throws Exception
      */
     @Test

@@ -61,7 +61,8 @@ class ObjectResolver {
 
 		// sanity check
 		if (descriptor == null || descriptor.getEntity() == null) {
-			throw new CayenneRuntimeException("Set up Object entity or use rowFetchingQuery");
+			// possible cause: query that is not expected to have result set somehow got it..
+			throw new CayenneRuntimeException("No ClassDescriptor. Maybe DataRows should be fetched instead of objects.");
 		}
 
 		DbEntity dbEntity = descriptor.getEntity().getDbEntity();
@@ -113,7 +114,8 @@ class ObjectResolver {
 
 		List<Persistent> results = new ArrayList<>(rows.size());
 		for (DataRow row : rows) {
-			// nulls are possible here since 3.0 for soem varieties of EJBQL
+			// nulls are possible here since 3.0 for some varieties of EJBQL,
+			// simple example of this: "select p.toGallery+ from Painting p" where toGallery is null.
 			results.add(objectFromDataRow(row));
 		}
 
@@ -212,6 +214,9 @@ class ObjectResolver {
 
 			// this is possible when processing left outer joint prefetches
 			if (val == null) {
+				if(!dataRow.containsKey(key)) {
+					throw new CayenneRuntimeException("No PK column '%s' found in data row.", key);
+				}
 				return null;
 			}
 
@@ -230,6 +235,9 @@ class ObjectResolver {
 
 			// this is possible when processing left outer joint prefetches
 			if (val == null) {
+				if(!dataRow.containsKey(key)) {
+					throw new CayenneRuntimeException("No PK column '%s' found in data row.", key);
+				}
 				return null;
 			}
 

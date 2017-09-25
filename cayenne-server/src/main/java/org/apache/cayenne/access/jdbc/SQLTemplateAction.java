@@ -25,7 +25,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -51,11 +50,10 @@ import org.apache.cayenne.query.QueryMetadata;
 import org.apache.cayenne.query.SQLAction;
 import org.apache.cayenne.query.SQLTemplate;
 import org.apache.cayenne.util.Util;
-import org.apache.commons.collections.IteratorUtils;
 
 /**
  * Implements a strategy for execution of SQLTemplates.
- * 
+ *
  * @since 1.2 replaces SQLTemplateExecutionPlan
  */
 public class SQLTemplateAction implements SQLAction {
@@ -125,12 +123,25 @@ public class SQLTemplateAction implements SQLAction {
 		callback.nextBatchCount(query, ints);
 	}
 
+	private void bindExtendedTypes(ParameterBinding[] bindings) {
+		int i = 1;
+		for (ParameterBinding binding : bindings) {
+			Object value = binding.getValue();
+			ExtendedType extendedType = value != null
+					? getAdapter().getExtendedTypes().getRegisteredType(value.getClass())
+					: getAdapter().getExtendedTypes().getDefaultType();
+			binding.setExtendedType(extendedType);
+			binding.setStatementPosition(i++);
+		}
+	}
+
 	private void runWithPositionalParameters(Connection connection, OperationObserver callback, String template,
-			Collection<Number> counts, boolean loggable) throws Exception {
+											 Collection<Number> counts, boolean loggable) throws Exception {
 
 		SQLStatement compiled = dataNode.getSqlTemplateProcessor().processTemplate(template,
 				query.getPositionalParams());
 
+		bindExtendedTypes(compiled.getBindings());
 		if (loggable) {
 			dataNode.getJdbcEventLogger().logQuery(compiled.getSql(), compiled.getBindings());
 		}
@@ -138,8 +149,9 @@ public class SQLTemplateAction implements SQLAction {
 		execute(connection, callback, compiled, counts);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void runWithNamedParametersBatch(Connection connection, OperationObserver callback, String template,
-			Collection<Number> counts, boolean loggable) throws Exception {
+											 Collection<Number> counts, boolean loggable) throws Exception {
 
 		int size = query.parametersSize();
 
@@ -148,14 +160,18 @@ public class SQLTemplateAction implements SQLAction {
 		int batchSize = (size > 0) ? size : 1;
 
 		// for now supporting deprecated batch parameters...
-		@SuppressWarnings("unchecked")
-		Iterator<Map<String, ?>> it = (size > 0) ? query.parametersIterator()
-				: IteratorUtils.singletonIterator(Collections.emptyMap());
+		Iterator<Map<String, ?>> it;
+		if(size == 0) {
+			Iterator empty = Collections.singleton(Collections.emptyMap()).iterator();
+			it = empty;
+		} else {
+			it = query.parametersIterator();
+		}
+
 		for (int i = 0; i < batchSize; i++) {
 			Map<String, ?> nextParameters = it.next();
-
 			SQLStatement compiled = dataNode.getSqlTemplateProcessor().processTemplate(template, nextParameters);
-
+			bindExtendedTypes(compiled.getBindings());
 			if (loggable) {
 				dataNode.getJdbcEventLogger().logQuery(compiled.getSql(), compiled.getBindings());
 			}
@@ -166,7 +182,7 @@ public class SQLTemplateAction implements SQLAction {
 	}
 
 	protected void execute(Connection connection, OperationObserver callback, SQLStatement compiled,
-			Collection<Number> updateCounts) throws SQLException, Exception {
+						   Collection<Number> updateCounts) throws SQLException, Exception {
 
 		long t1 = System.currentTimeMillis();
 		boolean iteratedResult = callback.isIteratedResult();
@@ -223,7 +239,7 @@ public class SQLTemplateAction implements SQLAction {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected void processSelectResult(SQLStatement compiled, Connection connection, Statement statement,
-			ResultSet resultSet, OperationObserver callback, final long startTime) throws Exception {
+									   ResultSet resultSet, OperationObserver callback, final long startTime) throws Exception {
 
 		boolean iteratedResult = callback.isIteratedResult();
 
@@ -271,8 +287,8 @@ public class SQLTemplateAction implements SQLAction {
 	protected RowDescriptorBuilder configureRowDescriptorBuilder(SQLStatement compiled, ResultSet resultSet)
 			throws SQLException {
 		RowDescriptorBuilder builder = new RowDescriptorBuilder()
-                .setResultSet(resultSet)
-                .validateDuplicateColumnNames();
+				.setResultSet(resultSet)
+				.validateDuplicateColumnNames();
 
 		// SQLTemplate #result columns take precedence over other ways to determine the type
 		if (compiled.getResultColumns().length > 0) {
@@ -303,12 +319,12 @@ public class SQLTemplateAction implements SQLAction {
 		}
 
 		switch (query.getColumnNamesCapitalization()) {
-		case LOWER:
-			builder.useLowercaseColumnNames();
-			break;
-		case UPPER:
-			builder.useUppercaseColumnNames();
-			break;
+			case LOWER:
+				builder.useLowercaseColumnNames();
+				break;
+			case UPPER:
+				builder.useUppercaseColumnNames();
+				break;
 		}
 
 		return builder;
@@ -317,7 +333,7 @@ public class SQLTemplateAction implements SQLAction {
 	/**
 	 * Extracts a template string from a SQLTemplate query. Exists mainly for
 	 * the benefit of subclasses that can customize returned template.
-	 * 
+	 *
 	 * @since 1.2
 	 */
 	protected String extractTemplateString() {
@@ -334,14 +350,7 @@ public class SQLTemplateAction implements SQLAction {
 	protected void bind(PreparedStatement preparedStatement, ParameterBinding[] bindings)
 			throws SQLException, Exception {
 		// bind parameters
-		int i = 1;
 		for (ParameterBinding binding : bindings) {
-			Object value = binding.getValue();
-			ExtendedType extendedType = value != null
-					? getAdapter().getExtendedTypes().getRegisteredType(value.getClass())
-					: getAdapter().getExtendedTypes().getDefaultType();
-			binding.setExtendedType(extendedType);
-			binding.setStatementPosition(i++);
 			dataNode.getAdapter().bindParameter(preparedStatement, binding);
 		}
 

@@ -28,6 +28,9 @@ import org.apache.cayenne.access.translator.batch.DefaultBatchTranslatorFactory;
 import org.apache.cayenne.access.translator.select.DefaultSelectTranslatorFactory;
 import org.apache.cayenne.ashwood.AshwoodEntitySorter;
 import org.apache.cayenne.cache.MapQueryCache;
+import org.apache.cayenne.configuration.DataMapLoader;
+import org.apache.cayenne.configuration.xml.DefaultHandlerFactory;
+import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.event.DefaultEventManager;
@@ -35,15 +38,14 @@ import org.apache.cayenne.log.JdbcEventLogger;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
-import org.apache.cayenne.map.MapLoader;
 import org.apache.cayenne.map.Procedure;
+import org.apache.cayenne.resource.URLResource;
 import org.apache.cayenne.testdo.extended_type.StringET1ExtendedType;
 import org.apache.cayenne.unit.UnitDbAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.InputSource;
 
-import java.io.InputStream;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -80,7 +82,7 @@ public class SchemaBuilder {
 			"table-primitives.map.xml", "generic.map.xml", "map-db1.map.xml", "map-db2.map.xml", "embeddable.map.xml",
 			"qualified.map.xml", "quoted-identifiers.map.xml", "inheritance-single-table1.map.xml",
 			"inheritance-vertical.map.xml", "oneway-rels.map.xml", "unsupported-distinct-types.map.xml",
-			"array-type.map.xml", "cay-2032.map.xml", "weighted-sort.map.xml" };
+			"array-type.map.xml", "cay-2032.map.xml", "weighted-sort.map.xml", "hybrid-data-object.map.xml", "java8.map.xml" };
 
 	// hardcoded dependent entities that should be excluded
 	// if LOBs are not supported
@@ -91,6 +93,9 @@ public class SchemaBuilder {
 	private DbAdapter dbAdapter;
 	private DataDomain domain;
 	private JdbcEventLogger jdbcEventLogger;
+
+	@Inject
+	DataMapLoader loader;
 
 	public SchemaBuilder(@Inject ServerCaseDataSourceFactory dataSourceFactory, @Inject UnitDbAdapter unitDbAdapter,
 			@Inject DbAdapter dbAdapter, @Inject JdbcEventLogger jdbcEventLogger) {
@@ -113,10 +118,8 @@ public class SchemaBuilder {
 		DataMap[] maps = new DataMap[MAPS_REQUIRING_SCHEMA_SETUP.length];
 
 		for (int i = 0; i < maps.length; i++) {
-			InputStream stream = getClass().getClassLoader().getResourceAsStream(MAPS_REQUIRING_SCHEMA_SETUP[i]);
-			InputSource in = new InputSource(stream);
-			in.setSystemId(MAPS_REQUIRING_SCHEMA_SETUP[i]);
-			maps[i] = new MapLoader().loadDataMap(in);
+			URL mapURL = getClass().getClassLoader().getResource(MAPS_REQUIRING_SCHEMA_SETUP[i]);
+			maps[i] = loader.load(new URLResource(mapURL));
 		}
 
 		this.domain = new DataDomain("temp");

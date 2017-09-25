@@ -21,7 +21,7 @@ package org.apache.cayenne.gen;
 
 import java.util.Collection;
 
-import org.apache.cayenne.CayenneException;
+import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.QueryDescriptor;
 
@@ -32,45 +32,50 @@ public class ClientClassGenerationAction extends ClassGenerationAction {
 
     public static final String SUBCLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-subclass.vm";
     public static final String SUPERCLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-superclass.vm";
+    public static final String SINGLE_CLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-singleclass.vm";
     
-    public static final String DMAP_SINGLE_CLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-datamap-singleclass.vm";
     public static final String DMAP_SUBCLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-datamap-subclass.vm";
     public static final String DMAP_SUPERCLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-datamap-superclass.vm";
-    
+    public static final String DMAP_SINGLE_CLASS_TEMPLATE = TEMPLATES_DIR_NAME + "client-datamap-singleclass.vm";
+
     public static final String CLIENT_SUPERCLASS_PREFIX = "_Client";
 
     @Override
     protected String defaultTemplateName(TemplateType type) {
         switch (type) {
             case ENTITY_SUBCLASS:
-                return ClientClassGenerationAction.SUBCLASS_TEMPLATE;
+                return SUBCLASS_TEMPLATE;
             case ENTITY_SUPERCLASS:
-                return ClientClassGenerationAction.SUPERCLASS_TEMPLATE;
+                return SUPERCLASS_TEMPLATE;
+            case ENTITY_SINGLE_CLASS:
+                return SINGLE_CLASS_TEMPLATE;
+
             case EMBEDDABLE_SUBCLASS:
                 return EMBEDDABLE_SUBCLASS_TEMPLATE;
             case EMBEDDABLE_SUPERCLASS:
                 return EMBEDDABLE_SUPERCLASS_TEMPLATE;
+            case EMBEDDABLE_SINGLE_CLASS:
+                return EMBEDDABLE_SINGLE_CLASS_TEMPLATE;
             
             case DATAMAP_SUPERCLASS:
                 return ClientClassGenerationAction.DMAP_SUPERCLASS_TEMPLATE;
             case DATAMAP_SUBCLASS:
                 return ClientClassGenerationAction.DMAP_SUBCLASS_TEMPLATE;
+            case DATAMAP_SINGLE_CLASS:
+                return DMAP_SINGLE_CLASS_TEMPLATE;
+
             default:
                 throw new IllegalArgumentException("Unsupported template type: " + type);
         }
     }
 
     /**
-     *
-     * @param entities
-     * @throws CayenneException
-     *
      * @since 4.0 throws exception
      */
     @Override
-    public void addEntities(Collection<ObjEntity> entities) throws CayenneException {
+    public void addEntities(Collection<ObjEntity> entities) throws CayenneRuntimeException {
         if (!dataMap.isClientSupported()) {
-            throw new CayenneException("Can't create client classes. Check client supported option on DataMap configuration.");
+            throw new CayenneRuntimeException("Can't create client classes. Check client supported option on DataMap configuration.");
         }
         if (entities != null) {
             for (ObjEntity entity : entities) {

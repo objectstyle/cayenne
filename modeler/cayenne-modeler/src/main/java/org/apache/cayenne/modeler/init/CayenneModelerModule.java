@@ -18,15 +18,24 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.init;
 
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
+import org.apache.cayenne.configuration.xml.DefaultDataChannelMetaData;
+import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.action.ActionManager;
 import org.apache.cayenne.modeler.action.DefaultActionManager;
+import org.apache.cayenne.modeler.graph.extension.GraphExtension;
 import org.apache.cayenne.modeler.init.platform.GenericPlatformInitializer;
 import org.apache.cayenne.modeler.init.platform.PlatformInitializer;
 import org.apache.cayenne.modeler.util.DefaultWidgetFactory;
 import org.apache.cayenne.modeler.util.WidgetFactory;
+import org.apache.cayenne.project.ProjectModule;
+import org.apache.cayenne.project.extension.ExtensionAwareHandlerFactory;
+import org.apache.cayenne.project.extension.info.InfoExtension;
+import org.xml.sax.XMLReader;
 
 /**
  * A DI module for bootstrapping CayenneModeler services.
@@ -39,5 +48,12 @@ public class CayenneModelerModule implements Module {
         binder.bind(Application.class).to(Application.class);
         binder.bind(PlatformInitializer.class).to(GenericPlatformInitializer.class);
         binder.bind(WidgetFactory.class).to(DefaultWidgetFactory.class);
+        binder.bind(HandlerFactory.class).to(ExtensionAwareHandlerFactory.class);
+        binder.bind(DataChannelMetaData.class).to(DefaultDataChannelMetaData.class);
+        binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(true)).withoutScope();
+
+        ProjectModule.contributeExtensions(binder)
+                .add(InfoExtension.class)
+                .add(GraphExtension.class);
     }
 }

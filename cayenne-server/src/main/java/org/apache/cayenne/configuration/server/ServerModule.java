@@ -48,6 +48,9 @@ import org.apache.cayenne.access.types.ExtendedType;
 import org.apache.cayenne.access.types.ExtendedTypeFactory;
 import org.apache.cayenne.access.types.FloatType;
 import org.apache.cayenne.access.types.IntegerType;
+import org.apache.cayenne.access.types.LocalDateTimeValueType;
+import org.apache.cayenne.access.types.LocalDateValueType;
+import org.apache.cayenne.access.types.LocalTimeValueType;
 import org.apache.cayenne.access.types.LongType;
 import org.apache.cayenne.access.types.ShortType;
 import org.apache.cayenne.access.types.TimeType;
@@ -71,8 +74,13 @@ import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.ObjectContextFactory;
 import org.apache.cayenne.configuration.ObjectStoreFactory;
 import org.apache.cayenne.configuration.RuntimeProperties;
-import org.apache.cayenne.configuration.XMLDataChannelDescriptorLoader;
-import org.apache.cayenne.configuration.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
+import org.apache.cayenne.configuration.xml.DefaultHandlerFactory;
+import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.NoopDataChannelMetaData;
+import org.apache.cayenne.configuration.xml.XMLDataChannelDescriptorLoader;
+import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.dba.db2.DB2Sniffer;
 import org.apache.cayenne.dba.derby.DerbySniffer;
 import org.apache.cayenne.dba.firebird.FirebirdSniffer;
@@ -106,12 +114,15 @@ import org.apache.cayenne.map.EntitySorter;
 import org.apache.cayenne.access.types.ValueObjectType;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
+import org.apache.cayenne.template.CayenneSQLTemplateProcessor;
+import org.apache.cayenne.template.DefaultTemplateContextFactory;
+import org.apache.cayenne.template.TemplateContextFactory;
 import org.apache.cayenne.tx.DefaultTransactionFactory;
 import org.apache.cayenne.tx.DefaultTransactionManager;
 import org.apache.cayenne.tx.TransactionFactory;
 import org.apache.cayenne.tx.TransactionFilter;
 import org.apache.cayenne.tx.TransactionManager;
-import org.apache.cayenne.velocity.VelocitySQLTemplateProcessor;
+import org.xml.sax.XMLReader;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -328,7 +339,11 @@ public class ServerModule implements Module {
         // Custom ValueObjects types contribution
         contributeValueObjectTypes(binder)
                 .add(BigIntegerValueType.class)
-                .add(UUIDValueType.class);
+                .add(UUIDValueType.class)
+                .add(LocalDateValueType.class)
+                .add(LocalTimeValueType.class)
+                .add(LocalDateTimeValueType.class);
+
         binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         // configure explicit configurations
@@ -402,6 +417,11 @@ public class ServerModule implements Module {
         binder.bind(TransactionManager.class).to(DefaultTransactionManager.class);
         binder.bind(RowReaderFactory.class).to(DefaultRowReaderFactory.class);
 
-        binder.bind(SQLTemplateProcessor.class).to(VelocitySQLTemplateProcessor.class);
+        binder.bind(SQLTemplateProcessor.class).to(CayenneSQLTemplateProcessor.class);
+        binder.bind(TemplateContextFactory.class).to(DefaultTemplateContextFactory.class);
+
+        binder.bind(HandlerFactory.class).to(DefaultHandlerFactory.class);
+        binder.bind(DataChannelMetaData.class).to(NoopDataChannelMetaData.class);
+        binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(false)).withoutScope();
     }
 }

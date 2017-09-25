@@ -24,12 +24,16 @@ import org.apache.cayenne.configuration.ConfigurationTree;
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.configuration.DataMapLoader;
 import org.apache.cayenne.configuration.DefaultConfigurationNameMapper;
-import org.apache.cayenne.configuration.XMLDataChannelDescriptorLoader;
-import org.apache.cayenne.configuration.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
+import org.apache.cayenne.configuration.xml.DefaultHandlerFactory;
+import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.NoopDataChannelMetaData;
+import org.apache.cayenne.configuration.xml.XMLDataChannelDescriptorLoader;
+import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
 import org.apache.cayenne.dbsync.naming.NoStemStemmer;
 import org.apache.cayenne.di.AdhocObjectFactory;
-import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.ClassLoaderManager;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
@@ -42,13 +46,12 @@ import org.apache.cayenne.map.Relationship;
 import org.apache.cayenne.resource.URLResource;
 import org.junit.Before;
 import org.junit.Test;
+import org.xml.sax.XMLReader;
 
 import java.net.URL;
 import java.util.ArrayList;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 public class ManyToManyCandidateEntityTest {
 
@@ -56,14 +59,14 @@ public class ManyToManyCandidateEntityTest {
 
     @Before
     public void setUp() throws Exception {
-        Module testModule = new Module() {
-
-            public void configure(Binder binder) {
-                binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
-                binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
-                binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
-                binder.bind(ConfigurationNameMapper.class).to(DefaultConfigurationNameMapper.class);
-            }
+        Module testModule = binder -> {
+            binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
+            binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
+            binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
+            binder.bind(ConfigurationNameMapper.class).to(DefaultConfigurationNameMapper.class);
+            binder.bind(HandlerFactory.class).to(DefaultHandlerFactory.class);
+            binder.bind(DataChannelMetaData.class).to(NoopDataChannelMetaData.class);
+            binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(false)).withoutScope();
         };
 
         Injector injector = DIBootstrap.createInjector(testModule);

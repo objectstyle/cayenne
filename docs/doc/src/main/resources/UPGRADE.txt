@@ -5,7 +5,30 @@ IMPORTANT: be sure to read all notes for the intermediate releases between your
            current release and the release you are upgrading to.
 -------------------------------------------------------------------------------
 
-UPGRADING TO 4.0.M6
+UPGRADING TO 4.1.M1
+
+* Per CAY-2351 Minimum supported Java version is now Java 8. There is no options to use Cayenne 4.1 with earlier
+      versions, you should use 4.0 version if Java 7 is required by your project.
+
+* Per CAY-2345 Velocity replaced with Cayenne own template engine by default in cayenne-server,
+      this should be transparent in almost all cases, however if you relied on advanced Velocity
+      features in SQLTemplate you can include auto-loaded cayenne-velocity module and keep using Velocity,
+      no other actions required.
+
+* Per CAY-2335 ServerRuntime by default will fail to load projects in case of version mismatch.
+      You have two options:
+      - update project files via opening them in Cayenne Modeler
+      - if you are unable to do so you can use new cayenne-project-compatibility module,
+      to enable it simply add it as a dependency in Maven (or any other build system you use), however
+      this module can support only versions created by Cayenne 3.1 or later.
+
+* Per CAY-2330 Field-based data objects are introduced and enabled by default.
+      Your existing code will continue to work, but in order to get benefits from this feature you should
+      regenerate code via Modeler ("Tools" -> "Generate Classes") or cgen tools in Maven/Ant/Gradle plugins.
+      Also note that serialization format of old data objects have changed, make sure you don't use serialization
+      form to store your objects.
+
+UPGRADING TO 4.0.B1
 
 * Per CAY-2302 postcommit module and all it's internals renamed to commitlog.
       Most important change is the new @CommitLog annotation which should be used instead of @Auditable,
@@ -19,11 +42,13 @@ UPGRADING TO 4.0.M6
       - switch usages of @Auditable to @CommitLog
       - change usages of renamed classes, here is two classes most likely used by your code:
              PostCommitListener      -> CommitLogListener
-             PostCommitModuleBuilder -> CommitLogModuleBuilder
+             PostCommitModuleBuilder -> CommitLogModuleExtender
       - fix all imports for renamed packages:
              org.apache.cayenne.lifecycle.postcommit -> org.apache.cayenne.commitlog
              org.apache.cayenne.lifecycle.changemap  -> org.apache.cayenne.commitlog.model
-      - change CommitLogModuleBuilder method auditableEntitiesOnly() to commitLogAnnotationEntitiesOnly()
+      - change CommitLogModuleExtender methods:
+             auditableEntitiesOnly() -> commitLogAnnotationEntitiesOnly()
+             build()                 -> module()
 
 * Per CAY-2280 Cayenne migrated from commons-logging to SLF4J.
       Here is options you have to upgrade your project accordingly:
@@ -39,11 +64,14 @@ UPGRADING TO 4.0.M6
       were renamed to Slf4jJdbcEventLogger and FormattedSlf4jJdbcEventLogger respectively.
       Internally they are using now org.apache.cayenne.log.JdbcEventLogger interface as a logger name.
 
-* Per CAY-2278 The org.apache.cayenne.lifecycle.audit package (with the exception of Auditable and
-       AuditableChild annotations) and the org.apache.cayenne.lifecycle.changeset package where deprecated.
+* Per CAY-2278 Packages org.apache.cayenne.lifecycle.audit and org.apache.cayenne.lifecycle.changeset where deprecated.
+       Please use instead cayenne-commitlog module and its new @CommitLog annotation.
+
        Weighted graph sorter moved to cayenne-server into org.apache.cayenne.ashwood package.
-       Packages org.apache.cayenne.lifecycle.changemap, org.apache.cayenne.lifecycle.postcommit
+
+       Packages org.apache.cayenne.lifecycle.changemap and org.apache.cayenne.lifecycle.postcommit
        where moved to the new cayenne-commitlog module.
+
        Please change your code accordingly (see also notes above for CAY-2302).
 
 * Per CAY-2277 ClientRuntime created with ClientRuntimeBuilder, direct instantiation of
@@ -63,8 +91,13 @@ UPGRADING TO 4.0.M6
        - cayenne-cache-invalidation (was part of cayenne-lifecycle)
        - cayenne-commitlog (was part of cayenne-lifecycle)
 
-* Per CAY-2259 InvalidationFunction returns CacheGroupDescriptor instead of simple String with cache group name,
-       change your custom functions accordingly.
+* Per CAY-2259 Cache invalidation module refactored to provide new functionality and better align with
+       new module autoloading functionality. Here is list of changes:
+       - Package org.apache.cayenne.lifecycle.cache renamed to org.apache.cayenne.cache.invalidation.
+       - CacheInvalidationModuleBuilder renamed to CacheInvalidationModuleExtender and its method build()
+       renamed to module().
+       - InvalidationFunction returns CacheGroupDescriptor instead of simple String with cache group name,
+       so you need to change your custom functions accordingly.
 
 * Per CAY-2268 DI methods for binding ordered lists, introduced in 4.0.M3 where changed:
        - method after() replaced by explicit addAfter(), addAllAfter()

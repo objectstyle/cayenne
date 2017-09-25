@@ -23,9 +23,11 @@ import com.jgoodies.forms.builder.PanelBuilder;
 import com.jgoodies.forms.layout.CellConstraints;
 import com.jgoodies.forms.layout.FormLayout;
 import com.jgoodies.forms.layout.RowSpec;
+import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.configuration.event.QueryEvent;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.ObjEntity;
+import org.apache.cayenne.map.Procedure;
 import org.apache.cayenne.map.ProcedureQueryDescriptor;
 import org.apache.cayenne.map.QueryDescriptor;
 import org.apache.cayenne.modeler.Application;
@@ -36,9 +38,9 @@ import org.apache.cayenne.modeler.util.CellRenderers;
 import org.apache.cayenne.modeler.util.Comparators;
 import org.apache.cayenne.modeler.util.ProjectUtil;
 import org.apache.cayenne.modeler.util.TextAdapter;
+import org.apache.cayenne.project.extension.info.ObjectInfo;
 import org.apache.cayenne.query.CapsStrategy;
 import org.apache.cayenne.query.ProcedureQuery;
-import org.apache.cayenne.query.SQLTemplate;
 import org.apache.cayenne.util.Util;
 import org.apache.cayenne.validation.ValidationException;
 
@@ -72,7 +74,8 @@ public class ProcedureQueryView extends JPanel {
 
     protected ProjectController mediator;
     protected TextAdapter name;
-    protected JComboBox queryRoot;
+    protected TextAdapter comment;
+    protected JComboBox<Procedure> queryRoot;
     protected SelectPropertiesPanel properties;
 
     public ProcedureQueryView(ProjectController mediator) {
@@ -85,10 +88,16 @@ public class ProcedureQueryView extends JPanel {
     private void initView() {
         // create widgets
         name = new TextAdapter(new JTextField()) {
-
             @Override
             protected void updateModel(String text) {
                 setQueryName(text);
+            }
+        };
+
+        comment = new TextAdapter(new JTextField()) {
+            @Override
+            protected void updateModel(String text) {
+                setQueryComment(text);
             }
         };
 
@@ -100,7 +109,7 @@ public class ProcedureQueryView extends JPanel {
         CellConstraints cc = new CellConstraints();
         FormLayout layout = new FormLayout(
                 "right:max(80dlu;pref), 3dlu, fill:max(200dlu;pref)",
-                "p, 3dlu, p, 3dlu, p");
+                "p, 3dlu, p, 3dlu, p, 3dlu, p");
         PanelBuilder builder = new PanelBuilder(layout);
         builder.setDefaultDialogBorder();
 
@@ -109,6 +118,8 @@ public class ProcedureQueryView extends JPanel {
         builder.add(name.getComponent(), cc.xy(3, 3));
         builder.addLabel("Procedure:", cc.xy(1, 5));
         builder.add(queryRoot, cc.xy(3, 5));
+        builder.addLabel("Comment:", cc.xy(1, 7));
+        builder.add(comment.getComponent(), cc.xy(3, 7));
 
         this.setLayout(new BorderLayout());
         this.add(builder.getPanel(), BorderLayout.NORTH);
@@ -150,6 +161,7 @@ public class ProcedureQueryView extends JPanel {
 
         properties.setEnabled(true);
         name.setText(query.getName());
+        comment.setText(getQueryComment(query));
 
         // init root choices and title label..
 
@@ -160,13 +172,13 @@ public class ProcedureQueryView extends JPanel {
         // making it impossible to reference other DataMaps.
 
         DataMap map = mediator.getCurrentDataMap();
-        Object[] roots = map.getProcedures().toArray();
+        Procedure[] roots = map.getProcedures().toArray(new Procedure[0]);
 
         if (roots.length > 1) {
             Arrays.sort(roots, Comparators.getDataMapChildrenComparator());
         }
 
-        DefaultComboBoxModel model = new DefaultComboBoxModel(roots);
+        DefaultComboBoxModel<Procedure> model = new DefaultComboBoxModel<>(roots);
         model.setSelectedItem(query.getRoot());
         queryRoot.setModel(model);
 
@@ -202,12 +214,9 @@ public class ProcedureQueryView extends JPanel {
             QueryEvent e = new QueryEvent(this, query, query.getName(), map);
             ProjectUtil.setQueryName(map, query, newName);
             mediator.fireQueryEvent(e);
-        }
-        else {
+        } else {
             // there is a query with the same name
-            throw new ValidationException("There is another query named '"
-                    + newName
-                    + "'. Use a different name.");
+            throw new ValidationException("There is another query named '" + newName + "'. Use a different name.");
         }
     }
 
@@ -236,6 +245,19 @@ public class ProcedureQueryView extends JPanel {
         }
     }
 
+    private void setQueryComment(String text) {
+        QueryDescriptor query = mediator.getCurrentQuery();
+        if (query == null) {
+            return;
+        }
+        ObjectInfo.putToMetaData(mediator.getApplication().getMetaData(), query, ObjectInfo.COMMENT, text);
+        mediator.fireQueryEvent(new QueryEvent(this, query));
+    }
+
+    private String getQueryComment(QueryDescriptor queryDescriptor) {
+        return ObjectInfo.getFromMetaData(mediator.getApplication().getMetaData(), queryDescriptor, ObjectInfo.COMMENT);
+    }
+
     final class LabelCapsRenderer extends DefaultListCellRenderer {
 
         public Component getListCellRendererComponent(
@@ -251,7 +273,7 @@ public class ProcedureQueryView extends JPanel {
 
     final class ProcedureQueryPropertiesPanel extends RawQueryPropertiesPanel {
 
-        private JComboBox labelCase;
+        private JComboBox<CapsStrategy> labelCase;
 
         ProcedureQueryPropertiesPanel(ProjectController mediator) {
             super(mediator);
@@ -260,12 +282,11 @@ public class ProcedureQueryView extends JPanel {
         protected PanelBuilder createPanelBuilder() {
             labelCase = Application.getWidgetFactory().createUndoableComboBox();
             labelCase.setRenderer(new LabelCapsRenderer());
-
             labelCase.addActionListener(new ActionListener() {
-
+                @Override
                 public void actionPerformed(ActionEvent event) {
-                    Object value = labelCase.getModel().getSelectedItem();
-                    setQueryProperty(ProcedureQuery.COLUMN_NAME_CAPITALIZATION_PROPERTY, (String) value);
+                    String value = labelCase.getModel().getSelectedItem().toString();
+                    setQueryProperty(ProcedureQuery.COLUMN_NAME_CAPITALIZATION_PROPERTY, value);
                 }
             });
 
@@ -287,10 +308,8 @@ public class ProcedureQueryView extends JPanel {
             super.initFromModel(query);
 
             if (query != null && QueryDescriptor.PROCEDURE_QUERY.equals(query.getType())) {
-                DefaultComboBoxModel labelCaseModel = new DefaultComboBoxModel(LABEL_CAPITALIZATION);
-
-                String columnNameCapitalization = query.getProperty(SQLTemplate.COLUMN_NAME_CAPITALIZATION_PROPERTY);
-
+                DefaultComboBoxModel<CapsStrategy> labelCaseModel = new DefaultComboBoxModel<>(LABEL_CAPITALIZATION);
+                String columnNameCapitalization = query.getProperty(ProcedureQuery.COLUMN_NAME_CAPITALIZATION_PROPERTY);
                 labelCaseModel.setSelectedItem(columnNameCapitalization != null ?
                         CapsStrategy.valueOf(columnNameCapitalization) : CapsStrategy.DEFAULT);
                 labelCase.setModel(labelCaseModel);

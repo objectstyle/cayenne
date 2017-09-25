@@ -22,7 +22,7 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M6-SNAPSHOT</version>
+		<version>4.1.M2-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-server</artifactId>
 	<name>cayenne-server: Cayenne Server</name>
@@ -44,17 +44,6 @@
 			<version>${project.version}</version>
 			<scope>compile</scope>
 		</dependency>
-		<dependency>
-			<groupId>commons-collections</groupId>
-			<artifactId>commons-collections</artifactId>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.velocity</groupId>
-			<artifactId>velocity</artifactId>
-			<scope>compile</scope>
-		</dependency>
-
 		<!-- Optional dependencies... things that might have been placed in submodules... -->
 		<dependency>
 			<groupId>com.caucho</groupId>
@@ -89,7 +78,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
-			<artifactId>mockito-all</artifactId>
+			<artifactId>mockito-core</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -109,8 +98,20 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>mockrunner</groupId>
-			<artifactId>mockrunner</artifactId>
+			<groupId>com.mockrunner</groupId>
+			<artifactId>mockrunner-jdbc</artifactId>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<!-- this one have old Xerces dependency that clashes with JDK's one -->
+					<groupId>nekohtml</groupId>
+					<artifactId>nekohtml</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.mockrunner</groupId>
+			<artifactId>mockrunner-servlet</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -121,7 +122,6 @@
 		<dependency>
 			<groupId>xmlunit</groupId>
 			<artifactId>xmlunit</artifactId>
-			<version>1.5</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

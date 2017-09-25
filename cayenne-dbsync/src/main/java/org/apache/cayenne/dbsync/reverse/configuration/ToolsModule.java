@@ -24,12 +24,18 @@ import org.apache.cayenne.access.translator.batch.DefaultBatchTranslatorFactory;
 import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
 import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
+import org.apache.cayenne.configuration.DataMapLoader;
 import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.DbAdapterFactory;
 import org.apache.cayenne.configuration.server.DefaultDbAdapterFactory;
 import org.apache.cayenne.configuration.server.ServerModule;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
+import org.apache.cayenne.configuration.xml.DefaultDataChannelMetaData;
+import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.dba.db2.DB2Sniffer;
 import org.apache.cayenne.dba.derby.DerbySniffer;
 import org.apache.cayenne.dba.firebird.FirebirdSniffer;
@@ -53,9 +59,12 @@ import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
 import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.log.JdbcEventLogger;
+import org.apache.cayenne.project.ProjectModule;
+import org.apache.cayenne.project.extension.ExtensionAwareHandlerFactory;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
 import org.slf4j.Logger;
+import org.xml.sax.XMLReader;
 
 /**
  * A DI module to bootstrap DI container for Cayenne Ant tasks and Maven
@@ -82,11 +91,11 @@ public class ToolsModule implements Module {
 
         // configure empty global stack properties
         ServerModule.contributeProperties(binder);
-
         ServerModule.contributeDefaultTypes(binder);
         ServerModule.contributeUserTypes(binder);
         ServerModule.contributeTypeFactories(binder);
         ServerModule.contributeValueObjectTypes(binder);
+
         binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
@@ -106,6 +115,13 @@ public class ToolsModule implements Module {
 
         binder.bind(DbAdapterFactory.class).to(DefaultDbAdapterFactory.class);
         binder.bind(DataSourceFactory.class).to(DriverDataSourceFactory.class);
+
+        binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
+        binder.bind(HandlerFactory.class).to(ExtensionAwareHandlerFactory.class);
+        binder.bind(DataChannelMetaData.class).to(DefaultDataChannelMetaData.class);
+        binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(true)).withoutScope();
+
+        ProjectModule.contributeExtensions(binder);
     }
 
 }

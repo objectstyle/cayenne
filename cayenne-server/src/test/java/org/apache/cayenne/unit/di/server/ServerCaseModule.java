@@ -36,6 +36,9 @@ import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
 import org.apache.cayenne.access.types.DoubleType;
 import org.apache.cayenne.access.types.FloatType;
 import org.apache.cayenne.access.types.IntegerType;
+import org.apache.cayenne.access.types.LocalDateTimeValueType;
+import org.apache.cayenne.access.types.LocalDateValueType;
+import org.apache.cayenne.access.types.LocalTimeValueType;
 import org.apache.cayenne.access.types.LongType;
 import org.apache.cayenne.access.types.ShortType;
 import org.apache.cayenne.access.types.TimeType;
@@ -52,10 +55,15 @@ import org.apache.cayenne.configuration.DefaultObjectStoreFactory;
 import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.ObjectStoreFactory;
 import org.apache.cayenne.configuration.RuntimeProperties;
-import org.apache.cayenne.configuration.XMLDataMapLoader;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.configuration.server.ServerRuntime;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
+import org.apache.cayenne.configuration.xml.DefaultHandlerFactory;
+import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.NoopDataChannelMetaData;
+import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
+import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.conn.DataSourceInfo;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.JdbcAdapter;
@@ -106,6 +114,7 @@ import org.apache.cayenne.unit.UnitDbAdapter;
 import org.apache.cayenne.unit.di.DataChannelInterceptor;
 import org.apache.cayenne.unit.di.UnitTestLifecycleManager;
 import org.apache.cayenne.unit.util.SQLTemplateCustomizer;
+import org.xml.sax.XMLReader;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -167,7 +176,10 @@ public class ServerCaseModule implements Module {
         ServerModule.contributeTypeFactories(binder);
         ServerModule.contributeValueObjectTypes(binder)
                 .add(BigIntegerValueType.class)
-                .add(UUIDValueType.class);
+                .add(UUIDValueType.class)
+                .add(LocalDateValueType.class)
+                .add(LocalTimeValueType.class)
+                .add(LocalDateTimeValueType.class);
         binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         binder.bind(SchemaBuilder.class).to(SchemaBuilder.class);
@@ -198,6 +210,10 @@ public class ServerCaseModule implements Module {
         binder.bind(ObjectStoreFactory.class).to(DefaultObjectStoreFactory.class);
         binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
         binder.bind(ConfigurationNameMapper.class).to(DefaultConfigurationNameMapper.class);
+        binder.bind(HandlerFactory.class).to(DefaultHandlerFactory.class);
+        binder.bind(DataChannelMetaData.class).to(NoopDataChannelMetaData.class);
+
+        binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(false)).withoutScope();
 
         // test-scoped objects
         binder.bind(EntityResolver.class).toProvider(ServerCaseEntityResolverProvider.class).in(testScope);

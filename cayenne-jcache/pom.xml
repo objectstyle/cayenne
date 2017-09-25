@@ -22,7 +22,7 @@
     <parent>
         <artifactId>cayenne-parent</artifactId>
         <groupId>org.apache.cayenne</groupId>
-        <version>4.0.M6-SNAPSHOT</version>
+        <version>4.1.M2-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -31,7 +31,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <ehcache-version>3.2.0</ehcache-version>
+        <ehcache-version>3.3.1</ehcache-version>
         <jcache-version>1.0.0</jcache-version>
     </properties>
 
@@ -118,22 +118,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
-                </configuration>
-            </plugin>
-            <plugin>
-				<artifactId>maven-checkstyle-plugin</artifactId>
-				<!--<configuration>
-				    <suppressionsLocation>${project.basedir}/cayenne-checkstyle-suppression.xml</suppressionsLocation>
-                </configuration> -->
-			</plugin>
-			<plugin>
-				<artifactId>maven-pmd-plugin</artifactId>
-			</plugin>
         </plugins>
     </build>
 

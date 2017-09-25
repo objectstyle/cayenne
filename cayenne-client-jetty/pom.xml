@@ -15,7 +15,7 @@
     <parent>
         <artifactId>cayenne-parent</artifactId>
         <groupId>org.apache.cayenne</groupId>
-        <version>4.0.M6-SNAPSHOT</version>
+        <version>4.1.M2-SNAPSHOT</version>
     </parent>
 
     <artifactId>cayenne-client-jetty</artifactId>
@@ -23,7 +23,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <jetty.version>9.3.10.v20160621</jetty.version>
+        <jetty.version>9.3.19.v20170502</jetty.version>
     </properties>
 
     <dependencyManagement>
@@ -130,13 +130,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
             <!-- This ensures LICENSE and NOTICE inclusion in all jars -->
             <plugin>
                 <artifactId>maven-remote-resources-plugin</artifactId>

@@ -24,8 +24,6 @@ import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
 import org.apache.cayenne.util.Util;
 import org.apache.cayenne.util.XMLEncoder;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Transformer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * A DbRelationship is a descriptor of a database inter-table relationship based
@@ -74,30 +73,22 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
      * 
      * @since 1.1
      */
-    public void encodeAsXML(XMLEncoder encoder) {
-        encoder.print("<db-relationship name=\"");
-        encoder.print(Util.encodeXmlAttribute(getName()));
-        encoder.print("\" source=\"");
-        encoder.print(Util.encodeXmlAttribute(getSourceEntity().getName()));
+    public void encodeAsXML(XMLEncoder encoder, ConfigurationNodeVisitor delegate) {
+        encoder.start("db-relationship")
+                .attribute("name", getName())
+                .attribute("source", getSourceEntity().getName());
 
         if (getTargetEntityName() != null && getTargetEntity() != null) {
-            encoder.print("\" target=\"");
-            encoder.print(Util.encodeXmlAttribute(getTargetEntityName()));
+            encoder.attribute("target", getTargetEntityName());
         }
 
-        if (isToDependentPK() && isValidForDepPk()) {
-            encoder.print("\" toDependentPK=\"true");
-        }
+        encoder.attribute("toDependentPK", isToDependentPK() && isValidForDepPk());
+        encoder.attribute("toMany", isToMany());
 
-        encoder.print("\" toMany=\"");
-        encoder.print(isToMany());
-        encoder.println("\">");
+        encoder.nested(getJoins(), delegate);
 
-        encoder.indent(1);
-        encoder.print(getJoins());
-        encoder.indent(-1);
-
-        encoder.println("</db-relationship>");
+        delegate.visitDbRelationship(this);
+        encoder.end();
     }
 
     /**
@@ -122,11 +113,7 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
      */
     @SuppressWarnings("unchecked")
     public Collection<DbAttribute> getTargetAttributes() {
-        if (joins.size() == 0) {
-            return Collections.emptyList();
-        }
-
-        return CollectionUtils.collect(joins, JoinTransformers.targetExtractor);
+        return mapJoinsToAttributes(DbJoin::getTarget);
     }
 
     /**
@@ -136,11 +123,22 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
      */
     @SuppressWarnings("unchecked")
     public Collection<DbAttribute> getSourceAttributes() {
+        return mapJoinsToAttributes(DbJoin::getSource);
+    }
+
+    private Collection<DbAttribute> mapJoinsToAttributes(Function<DbJoin, DbAttribute> mapper) {
         if (joins.size() == 0) {
             return Collections.emptyList();
         }
-
-        return CollectionUtils.collect(joins, JoinTransformers.sourceExtractor);
+        // fast path for common case
+        if(joins.size() == 1) {
+            return Collections.singletonList(mapper.apply(joins.get(0)));
+        }
+        Collection<DbAttribute> result = new ArrayList<>(joins.size());
+        for(DbJoin join : joins) {
+            result.add(mapper.apply(join));
+        }
+        return result;
     }
 
     /**
@@ -150,7 +148,7 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
      * @since 1.0.5
      */
     public DbRelationship createReverseRelationship() {
-        DbEntity targetEntity = (DbEntity) getTargetEntity();
+        DbEntity targetEntity = getTargetEntity();
 
         DbRelationship reverse = new DbRelationship();
         reverse.setSourceEntity(targetEntity);
@@ -492,23 +490,6 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
         }
 
         return false;
-    }
-
-    static final class JoinTransformers {
-
-        static final Transformer targetExtractor = new Transformer() {
-
-            public Object transform(Object input) {
-                return (input instanceof DbJoin) ? ((DbJoin) input).getTarget() : input;
-            }
-        };
-
-        static final Transformer sourceExtractor = new Transformer() {
-
-            public Object transform(Object input) {
-                return (input instanceof DbJoin) ? ((DbJoin) input).getSource() : input;
-            }
-        };
     }
 
     // a join used for comparison

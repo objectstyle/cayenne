@@ -20,6 +20,7 @@
 package org.apache.cayenne.modeler;
 
 import org.apache.cayenne.configuration.DataChannelDescriptor;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.modeler.action.ActionManager;
@@ -33,8 +34,6 @@ import org.apache.cayenne.pref.CayenneProjectPreferences;
 import org.apache.cayenne.project.Project;
 import org.apache.cayenne.swing.BindingFactory;
 import org.apache.cayenne.util.IDUtil;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Transformer;
 
 import javax.swing.*;
 import java.io.File;
@@ -42,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
 
 /**
  * A main modeler application class that provides a number of services to the Modeler
@@ -79,6 +79,9 @@ public class Application {
 
     @Inject
     protected Injector injector;
+
+    @Inject
+    protected DataChannelMetaData metaData;
 
     private String newProjectTemporaryName;
 
@@ -237,7 +240,7 @@ public class Application {
                 ClasspathPreferences.class,
                 "");
 
-        Collection details = new ArrayList<>();
+        Collection<String> details = new ArrayList<>();
         String[] keys;
         ArrayList<String> values = new ArrayList<>();
 
@@ -252,17 +255,7 @@ public class Application {
         details.addAll(values);
 
         if (details.size() > 0) {
-
-            // transform preference to file...
-            Transformer transformer = new Transformer() {
-
-                public Object transform(Object object) {
-                    String pref = (String) object;
-                    return new File(pref);
-                }
-            };
-
-            classLoader.setPathFiles(CollectionUtils.collect(details, transformer));
+            classLoader.setPathFiles(details.stream().map(File::new).collect(Collectors.toList()));
         }
 
         this.modelerClassLoader = classLoader;
@@ -278,6 +271,10 @@ public class Application {
                 }
             });
         }
+    }
+
+    public DataChannelMetaData getMetaData() {
+        return metaData;
     }
 
     protected void initPreferences() {

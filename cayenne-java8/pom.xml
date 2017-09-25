@@ -14,7 +14,7 @@
 	<parent>
 		<artifactId>cayenne-parent</artifactId>
 		<groupId>org.apache.cayenne</groupId>
-		<version>4.0.M6-SNAPSHOT</version>
+		<version>4.1.M2-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-java8</artifactId>
 	<name>cayenne-java8: Cayenne Java8 Extensions</name>
@@ -77,32 +77,6 @@
                     </execution>
                 </executions>
             </plugin>
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.cayenne.plugins</groupId>
-				<artifactId>cayenne-maven-plugin</artifactId>
-				<version>${project.version}</version>
-				<configuration>
-					<map>${project.basedir}/src/test/resources/java8.map.xml</map>
-					<destDir>${project.basedir}/src/test/java</destDir>
-					<defaultPackage>org.apache.cayenne.java8.db</defaultPackage>
-					<superPkg>org.apache.cayenne.java8.db.auto</superPkg>
-				</configuration>
-				<executions>
-					<execution>
-						<id>default-cli</id>
-						<goals>
-							<goal>cgen</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
 			<plugin>
 				<artifactId>maven-checkstyle-plugin</artifactId>
 				<!--<configuration> <suppressionsLocation>${project.basedir}/cayenne-checkstyle-suppression.xml</suppressionsLocation> 

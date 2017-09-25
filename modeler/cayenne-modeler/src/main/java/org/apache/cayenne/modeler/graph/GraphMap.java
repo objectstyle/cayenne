@@ -24,14 +24,12 @@ import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.ProjectController;
-import org.apache.cayenne.util.XMLEncoder;
-import org.apache.cayenne.util.XMLSerializable;
 
 /**
  * Map that stores graph builders <b>for a single domain</b> by their type 
  * and has additional methods to set currently selected graph and serialize to XML
  */
-public class GraphMap extends HashMap<GraphType, GraphBuilder> implements XMLSerializable {
+public class GraphMap extends HashMap<GraphType, GraphBuilder> {
     /**
      * type that is currently selected
      */
@@ -66,22 +64,6 @@ public class GraphMap extends HashMap<GraphType, GraphBuilder> implements XMLSer
     public void setSelectedType(GraphType selectedType) {
         this.selectedType = selectedType;
     }
-
-    public void encodeAsXML(XMLEncoder encoder) {
-        encoder.print("<graphs");
-//        if (selectedType != null) {
-//            encoder.print(" selected=\"" + selectedType + "\"");
-//        }
-        encoder.println(">");
-        encoder.indent(1);
-        
-        for (GraphBuilder builder : values()) {
-            builder.encodeAsXML(encoder);
-        }
-        
-        encoder.indent(-1);
-        encoder.println("</graphs>");
-    }
     
     public GraphBuilder createGraphBuilder(GraphType type, boolean doLayout) {
         try {
@@ -90,13 +72,11 @@ public class GraphMap extends HashMap<GraphType, GraphBuilder> implements XMLSer
             put(type, builder);
             
             return builder;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new CayenneRuntimeException("Could not instantiate GraphBuilder", e);
         }
     }
-    
-    //TODO do not use static context
+
     private ProjectController getProjectController() {
         return Application.getInstance().getFrameController().getProjectController();
     }

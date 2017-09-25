@@ -25,8 +25,8 @@ import org.apache.cayenne.crypto.unit.SwapBytesTransformer;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -40,7 +40,7 @@ public class HmacDecryptorTest {
         HmacDecryptor decryptor = mock(HmacDecryptor.class);
         decryptor.delegate = SwapBytesTransformer.decryptor();
         when(decryptor.createHmac(any(byte[].class))).thenReturn(new byte[]{0, 1, 2, 3, 4, 5, 6, 7});
-        when(decryptor.decrypt(any(byte[].class), anyInt(), any(Key.class))).thenCallRealMethod();
+        when(decryptor.decrypt(any(byte[].class), anyInt(), (Key)any())).thenCallRealMethod();
 
         byte[] expectedResult = {-1, -2, -3};
 

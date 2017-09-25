@@ -24,10 +24,15 @@ import java.awt.Color;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EventObject;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
@@ -50,6 +55,7 @@ import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.event.EntityEvent;
 import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.swing.components.JCayenneCheckBox;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.action.ActionManager;
 import org.apache.cayenne.modeler.action.CreateAttributeAction;
@@ -66,11 +72,10 @@ import org.apache.cayenne.modeler.util.Comparators;
 import org.apache.cayenne.modeler.util.ExpressionConvertor;
 import org.apache.cayenne.modeler.util.TextAdapter;
 import org.apache.cayenne.modeler.util.combo.AutoCompletion;
+import org.apache.cayenne.project.extension.info.ObjectInfo;
 import org.apache.cayenne.util.CayenneMapEntry;
 import org.apache.cayenne.util.Util;
 import org.apache.cayenne.validation.ValidationException;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
 
 import com.jgoodies.forms.builder.DefaultFormBuilder;
 import com.jgoodies.forms.layout.FormLayout;
@@ -78,22 +83,9 @@ import com.jgoodies.forms.layout.FormLayout;
 /**
  * Detail view of the ObjEntity properties.
  */
-public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
-        ExistingSelectionProcessor {
+public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener, ExistingSelectionProcessor {
 
-    private static final Object noInheritance = new CayenneMapEntry() {
-
-        public String getName() {
-            return "Direct Mapping to Table/View";
-        }
-
-        public Object getParent() {
-            return null;
-        }
-
-        public void setParent(Object parent) {
-        }
-    };
+    private static final ObjEntity NO_INHERITANCE = new ObjEntity("Direct Mapping to Table/View");
 
     protected ProjectController mediator;
     protected TextAdapter name;
@@ -102,13 +94,11 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
     protected JLabel superclassLabel;
     protected TextAdapter superClassName;
     protected TextAdapter qualifier;
-    protected JComboBox dbEntityCombo;
-    protected JComboBox superEntityCombo;
+    protected JComboBox<DbEntity> dbEntityCombo;
+    protected JComboBox<ObjEntity> superEntityCombo;
     protected JButton tableLabel;
     protected JCheckBox readOnly;
     protected JCheckBox optimisticLocking;
-    protected JCheckBox excludeSuperclassListeners;
-    protected JCheckBox excludeDefaultListeners;
 
     protected JComponent clientSeparator;
     protected JLabel isAbstractLabel;
@@ -118,6 +108,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
 
     protected JCheckBox serverOnly;
     protected JCheckBox isAbstract;
+    protected TextAdapter comment;
     protected TextAdapter clientClassName;
     protected TextAdapter clientSuperClassName;
 
@@ -147,28 +138,24 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
 
         // create widgets
         name = new TextAdapter(new JTextField()) {
-
             @Override
             protected void updateModel(String text) {
                 setEntityName(text);
             }
         };
         superClassName = new TextAdapter(new JTextField()) {
-
             @Override
             protected void updateModel(String text) {
                 setSuperClassName(text);
             }
         };
         className = new TextAdapter(new JTextField()) {
-
             @Override
             protected void updateModel(String text) {
                 setClassName(text);
             }
         };
         qualifier = new TextAdapter(new JTextField()) {
-
             @Override
             protected void updateModel(String text) {
                 setQualifier(text);
@@ -181,10 +168,9 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         AutoCompletion.enable(dbEntityCombo);
         AutoCompletion.enable(superEntityCombo);
 
-        readOnly = new JCheckBox();
-        optimisticLocking = new JCheckBox();
-        excludeSuperclassListeners = new JCheckBox();
-        excludeDefaultListeners = new JCheckBox();
+        readOnly = new JCayenneCheckBox();
+
+        optimisticLocking = new JCayenneCheckBox();
 
         // borderless clickable button used as a label
         tableLabel = new JButton("Table/View:");
@@ -195,17 +181,22 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         tableLabel.setBorder(null);
 
 
-        isAbstract = new JCheckBox();
-        serverOnly = new JCheckBox();
-        clientClassName = new TextAdapter(new JTextField()) {
+        isAbstract = new JCayenneCheckBox();
+        serverOnly = new JCayenneCheckBox();
 
+        comment = new TextAdapter(new JTextField()) {
+            @Override
+            protected void updateModel(String text) throws ValidationException {
+                setComment(text);
+            }
+        };
+        clientClassName = new TextAdapter(new JTextField()) {
             @Override
             protected void updateModel(String text) {
                 setClientClassName(text);
             }
         };
         clientSuperClassName = new TextAdapter(new JTextField()) {
-
             @Override
             protected void updateModel(String text) {
                 setClientSuperClassName(text);
@@ -222,6 +213,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         builder.append("Inheritance:", superEntityCombo);
         builder.append(tableLabel, dbEntityCombo);
         isAbstractLabel = builder.append("Abstract class:", isAbstract);
+        builder.append("Comment:", comment.getComponent());
         builder.appendSeparator();
 
         builder.append("Java Class:", className.getComponent());
@@ -230,9 +222,6 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         builder.append("Qualifier:", qualifier.getComponent());
         builder.append("Read-Only:", readOnly);
         builder.append("Optimistic Locking:", optimisticLocking);
-        // add callback-related stuff
-        builder.append("Exclude superclass listeners:", excludeSuperclassListeners);
-        builder.append("Exclude default listeners:", excludeDefaultListeners);
 
         clientSeparator = builder.appendSeparator("Java Client");
         serverOnlyLabel = builder.append("Not for Client Use:", serverOnly);
@@ -266,9 +255,8 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
 
             public void actionPerformed(ActionEvent e) {
                 // Change super-entity
-                CayenneMapEntry superEntity = (CayenneMapEntry) superEntityCombo
-                        .getSelectedItem();
-                String name = (superEntity == null || superEntity == noInheritance)
+                ObjEntity superEntity = (ObjEntity) superEntityCombo.getSelectedItem();
+                String name = (superEntity == null || superEntity == NO_INHERITANCE)
                         ? null
                         : superEntity.getName();
 
@@ -277,22 +265,17 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
                 if (!Util.nullSafeEquals(name, entity.getSuperEntityName())) {
                     List<ObjAttribute> duplicateAttributes = null;
                     if (name != null) {
-                        duplicateAttributes = getDuplicatedAttributes((ObjEntity) superEntity);
+                        duplicateAttributes = getDuplicatedAttributes(superEntity);
                     }
 
                     if (duplicateAttributes != null && duplicateAttributes.size() > 0) {
                         DuplicatedAttributesDialog.showDialog(
-                                Application.getFrame(),
-                                duplicateAttributes,
-                                (ObjEntity) superEntity,
-                                entity);
-                        if (DuplicatedAttributesDialog.getResult().equals(
-                                DuplicatedAttributesDialog.CANCEL_RESULT)) {
+                                Application.getFrame(), duplicateAttributes, superEntity, entity);
+                        if (DuplicatedAttributesDialog.getResult().equals(DuplicatedAttributesDialog.CANCEL_RESULT)) {
                             superEntityCombo.setSelectedItem(entity.getSuperEntity());
                             superClassName.setText(entity.getSuperClassName());
                             return;
                         }
-
                     }
                     entity.setSuperEntityName(name);
 
@@ -307,8 +290,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
                     
                     if (name == null) {
                         dbEntityCombo.setEnabled(true);
-                    }
-                    else {
+                    } else {
                         dbEntityCombo.setEnabled(false);
                         dbEntityCombo.getModel().setSelectedItem(null);
                     }
@@ -322,17 +304,11 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
                     // fire both EntityEvent and EntityDisplayEvent;
                     // the later is to update attribute and relationship display
 
-                    DataChannelDescriptor domain = (DataChannelDescriptor) mediator
-                            .getProject()
-                            .getRootNode();
+                    DataChannelDescriptor domain = (DataChannelDescriptor) mediator.getProject().getRootNode();
                     DataMap map = mediator.getCurrentDataMap();
 
                     mediator.fireObjEntityEvent(new EntityEvent(this, entity));
-                    mediator.fireObjEntityDisplayEvent(new EntityDisplayEvent(
-                            this,
-                            entity,
-                            map,
-                            domain));
+                    mediator.fireObjEntityDisplayEvent(new EntityDisplayEvent(this, entity, map, domain));
                 }
             }
         });
@@ -343,23 +319,18 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
                 // Jump to DbEntity of the current ObjEntity
                 DbEntity entity = mediator.getCurrentObjEntity().getDbEntity();
                 if (entity != null) {
-                    DataChannelDescriptor dom = (DataChannelDescriptor) mediator
-                            .getProject()
-                            .getRootNode();
-                    mediator.fireDbEntityDisplayEvent(new EntityDisplayEvent(
-                            this,
-                            entity,
-                            entity.getDataMap(),
-                            dom));
+                    DataChannelDescriptor dom = (DataChannelDescriptor) mediator.getProject().getRootNode();
+                    mediator.fireDbEntityDisplayEvent(new EntityDisplayEvent(this, entity, entity.getDataMap(), dom));
                 }
             }
         });
 
  
 
-        readOnly.addActionListener(new ActionListener() {
+        readOnly.addItemListener(new ItemListener() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 ObjEntity entity = mediator.getCurrentObjEntity();
                 if (entity != null) {
                     entity.setReadOnly(readOnly.isSelected());
@@ -368,9 +339,10 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
             }
         });
 
-        optimisticLocking.addActionListener(new ActionListener() {
+        optimisticLocking.addItemListener(new ItemListener() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 ObjEntity entity = mediator.getCurrentObjEntity();
                 if (entity != null) {
                     entity.setDeclaredLockType(optimisticLocking.isSelected()
@@ -381,33 +353,9 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
             }
         });
 
-        excludeSuperclassListeners.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                ObjEntity entity = mediator.getCurrentObjEntity();
-                if (entity != null) {
-                    entity.setExcludingSuperclassListeners(excludeSuperclassListeners
-                            .isSelected());
-                    mediator.fireObjEntityEvent(new EntityEvent(this, entity));
-                }
-            }
-        });
-
-        excludeDefaultListeners.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                ObjEntity entity = mediator.getCurrentObjEntity();
-                if (entity != null) {
-                    entity.setExcludingDefaultListeners(excludeDefaultListeners
-                            .isSelected());
-                    mediator.fireObjEntityEvent(new EntityEvent(this, entity));
-                }
-            }
-        });
-
-        serverOnly.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
+        serverOnly.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 ObjEntity entity = mediator.getCurrentObjEntity();
                 if (entity != null) {
                     entity.setServerOnly(serverOnly.isSelected());
@@ -417,9 +365,10 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
             }
         });
 
-        isAbstract.addActionListener(new ActionListener() {
+        isAbstract.addItemListener(new ItemListener() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 ObjEntity entity = mediator.getCurrentObjEntity();
                 if (entity != null) {
                     entity.setAbstract(isAbstract.isSelected());
@@ -445,28 +394,25 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         readOnly.setSelected(entity.isReadOnly());
 
         isAbstract.setSelected(entity.isAbstract());
+        comment.setText(getComment(entity));
         serverOnly.setSelected(entity.isServerOnly());
         clientClassName.setText(entity.getClientClassName());
         clientSuperClassName.setText(entity.getClientSuperClassName());
 
-        qualifier.setText(new ExpressionConvertor().valueAsString(entity
-                .getDeclaredQualifier()));
+        qualifier.setText(new ExpressionConvertor().valueAsString(entity.getDeclaredQualifier()));
 
         // TODO: fix inheritance - we should allow to select optimistic
         // lock if superclass is not already locked,
         // otherwise we must keep this checked in but not editable.
-        optimisticLocking
-                .setSelected(entity.getDeclaredLockType() == ObjEntity.LOCK_TYPE_OPTIMISTIC);
-        excludeSuperclassListeners.setSelected(entity.isExcludingSuperclassListeners());
-        excludeDefaultListeners.setSelected(entity.isExcludingDefaultListeners());
+        optimisticLocking.setSelected(entity.getDeclaredLockType() == ObjEntity.LOCK_TYPE_OPTIMISTIC);
 
         // init DbEntities
         EntityResolver resolver = mediator.getEntityResolver();
         DataMap map = mediator.getCurrentDataMap();
-        Object[] dbEntities = resolver.getDbEntities().toArray();
+        DbEntity[] dbEntities = resolver.getDbEntities().toArray(new DbEntity[0]);
         Arrays.sort(dbEntities, Comparators.getDataMapChildrenComparator());
 
-        DefaultComboBoxModel dbModel = new DefaultComboBoxModel(dbEntities);
+        DefaultComboBoxModel<DbEntity> dbModel = new DefaultComboBoxModel<>(dbEntities);
         dbModel.setSelectedItem(entity.getDbEntity());
         dbEntityCombo.setRenderer(CellRenderers.entityListRendererWithIcons(map));
         dbEntityCombo.setModel(dbModel);
@@ -474,36 +420,18 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         boolean isUsedInheritance = entity.getSuperEntity() != null;
         dbEntityCombo.setEnabled(!isUsedInheritance);
 
-        // toggle visibilty and editability rules
+        // toggle visibility and editability rules
         toggleClientFieldsVisible(map.isClientSupported());
         toggleEnabled(entity.getSuperEntityName() == null, !entity.isServerOnly());
 
-        // init ObjEntities for inheritance
-        Predicate inheritanceFilter = new Predicate() {
+        // do not show this entity or any of the subentities
+        List<ObjEntity> objEntities = map.getObjEntities().stream()
+                .filter(object -> entity != object && !object.isSubentityOf(entity))
+                .sorted(Comparators.getDataMapChildrenComparator())
+                .collect(Collectors.toList());
+        objEntities.add(0, NO_INHERITANCE);
 
-            public boolean evaluate(Object object) {
-                // do not show this entity or any of the subentities
-                if (entity == object) {
-                    return false;
-                }
-
-                if (object instanceof ObjEntity) {
-                    return !((ObjEntity) object).isSubentityOf(entity);
-                }
-
-                return false;
-            }
-        };
-
-        Object[] objEntities = CollectionUtils.select(
-                map.getObjEntities(),
-                inheritanceFilter).toArray();
-        Arrays.sort(objEntities, Comparators.getDataMapChildrenComparator());
-        Object[] finalObjEntities = new Object[objEntities.length + 1];
-        finalObjEntities[0] = noInheritance;
-        System.arraycopy(objEntities, 0, finalObjEntities, 1, objEntities.length);
-
-        DefaultComboBoxModel superEntityModel = new DefaultComboBoxModel(finalObjEntities);
+        DefaultComboBoxModel<ObjEntity> superEntityModel = new DefaultComboBoxModel<>(objEntities.toArray(new ObjEntity[0]));
         superEntityModel.setSelectedItem(entity.getSuperEntity());
         superEntityCombo.setRenderer(CellRenderers.entityListRendererWithIcons(map));
         superEntityCombo.setModel(superEntityModel);
@@ -545,8 +473,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         ObjEntity entity = mediator.getCurrentObjEntity();
 
         // "ent" may be null if we quit editing by changing tree selection
-        if (entity != null
-                && !Util.nullSafeEquals(entity.getClientClassName(), className)) {
+        if (entity != null && !Util.nullSafeEquals(entity.getClientClassName(), className)) {
             entity.setClientClassName(className);
             mediator.fireObjEntityEvent(new EntityEvent(this, entity));
         }
@@ -573,18 +500,15 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
 
         ObjEntity entity = mediator.getCurrentObjEntity();
         if (entity != null) {
-
             ExpressionConvertor convertor = new ExpressionConvertor();
             try {
-                String oldQualifier = convertor.valueAsString(entity
-                        .getDeclaredQualifier());
+                String oldQualifier = convertor.valueAsString(entity.getDeclaredQualifier());
                 if (!Util.nullSafeEquals(oldQualifier, text)) {
                     Expression exp = (Expression) convertor.stringAsValue(text);
                     entity.setDeclaredQualifier(exp);
                     mediator.fireObjEntityEvent(new EntityEvent(this, entity));
                 }
-            }
-            catch (IllegalArgumentException ex) {
+            } catch (IllegalArgumentException ex) {
                 // unparsable qualifier
                 throw new ValidationException(ex.getMessage());
             }
@@ -607,8 +531,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
 
         if (newName == null) {
             throw new ValidationException("Entity name is required.");
-        }
-        else if (entity.getDataMap().getObjEntity(newName) == null) {
+        } else if (entity.getDataMap().getObjEntity(newName) == null) {
             // completely new name, set new name for entity
             EntityEvent e = new EntityEvent(this, entity, entity.getName());
             entity.setName(newName);
@@ -616,20 +539,15 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
             mediator.fireObjEntityEvent(e);
 
             // suggest to update class name
-            ClassNameUpdater nameUpdater = new ClassNameUpdater(Application
-                    .getInstance()
-                    .getFrameController(), entity);
+            ClassNameUpdater nameUpdater = new ClassNameUpdater(Application.getInstance().getFrameController(), entity);
 
             if (nameUpdater.doNameUpdate()) {
                 className.setText(entity.getClassName());
                 clientClassName.setText(entity.getClientClassName());
             }
-        }
-        else {
+        } else {
             // there is an entity with the same name
-            throw new ValidationException("There is another entity with name '"
-                    + newName
-                    + "'.");
+            throw new ValidationException("There is another entity with name '" + newName + "'.");
         }
     }
 
@@ -649,8 +567,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         superClassName.getComponent().setEnabled(directTableMapping);
         superclassLabel.setEnabled(directTableMapping);
 
-        clientSuperClassName.getComponent().setEnabled(
-                directTableMapping && clientFieldsEnabled);
+        clientSuperClassName.getComponent().setEnabled(directTableMapping && clientFieldsEnabled);
         clientSuperClassNameLabel.setEnabled(directTableMapping && clientFieldsEnabled);
 
         clientClassNameLabel.setEnabled(clientFieldsEnabled);
@@ -677,7 +594,7 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
     }
 
     private List<ObjAttribute> getDuplicatedAttributes(ObjEntity superEntity) {
-        List<ObjAttribute> result = new LinkedList<ObjAttribute>();
+        List<ObjAttribute> result = new LinkedList<>();
 
         ObjEntity entity = mediator.getCurrentObjEntity();
 
@@ -688,6 +605,20 @@ public class ObjEntityTab extends JPanel implements ObjEntityDisplayListener,
         }
 
         return result;
+    }
+
+    private void setComment(String value) {
+        ObjEntity entity = mediator.getCurrentObjEntity();
+        if (entity == null) {
+            return;
+        }
+
+        ObjectInfo.putToMetaData(mediator.getApplication().getMetaData(), entity, ObjectInfo.COMMENT, value);
+        mediator.fireObjEntityEvent(new EntityEvent(this, entity));
+    }
+
+    private String getComment(ObjEntity entity) {
+        return ObjectInfo.getFromMetaData(mediator.getApplication().getMetaData(), entity, ObjectInfo.COMMENT);
     }
 
 }

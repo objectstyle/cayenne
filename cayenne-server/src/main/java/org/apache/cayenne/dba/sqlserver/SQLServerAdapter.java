@@ -19,6 +19,8 @@
 
 package org.apache.cayenne.dba.sqlserver;
 
+import java.util.List;
+
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.access.translator.select.QualifierTranslator;
 import org.apache.cayenne.access.translator.select.QueryAssembler;
@@ -30,14 +32,11 @@ import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.sybase.SybaseAdapter;
 import org.apache.cayenne.di.Inject;
-import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.query.Query;
 import org.apache.cayenne.query.SQLAction;
 import org.apache.cayenne.query.SelectQuery;
 import org.apache.cayenne.resource.ResourceLocator;
-
-import java.util.List;
 
 /**
  * <p>
@@ -88,9 +87,6 @@ public class SQLServerAdapter extends SybaseAdapter {
 							@Inject ValueObjectTypeRegistry valueObjectTypeRegistry) {
 		super(runtimeProperties, defaultExtendedTypes, userExtendedTypes, extendedTypeFactories, resourceLocator, valueObjectTypeRegistry);
 
-		// TODO: i wonder if Sybase supports generated keys...
-		// in this case we need to move this to the super.
-		this.setSupportsGeneratedKeys(true);
 		this.setSupportsBatchUpdates(true);
 	}
 
@@ -121,22 +117,6 @@ public class SQLServerAdapter extends SybaseAdapter {
 				SQLServerAdapter.TRIM_FUNCTION);
 		translator.setCaseInsensitive(caseInsensitiveCollations);
 		return translator;
-	}
-
-	/**
-	 * Overrides super implementation to correctly set up identity columns.
-	 * 
-	 * @since 1.2
-	 */
-	@Override
-	public void createTableAppendColumn(StringBuffer sqlBuffer, DbAttribute column) {
-
-		super.createTableAppendColumn(sqlBuffer, column);
-
-		if (column.isGenerated()) {
-			// current limitation - we don't allow to set identity parameters...
-			sqlBuffer.append(" IDENTITY (1, 1)");
-		}
 	}
 
 }

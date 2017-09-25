@@ -22,7 +22,7 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.0.M6-SNAPSHOT</version>
+		<version>4.1.M2-SNAPSHOT</version>
 	</parent>
 	
 	<groupId>org.apache.cayenne.tutorials</groupId>
@@ -32,9 +32,15 @@
 
 	<modules>
 		<module>tutorial</module>
-		<module>tutorial-rop-server</module>
 		<module>tutorial-rop-client</module>
+		<module>tutorial-rop-client-http2</module>
+		<module>tutorial-rop-server</module>
+		<module>tutorial-rop-server-http2</module>
 	</modules>
+
+	<properties>
+		<jetty.version>9.3.19.v20170502</jetty.version>
+	</properties>
 
 	<build>
 		<plugins>
@@ -52,16 +58,4 @@
         </plugins>
     </build>
 
-	<profiles>
-		<profile>
-			<id>cayenne-java8-module-to-build</id>
-			<activation>
-				<jdk>[1.8,)</jdk>
-			</activation>
-			<modules>
-				<module>tutorial-rop-server-http2</module>
-				<module>tutorial-rop-client-http2</module>
-			</modules>
-		</profile>
-	</profiles>
 </project>

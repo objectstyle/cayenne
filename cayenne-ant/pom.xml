@@ -22,7 +22,7 @@
 	<parent>
 		<artifactId>cayenne-parent</artifactId>
 		<groupId>org.apache.cayenne</groupId>
-		<version>4.0.M6-SNAPSHOT</version>
+		<version>4.1.M2-SNAPSHOT</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
@@ -39,34 +39,20 @@
         <dependency>
             <groupId>org.apache.ant</groupId>
             <artifactId>ant</artifactId>
-            <scope>compile</scope>
         </dependency>
-		<dependency>
-			<groupId>commons-collections</groupId>
-			<artifactId>commons-collections</artifactId>
-            <scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.velocity</groupId>
-			<artifactId>velocity</artifactId>
-            <scope>compile</scope>
-		</dependency>
 		<dependency>
 			<groupId>org.apache.cayenne</groupId>
 			<artifactId>cayenne-cgen</artifactId>
 			<version>${project.version}</version>
-            <scope>compile</scope>
 		</dependency>
         <dependency>
             <groupId>org.apache.cayenne</groupId>
             <artifactId>cayenne-dbsync</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
 		<dependency>
 			<groupId>foundrylogic.vpp</groupId>
 			<artifactId>vpp</artifactId>
-            <scope>compile</scope>
 		</dependency>
 
         <!-- Test Dependencies -->
@@ -90,7 +76,7 @@
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -101,7 +87,6 @@
         <dependency>
             <groupId>org.apache.ant</groupId>
             <artifactId>ant-testutil</artifactId>
-            <version>1.9.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>

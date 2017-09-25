@@ -32,7 +32,6 @@ import org.apache.cayenne.map.event.ObjEntityListener;
 import org.apache.cayenne.util.CayenneMapEntry;
 import org.apache.cayenne.util.Util;
 import org.apache.cayenne.util.XMLEncoder;
-import org.apache.commons.collections.Transformer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +44,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.Function;
 
 /**
  * ObjEntity is a mapping descriptor for a DataObject Java class. It contains
@@ -118,103 +118,59 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
      * @since 1.1
      */
     @Override
-    public void encodeAsXML(XMLEncoder encoder) {
-        encoder.print("<obj-entity name=\"");
-        encoder.print(getName());
+    public void encodeAsXML(XMLEncoder encoder, ConfigurationNodeVisitor delegate) {
+        encoder.start("obj-entity").attribute("name", getName());
 
-        // additionally validate that superentity exists
+        // additionally validate that super entity exists
         if (getSuperEntityName() != null && getSuperEntity() != null) {
-            encoder.print("\" superEntityName=\"");
-            encoder.print(getSuperEntityName());
+            encoder.attribute("superEntityName", getSuperEntityName());
         }
 
-        if (isAbstract()) {
-            encoder.print("\" abstract=\"true");
-        }
-
-        if (isServerOnly()) {
-            encoder.print("\" serverOnly=\"true");
-        }
-
-        if (getClassName() != null) {
-            encoder.print("\" className=\"");
-            encoder.print(getClassName());
-        }
-
-        if (getClientClassName() != null) {
-            encoder.print("\" clientClassName=\"");
-            encoder.print(getClientClassName());
-        }
-
-        if (isReadOnly()) {
-            encoder.print("\" readOnly=\"true");
-        }
+        encoder.attribute("abstract", isAbstract())
+                .attribute("serverOnly", isServerOnly())
+                .attribute("className", getClassName())
+                .attribute("clientClassName", getClientClassName())
+                .attribute("readOnly", isReadOnly());
 
         if (getDeclaredLockType() == LOCK_TYPE_OPTIMISTIC) {
-            encoder.print("\" lock-type=\"optimistic");
+            encoder.attribute("lock-type", "optimistic");
         }
 
         if (getDbEntityName() != null && getDbEntity() != null) {
-
             // not writing DbEntity name if sub entity has same DbEntity
             // as super entity, see CAY-1477
             if (!(getSuperEntity() != null && getSuperEntity().getDbEntity() == getDbEntity())) {
-                encoder.print("\" dbEntityName=\"");
-                encoder.print(Util.encodeXmlAttribute(getDbEntityName()));
+                encoder.attribute("dbEntityName", getDbEntityName());
             }
         }
 
         if (getSuperEntityName() == null && getSuperClassName() != null) {
-            encoder.print("\" superClassName=\"");
-            encoder.print(getSuperClassName());
+            encoder.attribute("superClassName", getSuperClassName());
         }
 
         if (getSuperEntityName() == null && getClientSuperClassName() != null) {
-            encoder.print("\" clientSuperClassName=\"");
-            encoder.print(getClientSuperClassName());
+            encoder.attribute("clientSuperClassName", getClientSuperClassName());
         }
-
-        // deprecated
-        if (isExcludingSuperclassListeners()) {
-            encoder.print("\" exclude-superclass-listeners=\"true");
-        }
-
-        // deprecated
-        if (isExcludingDefaultListeners()) {
-            encoder.print("\" exclude-default-listeners=\"true");
-        }
-
-        encoder.println("\">");
-        encoder.indent(1);
 
         if (qualifier != null) {
-            encoder.print("<qualifier>");
-            qualifier.encodeAsXML(encoder);
-            encoder.println("</qualifier>");
+            encoder.start("qualifier").nested(qualifier, delegate).end();
         }
 
         // store attributes
-        encoder.print(getDeclaredAttributes());
+        encoder.nested(getDeclaredAttributes(), delegate);
 
         for (Map.Entry<String, String> override : attributeOverrides.entrySet()) {
-            encoder.print("<attribute-override name=\"" + override.getKey() + '\"');
-            encoder.print(" db-attribute-path=\"");
-            encoder.print(Util.encodeXmlAttribute(override.getValue()));
-            encoder.print('\"');
-            encoder.println("/>");
-        }
-
-        // deprecated
-        // write entity listeners
-        for (EntityListener entityListener : entityListeners) {
-            entityListener.encodeAsXML(encoder);
+            encoder.start("attribute-override")
+                    .attribute("name", override.getKey())
+                    .attribute("db-attribute-path", override.getValue())
+                    .end();
         }
 
         // write entity-level callbacks
         getCallbackMap().encodeCallbacksAsXML(encoder);
 
-        encoder.indent(-1);
-        encoder.println("</obj-entity>");
+        delegate.visitObjEntity(this);
+        encoder.end();
     }
 
     /**
@@ -1148,7 +1104,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
         return res;
     }
 
-    final class DBPathConverter implements Transformer {
+    final class DBPathConverter implements Function<Object, Object> {
 
         // TODO: make it a public method - resolveDBPathComponents or
         // something...
@@ -1187,7 +1143,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
             return buf.toString();
         }
 
-        public Object transform(Object input) {
+        public Object apply(Object input) {
 
             if (!(input instanceof Expression)) {
                 return input;

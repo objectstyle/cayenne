@@ -27,6 +27,7 @@ import org.apache.cayenne.configuration.event.DataMapEvent;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.swing.components.JCayenneCheckBox;
 import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.action.LinkDataMapAction;
 import org.apache.cayenne.modeler.dialog.datamap.CatalogUpdateController;
@@ -41,6 +42,7 @@ import org.apache.cayenne.modeler.util.CellRenderers;
 import org.apache.cayenne.modeler.util.Comparators;
 import org.apache.cayenne.modeler.util.ProjectUtil;
 import org.apache.cayenne.modeler.util.TextAdapter;
+import org.apache.cayenne.project.extension.info.ObjectInfo;
 import org.apache.cayenne.util.Util;
 import org.apache.cayenne.validation.ValidationException;
 
@@ -54,6 +56,8 @@ import javax.swing.JTextField;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.Arrays;
 
 /**
@@ -65,13 +69,15 @@ public class DataMapView extends JPanel {
 
     protected TextAdapter name;
     protected JLabel location;
-    protected JComboBox nodeSelector;
+    protected JComboBox<DataNodeDescriptor> nodeSelector;
     protected JCheckBox defaultLockType;
     protected TextAdapter defaultCatalog;
     protected TextAdapter defaultSchema;
     protected TextAdapter defaultPackage;
     protected TextAdapter defaultSuperclass;
     protected JCheckBox quoteSQLIdentifiers;
+
+    protected TextAdapter comment;
 
     protected JButton updateDefaultCatalog;
     protected JButton updateDefaultSchema;
@@ -125,7 +131,14 @@ public class DataMapView extends JPanel {
             }
         };
 
-        quoteSQLIdentifiers = new JCheckBox();
+        quoteSQLIdentifiers = new JCayenneCheckBox();
+
+        comment = new TextAdapter(new JTextField()) {
+            @Override
+            protected void updateModel(String text) throws ValidationException {
+                updateComment(text);
+            }
+        };
 
         updateDefaultPackage = new JButton("Update...");
         defaultPackage = new TextAdapter(new JTextField()) {
@@ -144,9 +157,9 @@ public class DataMapView extends JPanel {
         };
 
         updateDefaultLockType = new JButton("Update...");
-        defaultLockType = new JCheckBox();
+        defaultLockType = new JCayenneCheckBox();
 
-        clientSupport = new JCheckBox();
+        clientSupport = new JCayenneCheckBox();
         updateDefaultClientPackage = new JButton("Update...");
         defaultClientPackage = new TextAdapter(new JTextField()) {
 
@@ -175,6 +188,7 @@ public class DataMapView extends JPanel {
         builder.append("File:", location, 3);
         builder.append("DataNode:", nodeSelector, 2);
         builder.append("Quote SQL Identifiers:", quoteSQLIdentifiers, 3);
+        builder.append("Comment:", comment.getComponent(), 2);
 
         builder.appendSeparator("Entity Defaults");
         builder.append("DB Catalog:", defaultCatalog.getComponent(), updateDefaultCatalog);
@@ -222,25 +236,28 @@ public class DataMapView extends JPanel {
             }
         });
 
-        quoteSQLIdentifiers.addActionListener(new ActionListener() {
+        quoteSQLIdentifiers.addItemListener(new ItemListener() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 setQuoteSQLIdentifiers(quoteSQLIdentifiers.isSelected());
             }
         });
 
-        defaultLockType.addActionListener(new ActionListener() {
+        defaultLockType.addItemListener(new ItemListener() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 setDefaultLockType(defaultLockType.isSelected()
                         ? ObjEntity.LOCK_TYPE_OPTIMISTIC
                         : ObjEntity.LOCK_TYPE_NONE);
             }
         });
 
-        clientSupport.addActionListener(new ActionListener() {
+        clientSupport.addItemListener(new ItemListener() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
                 setClientSupport(clientSupport.isSelected());
             }
         });
@@ -301,19 +318,17 @@ public class DataMapView extends JPanel {
      */
     private void initFromModel(DataMap map) {
         name.setText(map.getName());
-        String locationText = map.getLocation();
-        location.setText((locationText != null) ? locationText : "(no file)");
-
+        location.setText((map.getLocation() != null) ? map.getLocation() : "(no file)");
         quoteSQLIdentifiers.setSelected(map.isQuotingSQLIdentifiers());
+        comment.setText(getComment(map));
+
         // rebuild data node list
 
-        Object nodes[] = ((DataChannelDescriptor) eventController
-                .getProject()
-                .getRootNode()).getNodeDescriptors().toArray();
+        DataNodeDescriptor nodes[] = ((DataChannelDescriptor) eventController.getProject().getRootNode())
+                .getNodeDescriptors().toArray(new DataNodeDescriptor[0]);
 
         // add an empty item to the front
-        Object[] objects = new Object[nodes.length + 1];
-        // objects[0] = null;
+        DataNodeDescriptor[] objects = new DataNodeDescriptor[nodes.length + 1];
 
         // now add the entities
         if (nodes.length > 0) {
@@ -321,11 +336,10 @@ public class DataMapView extends JPanel {
             System.arraycopy(nodes, 0, objects, 1, nodes.length);
         }
 
-        DefaultComboBoxModel model = new DefaultComboBoxModel(objects);
+        DefaultComboBoxModel<DataNodeDescriptor> model = new DefaultComboBoxModel<>(objects);
 
         // find selected node
-        for (int i = 0; i < nodes.length; i++) {
-            DataNodeDescriptor node = (DataNodeDescriptor) nodes[i];
+        for (DataNodeDescriptor node : nodes) {
             if (node.getDataMapNames().contains(map.getName())) {
                 model.setSelectedItem(node);
                 break;
@@ -662,5 +676,19 @@ public class DataMapView extends JPanel {
         if (dataMap.getObjEntities().size() > 0) {
             new LockingUpdateController(eventController, dataMap).startup();
         }
+    }
+
+    void updateComment(String comment) {
+        DataMap dataMap = eventController.getCurrentDataMap();
+        if (dataMap == null) {
+            return;
+        }
+
+        ObjectInfo.putToMetaData(eventController.getApplication().getMetaData(), dataMap, ObjectInfo.COMMENT, comment);
+        eventController.fireDataMapEvent(new DataMapEvent(this, dataMap));
+    }
+
+    private String getComment(DataMap dataMap) {
+        return ObjectInfo.getFromMetaData(eventController.getApplication().getMetaData(), dataMap, ObjectInfo.COMMENT);
     }
 }

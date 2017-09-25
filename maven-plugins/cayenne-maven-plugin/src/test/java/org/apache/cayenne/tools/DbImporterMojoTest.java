@@ -109,6 +109,11 @@ public class DbImporterMojoTest extends AbstractMojoTestCase {
     }
 
     @Test
+    public void testImportNewRelationship() throws Exception {
+        test("testImportNewRelationship");
+    }
+
+    @Test
     public void testImportWithoutChanges() throws Exception {
         test("testImportWithoutChanges");
     }
@@ -259,6 +264,11 @@ public class DbImporterMojoTest extends AbstractMojoTestCase {
     @Test
     public void testInheritance() throws Exception {
         test("testInheritance");
+    }
+
+    @Test
+    public void testAddedFlattenedRelationship() throws Exception {
+        test("testAddedFlattenedRelationship");
     }
 
     @Test

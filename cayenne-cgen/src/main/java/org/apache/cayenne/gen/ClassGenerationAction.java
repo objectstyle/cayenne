@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.Properties;
 
 public class ClassGenerationAction {
-	static final String TEMPLATES_DIR_NAME = "templates/v1_2/";
+	static final String TEMPLATES_DIR_NAME = "templates/v4_1/";
 
 	public static final String SINGLE_CLASS_TEMPLATE = TEMPLATES_DIR_NAME + "singleclass.vm";
 	public static final String SUBCLASS_TEMPLATE = TEMPLATES_DIR_NAME + "subclass.vm";
@@ -522,7 +522,7 @@ public class ClassGenerationAction {
 	 *
 	 * @since 4.0 throws exception
 	 */
-	public void addEntities(Collection<ObjEntity> entities) throws CayenneException {
+	public void addEntities(Collection<ObjEntity> entities) throws CayenneRuntimeException {
 		if (artifactsGenerationMode == ArtifactsGenerationMode.ENTITY
 				|| artifactsGenerationMode == ArtifactsGenerationMode.ALL) {
 			if (entities != null) {

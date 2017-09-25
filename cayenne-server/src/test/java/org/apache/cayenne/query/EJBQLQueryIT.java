@@ -19,13 +19,18 @@
 package org.apache.cayenne.query;
 
 import org.apache.cayenne.DataRow;
+import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.access.DataContext;
+import org.apache.cayenne.configuration.EmptyConfigurationNodeVisitor;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.ejbql.EJBQLCompiledExpression;
 import org.apache.cayenne.ejbql.EJBQLException;
 import org.apache.cayenne.exp.Expression;
+import org.apache.cayenne.map.EJBQLQueryDescriptor;
 import org.apache.cayenne.map.EntityResolver;
+import org.apache.cayenne.map.LifecycleEvent;
+import org.apache.cayenne.reflect.LifecycleCallbackRegistry;
 import org.apache.cayenne.test.jdbc.DBHelper;
 import org.apache.cayenne.test.jdbc.TableHelper;
 import org.apache.cayenne.testdo.testmap.Artist;
@@ -307,28 +312,16 @@ public class EJBQLQueryIT extends ServerCase {
         XMLEncoder e = new XMLEncoder(new PrintWriter(w));
 
         String separator = System.getProperty("line.separator");
+        String s = "<query name=\"" + name + "\" type=\"EJBQLQuery\">" + separator +
+                "<ejbql><![CDATA[" + ejbql + "]]></ejbql>" + separator +
+                "</query>" + separator;
 
-        StringBuffer s = new StringBuffer("<query name=\"");
-        s.append(name);
-        s.append("\" factory=\"");
-        s.append("org.apache.cayenne.map.EjbqlBuilder");
-        s.append("\">");
-        s.append(separator);
+        EJBQLQueryDescriptor descriptor = new EJBQLQueryDescriptor();
+        descriptor.setEjbql(ejbql);
+        descriptor.setName(name);
+        descriptor.encodeAsXML(e, new EmptyConfigurationNodeVisitor());
 
-        EJBQLQuery query = new EJBQLQuery(ejbql);
-
-        if (query.getEjbqlStatement() != null) {
-            s.append("<ejbql><![CDATA[");
-            s.append(query.getEjbqlStatement());
-            s.append("]]></ejbql>");
-        }
-        s.append(separator);
-        s.append("</query>");
-        s.append(separator);
-        query.setName(name);
-        query.encodeAsXML(e);
-
-        assertEquals(w.getBuffer().toString(), s.toString());
+        assertEquals(w.getBuffer().toString(), s);
     }
 
     @Test
@@ -556,4 +549,164 @@ public class EJBQLQueryIT extends ServerCase {
 		assertEquals("a0", ((Artist) artistDesc.get(0)[0]).getArtistName());
 		assertEquals("a1", ((Artist) artistDesc.get(1)[0]).getArtistName());
 	}
+
+    @Test
+    public void testOuterJoinCountByIdentifier() throws Exception {
+        tArtist.insert(1, "a0");
+        tArtist.insert(2, "a1");
+        tArtist.insert(3, "a2");
+
+        tPainting.insert(3, 1, "title0");
+        tPainting.insert(2, 1, "title1");
+        tPainting.insert(1, 2, "title2");
+
+        EJBQLQuery asc = new EJBQLQuery("select a, count(p) from Artist a LEFT JOIN a.paintingArray p " +
+                "GROUP BY a order by count(p) DESC");
+        List<Object[]> artistAsc = context.performQuery(asc);
+        assertEquals(3, artistAsc.size());
+        assertEquals("a0", ((Artist) artistAsc.get(0)[0]).getArtistName());
+        assertEquals("a1", ((Artist) artistAsc.get(1)[0]).getArtistName());
+        assertEquals("a2", ((Artist) artistAsc.get(2)[0]).getArtistName());
+
+        assertEquals(2L, artistAsc.get(0)[1]);
+        assertEquals(1L, artistAsc.get(1)[1]);
+        assertEquals(0L, artistAsc.get(2)[1]);
+    }
+
+    @Test
+    public void testOuterJoinCountAll() throws Exception {
+        tArtist.insert(1, "a0");
+        tArtist.insert(2, "a1");
+        tArtist.insert(3, "a2");
+
+        tPainting.insert(3, 1, "title0");
+        tPainting.insert(2, 1, "title1");
+        tPainting.insert(1, 2, "title2");
+
+        EJBQLQuery asc = new EJBQLQuery("SELECT a, count(1) FROM Artist a LEFT JOIN a.paintingArray p " +
+                "GROUP BY a ORDER BY count(1) DESC, a.artistName");
+        List<Object[]> artistAsc = context.performQuery(asc);
+        assertEquals(3, artistAsc.size());
+        assertEquals("a0", ((Artist) artistAsc.get(0)[0]).getArtistName());
+        assertEquals("a1", ((Artist) artistAsc.get(1)[0]).getArtistName());
+        assertEquals("a2", ((Artist) artistAsc.get(2)[0]).getArtistName());
+
+        assertEquals(2L, artistAsc.get(0)[1]);
+        assertEquals(1L, artistAsc.get(1)[1]);
+        assertEquals(1L, artistAsc.get(2)[1]); // here is a difference with other cases
+    }
+
+    @Test
+    public void testOuterJoinCountByPath() throws Exception {
+        tArtist.insert(1, "a0");
+        tArtist.insert(2, "a1");
+        tArtist.insert(3, "a2");
+
+        tPainting.insert(3, 1, "title0");
+        tPainting.insert(2, 1, "title1");
+        tPainting.insert(1, 2, "title2");
+
+        EJBQLQuery asc = new EJBQLQuery("select a, count(a.paintingArray+) from Artist a " +
+                "GROUP BY a order by count(a.paintingArray+) DESC");
+        List<Object[]> artistAsc = context.performQuery(asc);
+        assertEquals(3, artistAsc.size());
+        assertEquals("a0", ((Artist) artistAsc.get(0)[0]).getArtistName());
+        assertEquals("a1", ((Artist) artistAsc.get(1)[0]).getArtistName());
+        assertEquals("a2", ((Artist) artistAsc.get(2)[0]).getArtistName());
+
+        assertEquals(2L, artistAsc.get(0)[1]);
+        assertEquals(1L, artistAsc.get(1)[1]);
+        assertEquals(0L, artistAsc.get(2)[1]);
+    }
+
+	@Test
+	public void testNullObjects() throws Exception {
+        tArtist.insert(1, "a1");
+        tArtist.insert(2, "a2");
+        tArtist.insert(3, "a3");
+
+        tPainting.insert(1, 2, "title1");
+        tPainting.insert(2, 1, "title2");
+        tPainting.insert(3, 1, "title3");
+
+        EJBQLQuery queryFullProduct = new EJBQLQuery("select a, p from Artist a, Painting p");
+        List<Object[]> result1 = context.performQuery(queryFullProduct);
+        assertEquals(9, result1.size());
+        for(Object[] next : result1) {
+            assertEquals(2, next.length);
+            assertNotNull(next[0]);
+            assertNotNull(next[1]);
+        }
+
+        EJBQLQuery queryToOneRel = new EJBQLQuery("select p.toGallery+, p.toArtist+, p from Painting p");
+        List<Object[]> result2 = context.performQuery(queryToOneRel);
+        assertEquals(3, result2.size());
+        for(Object[] next : result2) {
+            assertNull(next[0]); // Gallery
+            assertTrue(next[1] instanceof Artist);
+            assertTrue(next[2] instanceof Painting);
+        }
+    }
+
+    @Test
+    public void testNullObjectsCallback() throws Exception {
+        tArtist.insert(1, "a1");
+        tArtist.insert(2, "a2");
+        tArtist.insert(3, "a3");
+
+        tPainting.insert(1, 2, "title1");
+        tPainting.insert(2, 1, "title2");
+        tPainting.insert(3, 1, "title3");
+
+        // set callback to be called
+        LifecycleCallbackRegistry registry = runtime
+                .getDataDomain()
+                .getEntityResolver()
+                .getCallbackRegistry();
+        registry.addCallback(LifecycleEvent.POST_LOAD, Painting.class, "postAddCallback");
+
+        // select Paintings, where one of it will be null
+        EJBQLQuery query = new EJBQLQuery("select a.paintingArray+ from Artist a order by a.artistName");
+        List<Painting> result1 = context.performQuery(query);
+        assertEquals(4, result1.size());
+        assertNull(result1.get(3));
+        for(int i=0; i<3; i++) {
+            assertNotNull(result1.get(i));
+            assertTrue(result1.get(i).isPostAdded());
+        }
+    }
+
+    @Test
+    public void testOrderByDbPath() throws Exception {
+        tArtist.insert(1, "a3");
+        tArtist.insert(2, "a2");
+        tArtist.insert(3, "a1");
+
+        EJBQLQuery query = new EJBQLQuery("SELECT a FROM Artist a ORDER BY db:a.ARTIST_ID DESC");
+        List<Artist> result = context.performQuery(query);
+        assertEquals("a1", result.get(0).getArtistName());
+        assertEquals("a2", result.get(1).getArtistName());
+        assertEquals("a3", result.get(2).getArtistName());
+    }
+
+    @Test
+    public void testSelectFromNestedContext() throws Exception {
+        tArtist.insert(1, "a1");
+        tArtist.insert(2, "a2");
+
+        tPainting.insert(1, 2, "title1");
+        tPainting.insert(2, 1, "title2");
+        tPainting.insert(3, 1, "title3");
+
+        ObjectContext nested = runtime.newContext(context);
+
+        EJBQLQuery query = new EJBQLQuery("SELECT a, COUNT(a.paintingArray) FROM Artist a GROUP BY a");
+        List<Object[]> result = nested.performQuery(query);
+        assertEquals(2, result.size());
+        for(Object[] next : result) {
+            assertTrue(next[0] instanceof Artist);
+            assertTrue(next[1] instanceof Number);
+        }
+
+    }
 }

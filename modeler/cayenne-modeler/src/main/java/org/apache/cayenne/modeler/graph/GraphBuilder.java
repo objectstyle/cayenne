@@ -18,8 +18,6 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.graph;
 
-import java.io.Serializable;
-
 import javax.swing.event.UndoableEditListener;
 
 import org.apache.cayenne.configuration.DataChannelDescriptor;
@@ -30,43 +28,44 @@ import org.jgraph.JGraph;
 import org.jgraph.graph.DefaultGraphCell;
 
 /**
- * Interface for building graphs which represent some prespective of a domain
+ * Interface for building graphs which represent some perspective of a domain
  */
-public interface GraphBuilder extends Serializable, XMLSerializable, UndoableEditListener {
-    public static final double ZOOM_FACTOR = 1.3;
+public interface GraphBuilder extends XMLSerializable, UndoableEditListener {
+
+    double ZOOM_FACTOR = 1.3;
     
     /**
      * Builds graph
      */
-    public void buildGraph(ProjectController mediator, DataChannelDescriptor domain, boolean layout);
+    void buildGraph(ProjectController mediator, DataChannelDescriptor domain, boolean layout);
     
     /**
      * Invoked at destroying of the builder
      */
-    public void destroy();
+    void destroy();
     
     /**
      * Returns built graph for this builder
      */
-    public JGraph getGraph();
+    JGraph getGraph();
     
     /**
      * Returns domain.
      */
-    public DataChannelDescriptor getDataDomain();
+    DataChannelDescriptor getDataDomain();
         
     /**
      * Returns type of the graph
      */
-    public GraphType getType();
+    GraphType getType();
     
     /**
      * Returns selected entity, <code>null</code> if none is selected
      */
-    public Entity getSelectedEntity();
+    Entity getSelectedEntity();
     
     /**
      * Returns cell of an entity
      */
-    public DefaultGraphCell getEntityCell(String entityName);
+    DefaultGraphCell getEntityCell(String entityName);
 }

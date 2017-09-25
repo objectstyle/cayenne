@@ -30,19 +30,14 @@ import java.util.Collections;
 /**
  * @since 3.1
  */
-class SaveableNodesGetter extends
-        BaseConfigurationNodeVisitor<Collection<ConfigurationNode>> {
+class SaveableNodesGetter extends BaseConfigurationNodeVisitor<Collection<ConfigurationNode>> {
 
     @Override
-    public Collection<ConfigurationNode> visitDataChannelDescriptor(
-            DataChannelDescriptor descriptor) {
+    public Collection<ConfigurationNode> visitDataChannelDescriptor(DataChannelDescriptor descriptor) {
 
         Collection<ConfigurationNode> nodes = new ArrayList<>();
         nodes.add(descriptor);
-
-        for (DataMap map : descriptor.getDataMaps()) {
-            nodes.add(map);
-        }
+        nodes.addAll(descriptor.getDataMaps());
 
         return nodes;
     }

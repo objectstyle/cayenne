@@ -944,10 +944,15 @@
 	</build>
 	<distributionManagement>
 		<repository>
-			<id>apache-releases</id>
-			<name>Apache Release Distribution Repository</name>
-			<url>https://repository.apache.org/service/local/staging/deploy/maven2</url>
+			<id>cayenne-unofficial</id>
+			<name>Cayenne Unofficial Releases @ ObjectStyle</name>
+			<url>https://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
 		</repository>
+		<snapshotRepository>
+			<id>cayenne-unofficial-snapshots</id>
+			<name>Cayenne Unofficial Snapshots @ ObjectStyle</name>
+			<url>https://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial-snapshots/</url>
+ 		</snapshotRepository>
 	</distributionManagement>
 
 	<profiles>

@@ -134,19 +134,16 @@ public class FilterDialog extends JPopupMenu {
 		query.addActionListener(new CheckListener("query"));
 
         all.setEnabled(false);
-		all.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-				dbEntity.setSelected(true);
-				objEntity.setSelected(true);
-				embeddable.setSelected(true);
-				procedure.setSelected(true);
-				query.setSelected(true);
-				all.setEnabled(false);
+		all.addActionListener(e -> {
+			dbEntity.setSelected(true);
+			objEntity.setSelected(true);
+			embeddable.setSelected(true);
+			procedure.setSelected(true);
+			query.setSelected(true);
+			all.setEnabled(false);
 
-                filterController.getTreeModel().setFiltered(filterController.getFilterMap());
-                filterController.getTree().updateUI();
-            }
+			filterController.getTreeModel().setFiltered(filterController.getFilterMap());
+			filterController.getTree().updateUI();
 		});
 	}
 
@@ -172,7 +169,7 @@ public class FilterDialog extends JPopupMenu {
 		public void actionPerformed(ActionEvent e) {
 			filterController.getFilterMap().put(key, ((JCheckBox) e.getSource()).isSelected());
 			filterController.getTreeModel().setFiltered(filterController.getFilterMap());
-            filterController.getTree().updateUI();
+			filterController.getTree().updateUI();
             checkAllStates();
 		}
 	}

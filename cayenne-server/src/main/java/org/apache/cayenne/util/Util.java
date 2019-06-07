@@ -233,8 +233,60 @@ public class Util {
 	/**
 	 * Returns true, if the String is null or an empty string.
 	 */
-	public static boolean isEmptyString(String string) {
+	public static boolean isEmptyString(CharSequence string) {
 		return string == null || string.length() == 0;
+	}
+
+	/**
+	 * Returns true, if string not empty and contains non-whitespace characters.
+	 * @since 4.1
+	 */
+	public static boolean isBlank(CharSequence cs) {
+		int strLen;
+		if (cs != null && (strLen = cs.length()) != 0) {
+			for(int i = 0; i < strLen; ++i) {
+				if (!Character.isWhitespace(cs.charAt(i))) {
+					return false;
+				}
+			}
+
+			return true;
+		} else {
+			return true;
+		}
+	}
+
+	/**
+	 * @since 4.1
+	 */
+	public static boolean isNumeric(CharSequence cs) {
+		if (isEmptyString(cs)) {
+			return false;
+		} else {
+			for(int i = 0; i < cs.length(); ++i) {
+				if (!Character.isDigit(cs.charAt(i))) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+	}
+
+	/**
+	 * Returns how many times the sub appears in the str.
+	 * @since 4.1
+	 */
+	public static int countMatches(final String str, final String sub) {
+		if (isEmptyString(str) || isEmptyString(sub)) {
+			return 0;
+		}
+		int count = 0, idx = 0;
+		while ((idx = str.indexOf(sub, idx)) != -1) {
+			count++;
+			idx += sub.length();
+		}
+		return count;
 	}
 
 	/**
@@ -243,8 +295,9 @@ public class Util {
 	 * @since 4.1
 	 */
 	public static String capitalized(String name) {
-		if (name == null || name.length() == 0)
+		if (name == null || name.length() == 0) {
 			return name;
+		}
 
 		char c = Character.toUpperCase(name.charAt(0));
 		return (name.length() == 1) ? Character.toString(c) : c + name.substring(1);
@@ -256,8 +309,9 @@ public class Util {
 	 * @since 4.2
 	 */
 	public static String uncapitalized(String aString) {
-		if (aString == null || aString.length() == 0)
+		if (aString == null || aString.length() == 0) {
 			return aString;
+		}
 
 		char c = Character.toLowerCase(aString.charAt(0));
 		return (aString.length() == 1) ? Character.toString(c) : c + aString.substring(1);
@@ -292,17 +346,16 @@ public class Util {
 	 */
 	public static XMLReader createXmlReader() throws SAXException, ParserConfigurationException {
 		SAXParserFactory spf = SAXParserFactory.newInstance();
+		spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+		spf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+		spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+		spf.setFeature("http://xml.org/sax/features/namespaces", true);
 
 		// Create a JAXP SAXParser
 		SAXParser saxParser = spf.newSAXParser();
 
 		// Get the encapsulated SAX XMLReader
-		XMLReader reader = saxParser.getXMLReader();
-
-		// set default features
-		reader.setFeature("http://xml.org/sax/features/namespaces", true);
-
-		return reader;
+		return saxParser.getXMLReader();
 	}
 
 	/**
@@ -313,6 +366,18 @@ public class Util {
 	public static Document readDocument(URL url) {
 		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 		documentBuilderFactory.setNamespaceAware(false);
+		documentBuilderFactory.setXIncludeAware(false);
+		documentBuilderFactory.setExpandEntityReferences(false);
+
+		try {
+			documentBuilderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+			documentBuilderFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+			documentBuilderFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+			documentBuilderFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+		} catch (ParserConfigurationException ex) {
+			throw new ConfigurationException("Unable to configure DocumentBuilderFactory", ex);
+		}
+
 		try {
 			DocumentBuilder domBuilder = documentBuilderFactory.newDocumentBuilder();
 			try (InputStream inputStream = url.openStream()) {
@@ -341,13 +406,15 @@ public class Util {
 	 * @since 3.0
 	 */
 	public static String stripPackageName(String className) {
-		if (className == null || className.length() == 0)
+		if (className == null || className.length() == 0) {
 			return className;
+		}
 
 		int lastDot = className.lastIndexOf('.');
 
-		if ((-1 == lastDot) || ((className.length() - 1) == lastDot))
+		if ((-1 == lastDot) || ((className.length() - 1) == lastDot)) {
 			return className;
+		}
 
 		return className.substring(lastDot + 1);
 	}

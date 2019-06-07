@@ -47,6 +47,7 @@ public class ExtendedTypeMap {
 		classesForPrimitives.put("float", Float.class.getName());
 		classesForPrimitives.put("short", Short.class.getName());
 		classesForPrimitives.put("int", Integer.class.getName());
+		classesForPrimitives.put("char", Character.class.getName());
 	}
 
 	protected Map<String, String> typeAliases;
@@ -127,9 +128,6 @@ public class ExtendedTypeMap {
 	 */
 	public void registerType(ExtendedType type) {
 		typeMap.put(type.getClassName(), type);
-
-		// factory to handle subclasses of type.className
-		addFactory(new SubclassTypeFactory(type));
 	}
 
 	/**

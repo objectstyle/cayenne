@@ -26,6 +26,7 @@ import java.util.Set;
 
 import org.apache.cayenne.dbsync.naming.NameBuilder;
 import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
+import org.apache.cayenne.dbsync.reverse.filters.TableFilter;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.DbJoin;
@@ -71,19 +72,6 @@ public class RelationshipLoader extends AbstractLoader {
                 throw new IllegalStateException();
             }
 
-            if (!new EqualsBuilder()
-                    .append(pkEntity.getCatalog(), PK.getCatalog())
-                    .append(pkEntity.getSchema(), PK.getSchema()).append(fkEntity.getCatalog(), FK.getCatalog())
-                    .append(fkEntity.getSchema(), PK.getSchema()).isEquals()) {
-
-                LOGGER.info("Skip relation: '" + key + "' because it related to objects from other catalog/schema");
-                LOGGER.info("     relation primary key: '" + PK.getCatalog() + "." + PK.getSchema() + "'");
-                LOGGER.info("       primary key entity: '" + pkEntity.getCatalog() + "." + pkEntity.getSchema() + "'");
-                LOGGER.info("     relation foreign key: '" + FK.getCatalog() + "." + FK.getSchema() + "'");
-                LOGGER.info("       foreign key entity: '" + fkEntity.getCatalog() + "." + fkEntity.getSchema() + "'");
-                continue;
-            }
-
             // forwardRelationship is a reference from table with primary key
             // it is what exactly we load from db
             DbRelationship forwardRelationship = new DbRelationship();
@@ -108,22 +96,52 @@ public class RelationshipLoader extends AbstractLoader {
 
             // set relationship names only after their joins are ready ...
             // generator logic is based on relationship state...
-            forwardRelationship.setName(NameBuilder
-                    .builder(forwardRelationship, pkEntity)
-                    .baseName(nameGenerator.relationshipName(forwardRelationship))
-                    .name());
 
-            reverseRelationship.setName(NameBuilder
-                    .builder(reverseRelationship, fkEntity)
-                    .baseName(nameGenerator.relationshipName(reverseRelationship))
-                    .name());
+            setRelationshipName(pkEntity, forwardRelationship);
+            setRelationshipName(fkEntity, reverseRelationship);
 
-            if (delegate.dbRelationshipLoaded(fkEntity, reverseRelationship)) {
-                fkEntity.addRelationship(reverseRelationship);
+            checkAndAddRelationship(pkEntity, forwardRelationship);
+            checkAndAddRelationship(fkEntity, reverseRelationship);
+        }
+    }
+
+    private void setRelationshipName(DbEntity entity, DbRelationship relationship) {
+        relationship.setName(NameBuilder
+                .builder(relationship, entity)
+                .baseName(nameGenerator.relationshipName(relationship))
+                .name());
+    }
+
+    private void checkAndAddRelationship(DbEntity entity, DbRelationship relationship){
+        TableFilter sourceTableFilter = config.getFiltersConfig()
+                .tableFilter(relationship.getSourceEntity().getCatalog(), relationship.getSourceEntity().getSchema());
+
+        TableFilter targetTableFilter = config.getFiltersConfig()
+                .tableFilter(relationship.getTargetEntity().getCatalog(), relationship.getTargetEntity().getSchema());
+
+        // check that relationship can be included
+        if(!sourceTableFilter.getIncludeTableRelationshipFilter(entity.getName())
+                .isIncluded(relationship.getName())) {
+            return;
+        }
+
+        // this can be because of filtered out columns, so next check can be excessive,
+        // but still better to check everything here too, so we can assert that added relationship is valid.
+        if(relationship.getJoins().isEmpty()) {
+            return;
+        }
+
+        // check that all join attributes are included
+        for(DbJoin join : relationship.getJoins()) {
+            if(!sourceTableFilter.getIncludeTableColumnFilter(entity.getName()).isIncluded(join.getSourceName()) ||
+                    !targetTableFilter.getIncludeTableColumnFilter(relationship.getTargetEntityName()).isIncluded(join.getTargetName())) {
+                return;
             }
-            if (delegate.dbRelationshipLoaded(pkEntity, forwardRelationship)) {
-                pkEntity.addRelationship(forwardRelationship);
-            }
+        }
+
+        // add relationship if delegate permit it
+        if (delegate.dbRelationshipLoaded(entity, relationship)) {
+            entity.addRelationship(relationship);
         }
     }
 
@@ -162,10 +180,8 @@ public class RelationshipLoader extends AbstractLoader {
                 continue;
             }
 
-
             addJoin(forwardRelationship, pkName, fkName);
             addJoin(reverseRelationship, fkName, pkName);
-
         }
     }
 

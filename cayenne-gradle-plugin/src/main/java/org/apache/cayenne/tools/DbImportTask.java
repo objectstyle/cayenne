@@ -30,13 +30,12 @@ import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfigurationValidator
 import org.apache.cayenne.dbsync.reverse.dbimport.DbImportModule;
 import org.apache.cayenne.dbsync.reverse.dbimport.ReverseEngineering;
 import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
+import org.apache.cayenne.di.ClassLoaderManager;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.tools.model.DataSourceConfig;
 import org.apache.cayenne.tools.model.DbImportConfig;
 import org.apache.cayenne.util.Util;
-import org.gradle.api.Task;
-import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
@@ -62,25 +61,24 @@ public class DbImportTask extends BaseCayenneTask {
     @Internal
     private ReverseEngineering reverseEngineering;
 
+    @Internal
+    private File cayenneProject;
+
     public DbImportTask() {
         // this task should be executed every invocation, so it is never up to date.
-        getOutputs().upToDateWhen(new Spec<Task>() {
-            @Override
-            public boolean isSatisfiedBy(Task task) {
-                return false;
-            }
-        });
+        getOutputs().upToDateWhen(task -> false);
     }
 
     @TaskAction
     public void runImport() {
         dataSource.validate();
 
-        DbImportConfiguration config = createConfig();
+        final DbImportConfiguration config = createConfig();
 
-        Injector injector = DIBootstrap.createInjector(new DbSyncModule(), new ToolsModule(getLogger()), new DbImportModule());
+        final Injector injector = DIBootstrap.createInjector(new DbSyncModule(), new ToolsModule(getLogger()), new DbImportModule(),
+                binder -> binder.bind(ClassLoaderManager.class).toInstance(new GradlePluginClassLoaderManager(getProject())));
 
-        DbImportConfigurationValidator validator = new DbImportConfigurationValidator(reverseEngineering, config, injector);
+        final DbImportConfigurationValidator validator = new DbImportConfigurationValidator(reverseEngineering, config, injector);
         try {
             validator.validate();
         } catch (Exception ex) {
@@ -90,7 +88,7 @@ public class DbImportTask extends BaseCayenneTask {
         try {
             injector.getInstance(DbImportAction.class).execute(config);
         } catch (Exception ex) {
-            Throwable th = Util.unwindException(ex);
+            final Throwable th = Util.unwindException(ex);
 
             String message = "Error importing database schema";
 
@@ -108,25 +106,29 @@ public class DbImportTask extends BaseCayenneTask {
         reverseEngineering = config.toReverseEngineering();
 
         DbImportConfiguration config = new DbImportConfiguration();
+        if (reverseEngineering.getCatalogs().size() == 0 && reverseEngineering.isEmptyContainer()) {
+            config.setUseDataMapReverseEngineering(true);
+        }
         config.setAdapter(adapter);
-        config.setDefaultPackage(reverseEngineering.getDefaultPackage());
         config.setDriver(dataSource.getDriver());
-        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
-        config.setForceDataMapCatalog(reverseEngineering.isForceDataMapCatalog());
-        config.setForceDataMapSchema(reverseEngineering.isForceDataMapSchema());
         config.setLogger(getLogger());
-        config.setMeaningfulPkTables(reverseEngineering.getMeaningfulPkTables());
-        config.setNamingStrategy(reverseEngineering.getNamingStrategy());
         config.setPassword(dataSource.getPassword());
+        config.setTargetDataMap(getDataMapFile());
+        config.setUrl(dataSource.getUrl());
+        config.setUsername(dataSource.getUsername());
         config.setSkipRelationshipsLoading(reverseEngineering.getSkipRelationshipsLoading());
         config.setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
         config.setStripFromTableNames(reverseEngineering.getStripFromTableNames());
         config.setTableTypes(reverseEngineering.getTableTypes());
-        config.setTargetDataMap(getDataMapFile());
-        config.setUrl(dataSource.getUrl());
-        config.setUsername(dataSource.getUsername());
+        config.setMeaningfulPkTables(reverseEngineering.getMeaningfulPkTables());
+        config.setNamingStrategy(reverseEngineering.getNamingStrategy());
+        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
+        config.setForceDataMapCatalog(reverseEngineering.isForceDataMapCatalog());
+        config.setForceDataMapSchema(reverseEngineering.isForceDataMapSchema());
+        config.setDefaultPackage(reverseEngineering.getDefaultPackage());
         config.setUsePrimitives(reverseEngineering.isUsePrimitives());
         config.setUseJava7Types(reverseEngineering.isUseJava7Types());
+        config.setCayenneProject(cayenneProject);
 
         return config;
     }
@@ -136,15 +138,15 @@ public class DbImportTask extends BaseCayenneTask {
         return super.getDataMapFile();
     }
 
-    public void dbImport(Closure<?> closure) {
+    public void dbImport(final Closure<?> closure) {
         getProject().configure(config, closure);
     }
 
-    public void dbimport(Closure<?> closure) {
+    public void dbimport(final Closure<?> closure) {
         dbImport(closure);
     }
 
-    public void dataSource(Closure<?> closure) {
+    public void dataSource(final Closure<?> closure) {
         getProject().configure(dataSource, closure);
     }
 
@@ -160,11 +162,29 @@ public class DbImportTask extends BaseCayenneTask {
         return adapter;
     }
 
-    public void setAdapter(String adapter) {
+    public void setAdapter(final String adapter) {
         this.adapter = adapter;
     }
 
-    public void adapter(String adapter) {
+    public void adapter(final String adapter) {
         setAdapter(adapter);
+    }
+
+    @OutputFile
+    @Optional
+    public File getCayenneProject() {
+        return cayenneProject;
+    }
+
+    public void setCayenneProject(final File cayenneProject) {
+        this.cayenneProject = cayenneProject;
+    }
+
+    public void cayenneProject(final File cayenneProject) {
+        this.cayenneProject = cayenneProject;
+    }
+
+    public void cayenneProject(final String cayenneProjectFileName) {
+        this.cayenneProject = getProject().file(cayenneProjectFileName);
     }
 }

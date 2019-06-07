@@ -24,7 +24,6 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.cayenne.ConfigurationException;
-import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.map.QueryDescriptor;
 import org.apache.cayenne.project.upgrade.UpgradeUnit;
 import org.w3c.dom.Element;
@@ -51,7 +50,7 @@ public class UpgradeHandler_V8 implements UpgradeHandler {
         Element dataMap = upgradeUnit.getDocument().getDocumentElement();
         dataMap.setAttribute("xmlns","http://cayenne.apache.org/schema/8/modelMap");
         dataMap.setAttribute("xsi:schemaLocation", "http://cayenne.apache.org/schema/8/modelMap " +
-                "http://cayenne.apache.org/schema/8/modelMap.xsd");
+                "https://cayenne.apache.org/schema/8/modelMap.xsd");
         dataMap.setAttribute("project-version", getVersion());
 
         XPath xpath = XPathFactory.newInstance().newXPath();
@@ -90,10 +89,5 @@ public class UpgradeHandler_V8 implements UpgradeHandler {
             queryElement.setAttribute("type", queryType);
             queryElement.removeAttribute("factory");
         }
-    }
-
-    @Override
-    public void processModel(DataChannelDescriptor dataChannelDescriptor) {
-
     }
 }

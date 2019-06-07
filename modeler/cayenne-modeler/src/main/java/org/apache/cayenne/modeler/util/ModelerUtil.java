@@ -19,23 +19,12 @@
 
 package org.apache.cayenne.modeler.util;
 
-import org.apache.cayenne.configuration.DataChannelDescriptor;
-import org.apache.cayenne.configuration.DataNodeDescriptor;
-import org.apache.cayenne.map.DataMap;
-import org.apache.cayenne.map.DbEntity;
-import org.apache.cayenne.modeler.Application;
-import org.apache.cayenne.modeler.ModelerConstants;
-import org.apache.cayenne.modeler.ProjectController;
-import org.apache.cayenne.modeler.action.ActionManager;
-import org.apache.cayenne.modeler.action.MultipleObjectsAction;
-import org.apache.cayenne.reflect.PropertyUtils;
-import org.apache.cayenne.util.CayenneMapEntry;
-
 import javax.swing.Action;
 import javax.swing.ImageIcon;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Window;
+import java.io.File;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -48,11 +37,22 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.GregorianCalendar;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.UUID;
+
+import org.apache.cayenne.configuration.DataChannelDescriptor;
+import org.apache.cayenne.configuration.DataNodeDescriptor;
+import org.apache.cayenne.map.DataMap;
+import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.modeler.ModelerConstants;
+import org.apache.cayenne.modeler.action.ActionManager;
+import org.apache.cayenne.modeler.action.MultipleObjectsAction;
+import org.apache.cayenne.modeler.pref.FSPath;
+import org.apache.cayenne.reflect.PropertyUtils;
+import org.apache.cayenne.util.CayenneMapEntry;
 
 /**
  * Various unorganized utility methods used by CayenneModeler.
@@ -96,9 +96,7 @@ public final class ModelerUtil {
     /**
      * Returns array of db attribute names for DbEntity mapped to current ObjEntity.
      */
-    public static Collection<String> getDbAttributeNames(
-            ProjectController mediator,
-            DbEntity entity) {
+    public static Collection<String> getDbAttributeNames(DbEntity entity) {
 
         Set<String> keys = entity.getAttributeMap().keySet();
         List<String> list = new ArrayList<>(keys.size() + 1);
@@ -124,7 +122,6 @@ public final class ModelerUtil {
                 Short.class.getName(),
                 Time.class.getName(),
                 Timestamp.class.getName(),
-                Date.class.getName(),
                 GregorianCalendar.class.getName(),
                 Calendar.class.getName(),
                 UUID.class.getName(),
@@ -213,4 +210,48 @@ public final class ModelerUtil {
 
         child.setLocation(x, y);
     }
+
+    /**
+     * @since 4.1
+     */
+    public static String initOutputFolder() {
+        String path;
+        if (System.getProperty("cayenne.cgen.destdir") != null) {
+            return System.getProperty("cayenne.cgen.destdir");
+        } else {
+            // init default directory..
+            FSPath lastPath = Application.getInstance().getFrameController().getLastDirectory();
+
+            path = checkDefaultMavenResourceDir(lastPath, "test");
+
+            if (path != null || (path = checkDefaultMavenResourceDir(lastPath, "main")) != null) {
+                return path;
+            } else {
+                File lastDir = lastPath.getExistingDirectory(false);
+                return lastDir != null ? lastDir.getAbsolutePath() : ".";
+            }
+        }
+    }
+
+    private static String checkDefaultMavenResourceDir(FSPath lastPath, String dirType) {
+        String path = lastPath.getPath();
+        String resourcePath = buildFilePath("src", dirType, "resources");
+        int idx = path.indexOf(resourcePath);
+        if (idx < 0) {
+            return null;
+        }
+        return path.substring(0, idx) + buildFilePath("src", dirType, "java");
+    }
+
+    private static String buildFilePath(String... pathElements) {
+        if (pathElements.length == 0) {
+            return "";
+        }
+        StringBuilder path = new StringBuilder(pathElements[0]);
+        for (int i = 1; i < pathElements.length; i++) {
+            path.append(File.separator).append(pathElements[i]);
+        }
+        return path.toString();
+    }
+
 }

@@ -19,37 +19,6 @@
 
 package org.apache.cayenne.modeler;
 
-import java.awt.AWTEvent;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.util.List;
-import java.util.Vector;
-
-import javax.swing.Action;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JPanel;
-import javax.swing.JSplitPane;
-import javax.swing.JTextField;
-import javax.swing.JToolBar;
-
 import org.apache.cayenne.modeler.action.AboutAction;
 import org.apache.cayenne.modeler.action.ActionManager;
 import org.apache.cayenne.modeler.action.ConfigurePreferencesAction;
@@ -68,7 +37,6 @@ import org.apache.cayenne.modeler.action.ExitAction;
 import org.apache.cayenne.modeler.action.FindAction;
 import org.apache.cayenne.modeler.action.GenerateCodeAction;
 import org.apache.cayenne.modeler.action.GenerateDBAction;
-import org.apache.cayenne.modeler.action.ReverseEngineeringAction;
 import org.apache.cayenne.modeler.action.ImportDataMapAction;
 import org.apache.cayenne.modeler.action.ImportEOModelAction;
 import org.apache.cayenne.modeler.action.InferRelationshipsAction;
@@ -88,6 +56,7 @@ import org.apache.cayenne.modeler.action.SaveAsAction;
 import org.apache.cayenne.modeler.action.ShowLogConsoleAction;
 import org.apache.cayenne.modeler.action.UndoAction;
 import org.apache.cayenne.modeler.action.ValidateAction;
+import org.apache.cayenne.modeler.action.dbimport.ReverseEngineeringToolMenuAction;
 import org.apache.cayenne.modeler.dialog.LogConsole;
 import org.apache.cayenne.modeler.dialog.welcome.WelcomeScreen;
 import org.apache.cayenne.modeler.editor.EditorView;
@@ -113,6 +82,35 @@ import org.apache.cayenne.modeler.util.RecentFileMenu;
 import org.apache.cayenne.swing.components.MainToolBar;
 import org.apache.cayenne.swing.components.TopBorder;
 import org.slf4j.LoggerFactory;
+
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JTextField;
+import javax.swing.JToolBar;
+import java.awt.AWTEvent;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.List;
+import java.util.Vector;
 
 /**
  * Main frame of CayenneModeler. Responsibilities include coordination of
@@ -159,7 +157,7 @@ public class CayenneModelerFrame extends JFrame implements DataNodeDisplayListen
 
         recentFileListeners = new Vector<>();
 
-        setIconImage(ModelerUtil.buildIcon("CayenneModeler.jpg").getImage());
+        setIconImage(ModelerUtil.buildIcon("CayenneModeler.png").getImage());
         initMenus();
         initToolbar();
         initStatusBar();
@@ -233,7 +231,7 @@ public class CayenneModelerFrame extends JFrame implements DataNodeDisplayListen
         projectMenu.addSeparator();
         projectMenu.add(getAction(RemoveAction.class).buildMenu());
 
-        toolMenu.add(getAction(ReverseEngineeringAction.class).buildMenu());
+        toolMenu.add(getAction(ReverseEngineeringToolMenuAction.class).buildMenu());
         toolMenu.add(getAction(InferRelationshipsAction.class).buildMenu());
         toolMenu.add(getAction(ImportEOModelAction.class).buildMenu());
         toolMenu.addSeparator();
@@ -560,13 +558,11 @@ public class CayenneModelerFrame extends JFrame implements DataNodeDisplayListen
             });
             findField.setAction(getAction(FindAction.class));
 
-            Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
-                public void eventDispatched(AWTEvent event) {
-                    if (event instanceof KeyEvent) {
-                        if (((KeyEvent) event).getModifiers() == Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()
-                                && ((KeyEvent) event).getKeyCode() == KeyEvent.VK_F) {
-                            findField.requestFocus();
-                        }
+            Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
+                if (event instanceof KeyEvent) {
+                    if (((KeyEvent) event).getModifiers() == Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()
+                            && ((KeyEvent) event).getKeyCode() == KeyEvent.VK_F) {
+                        findField.requestFocus();
                     }
                 }
             }, AWTEvent.KEY_EVENT_MASK);

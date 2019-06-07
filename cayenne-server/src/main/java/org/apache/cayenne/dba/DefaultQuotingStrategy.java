@@ -37,21 +37,6 @@ public class DefaultQuotingStrategy implements QuotingStrategy {
         this.endQuote = endQuote;
     }
 
-    /**
-     * @deprecated since 4.0
-     */
-    @Override
-    @Deprecated
-    public String quoteString(String name) {
-        return quotedIdentifier((DataMap) null, name);
-    }
-
-    @Override
-    @Deprecated
-    public String quoteFullyQualifiedName(DbEntity entity) {
-        return quotedFullyQualifiedName(entity);
-    }
-
     @Override
     public String quotedFullyQualifiedName(DbEntity entity) {
         return quotedIdentifier(entity.getDataMap(), entity.getCatalog(), entity.getSchema(), entity.getName());
@@ -101,7 +86,7 @@ public class DefaultQuotingStrategy implements QuotingStrategy {
             }
 
             if (buffer.length() > 0) {
-                buffer.append(".");
+                buffer.append('.');
             }
 
             buffer.append(startQuote).append(part).append(endQuote);

@@ -19,6 +19,21 @@
 
 package org.apache.cayenne.unit.di.server;
 
+import java.net.URL;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.TreeMap;
+
 import org.apache.cayenne.access.DataDomain;
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.access.DbGenerator;
@@ -29,8 +44,6 @@ import org.apache.cayenne.access.translator.select.DefaultSelectTranslatorFactor
 import org.apache.cayenne.ashwood.AshwoodEntitySorter;
 import org.apache.cayenne.cache.MapQueryCache;
 import org.apache.cayenne.configuration.DataMapLoader;
-import org.apache.cayenne.configuration.xml.DefaultHandlerFactory;
-import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.event.DefaultEventManager;
@@ -45,30 +58,16 @@ import org.apache.cayenne.unit.UnitDbAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URL;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.ListIterator;
-
 /**
- * Default implementation of the AccessStack that has a single DataNode per
- * DataMap.
+ * Default implementation of the AccessStack that has a single DataNode per DataMap.
  */
 public class SchemaBuilder {
 
-	private static Logger logger = LoggerFactory.getLogger(SchemaBuilder.class);
+	private static final Logger logger = LoggerFactory.getLogger(SchemaBuilder.class);
 
 	public static final String SKIP_SCHEMA_KEY = "cayenneTestSkipSchemaCreation";
 
-	private static String[] MAPS_REQUIRING_SCHEMA_SETUP = { "testmap.map.xml", "compound.map.xml",
+	private static final String[] MAPS_REQUIRING_SCHEMA_SETUP = { "testmap.map.xml", "compound.map.xml",
 			"misc-types.map.xml", "things.map.xml", "numeric-types.map.xml", "binary-pk.map.xml", "no-pk.map.xml",
 			"lob.map.xml", "date-time.map.xml", "enum.map.xml", "extended-type.map.xml", "generated.map.xml",
 			"mixed-persistence-strategy.map.xml", "people.map.xml", "primitive.map.xml", "inheritance.map.xml",
@@ -82,7 +81,8 @@ public class SchemaBuilder {
 			"table-primitives.map.xml", "generic.map.xml", "map-db1.map.xml", "map-db2.map.xml", "embeddable.map.xml",
 			"qualified.map.xml", "quoted-identifiers.map.xml", "inheritance-single-table1.map.xml",
 			"inheritance-vertical.map.xml", "oneway-rels.map.xml", "unsupported-distinct-types.map.xml",
-			"array-type.map.xml", "cay-2032.map.xml", "weighted-sort.map.xml", "hybrid-data-object.map.xml", "java8.map.xml" };
+			"array-type.map.xml", "cay-2032.map.xml", "weighted-sort.map.xml", "hybrid-data-object.map.xml",
+			"java8.map.xml", "cay-2521.map.xml", "inheritance-with-enum.map.xml" };
 
 	// hardcoded dependent entities that should be excluded
 	// if LOBs are not supported
@@ -145,7 +145,7 @@ public class SchemaBuilder {
 		}
 	}
 
-	private void initNode(DataMap map) throws Exception {
+	private void initNode(DataMap map) {
 
 		DataNode node = new DataNode(map.getName());
 		node.setJdbcEventLogger(jdbcEventLogger);
@@ -181,7 +181,7 @@ public class SchemaBuilder {
 			return;
 		}
 
-		List<DbEntity> entitiesToRemove = new ArrayList<DbEntity>();
+		List<DbEntity> entitiesToRemove = new ArrayList<>();
 
 		for (DbEntity ent : map.getDbEntities()) {
 			for (DbAttribute attr : ent.getAttributes()) {
@@ -238,8 +238,9 @@ public class SchemaBuilder {
 	 * Helper method that orders DbEntities to satisfy referential constraints
 	 * and returns an ordered list.
 	 */
-	private List<DbEntity> dbEntitiesInInsertOrder(DataNode node, DataMap map) {
-		List<DbEntity> entities = new ArrayList<DbEntity>(map.getDbEntities());
+	private List<DbEntity> dbEntitiesInInsertOrder(DataMap map) {
+		TreeMap<String, DbEntity> dbEntityMap = new TreeMap<>(map.getDbEntityMap());
+		List<DbEntity> entities = new ArrayList<>(dbEntityMap.values());
 
 		dbEntitiesFilter(entities);
 
@@ -249,7 +250,8 @@ public class SchemaBuilder {
 
 	protected List<DbEntity> dbEntitiesInDeleteOrder(DataMap dataMap) {
 		DataMap map = domain.getDataMap(dataMap.getName());
-		List<DbEntity> entities = new ArrayList<>(map.getDbEntities());
+		Map<String, DbEntity> dbEntityMap = new TreeMap<>(map.getDbEntityMap());
+		List<DbEntity> entities = new ArrayList<>(dbEntityMap.values());
 
 		dbEntitiesFilter(entities);
 
@@ -257,6 +259,7 @@ public class SchemaBuilder {
 		return entities;
 	}
 
+	// This seems actually unused for some time now (from 2014 to 2018), and caused no trouble
 	private void dbEntitiesFilter(List<DbEntity> entities) {
 		// filter various unsupported tests...
 
@@ -265,7 +268,7 @@ public class SchemaBuilder {
 		boolean excludeBinPK = !unitDbAdapter.supportsBinaryPK();
 		if (excludeLOB || excludeBinPK) {
 
-			List<DbEntity> filtered = new ArrayList<DbEntity>();
+			List<DbEntity> filtered = new ArrayList<>();
 
 			for (DbEntity ent : entities) {
 
@@ -317,30 +320,28 @@ public class SchemaBuilder {
 
 	private void dropSchema(DataNode node, DataMap map) throws Exception {
 
-		List<DbEntity> list = dbEntitiesInInsertOrder(node, map);
+		List<DbEntity> list = dbEntitiesInInsertOrder(map);
 
-		try (Connection conn = dataSourceFactory.getSharedDataSource().getConnection();) {
+		try (Connection conn = dataSourceFactory.getSharedDataSource().getConnection()) {
 
 			DatabaseMetaData md = conn.getMetaData();
-			List<String> allTables = new ArrayList<String>();
+			List<String> allTables = new ArrayList<>();
 
 			try (ResultSet tables = md.getTables(null, null, "%", null)) {
 				while (tables.next()) {
-					// 'toUpperCase' is needed since most databases
-					// are case insensitive, and some will convert names to
-					// lower
-					// case
-					// (PostgreSQL)
+					// 'toUpperCase' is needed since most databases are case insensitive,
+					// and some will convert names to lower case (e.g. PostgreSQL)
 					String name = tables.getString("TABLE_NAME");
-					if (name != null)
+					if (name != null) {
 						allTables.add(name.toUpperCase());
+					}
 				}
 			}
 
 			unitDbAdapter.willDropTables(conn, map, allTables);
 
 			// drop all tables in the map
-			try (Statement stmt = conn.createStatement();) {
+			try (Statement stmt = conn.createStatement()) {
 
 				ListIterator<DbEntity> it = list.listIterator(list.size());
 				while (it.hasPrevious()) {
@@ -365,20 +366,20 @@ public class SchemaBuilder {
 	}
 
 	private void dropPKSupport(DataNode node, DataMap map) throws Exception {
-		List<DbEntity> filteredEntities = dbEntitiesInInsertOrder(node, map);
+		List<DbEntity> filteredEntities = dbEntitiesInInsertOrder(map);
 		node.getAdapter().getPkGenerator().dropAutoPk(node, filteredEntities);
 	}
 
 	private void createPKSupport(DataNode node, DataMap map) throws Exception {
-		List<DbEntity> filteredEntities = dbEntitiesInInsertOrder(node, map);
+		List<DbEntity> filteredEntities = dbEntitiesInInsertOrder(map);
 		node.getAdapter().getPkGenerator().createAutoPk(node, filteredEntities);
 	}
 
 	private void createSchema(DataNode node, DataMap map) throws Exception {
 
-		try (Connection conn = dataSourceFactory.getSharedDataSource().getConnection();) {
+		try (Connection conn = dataSourceFactory.getSharedDataSource().getConnection()) {
 			unitDbAdapter.willCreateTables(conn, map);
-			try (Statement stmt = conn.createStatement();) {
+			try (Statement stmt = conn.createStatement()) {
 
 				for (String query : tableCreateQueries(node, map)) {
 					logger.info(query);
@@ -392,12 +393,12 @@ public class SchemaBuilder {
 	/**
 	 * Returns iterator of preprocessed table create queries.
 	 */
-	private Collection<String> tableCreateQueries(DataNode node, DataMap map) throws Exception {
+	private Collection<String> tableCreateQueries(DataNode node, DataMap map) {
 		DbAdapter adapter = node.getAdapter();
 		DbGenerator gen = new DbGenerator(adapter, map, null, domain, jdbcEventLogger);
 
-		List<DbEntity> orderedEnts = dbEntitiesInInsertOrder(node, map);
-		List<String> queries = new ArrayList<String>();
+		List<DbEntity> orderedEnts = dbEntitiesInInsertOrder(map);
+		List<String> queries = new ArrayList<>();
 
 		// table definitions
 		for (DbEntity ent : orderedEnts) {

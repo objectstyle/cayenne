@@ -55,15 +55,11 @@ public class PatternFilter {
         }
     };
 
-    public static final Comparator<Pattern> PATTERN_COMPARATOR = new Comparator<Pattern>() {
-        @Override
-        public int compare(Pattern o1, Pattern o2) {
-            if (o1 != null && o2 != null) {
-                return o1.pattern().compareTo(o2.pattern());
-            }
-            else {
-                return -1;
-            }
+    public static final Comparator<Pattern> PATTERN_COMPARATOR = (o1, o2) -> {
+        if (o1 != null && o2 != null) {
+            return o1.pattern().compareTo(o2.pattern());
+        } else {
+            return -1;
         }
     };
 
@@ -73,6 +69,10 @@ public class PatternFilter {
     public PatternFilter() {
         this.includes = new TreeSet<>(PATTERN_COMPARATOR);
         this.excludes = new TreeSet<>(PATTERN_COMPARATOR);
+    }
+
+    public SortedSet<Pattern> getIncludes() {
+        return includes;
     }
 
     public PatternFilter include(Pattern p) {

@@ -19,11 +19,28 @@
 
 package org.apache.cayenne;
 
+import org.apache.cayenne.util.LocalizedStringsHandler;
+
 /**
  * A generic unchecked exception that may be thrown by Cayenne framework. All runtime
  * exceptions in Cayenne inherit from this class.
  */
 public class CayenneRuntimeException extends RuntimeException {
+
+    private static String exceptionLabel;
+
+    static {
+        String version = LocalizedStringsHandler.getString("cayenne.version");
+        String date = LocalizedStringsHandler.getString("cayenne.build.date");
+        exceptionLabel = "[v." + version + " " + date + "] ";
+    }
+
+    /**
+     * @since 4.1 moved from deprecated {@link CayenneException}
+     */
+    public static String getExceptionLabel() {
+        return exceptionLabel;
+    }
 
     /**
      * Creates new CayenneRuntimeException without detail message.
@@ -37,7 +54,7 @@ public class CayenneRuntimeException extends RuntimeException {
      * conventions.
      */
     public CayenneRuntimeException(String messageFormat, Object... messageArgs) {
-        super(String.format(messageFormat, messageArgs));
+        super(messageFormat == null ? null : String.format(messageFormat, messageArgs));
     }
 
     /**
@@ -53,9 +70,8 @@ public class CayenneRuntimeException extends RuntimeException {
      * optional list of message formatting arguments. Message formatting rules follow
      * "String.format(..)" conventions.
      */
-    public CayenneRuntimeException(String messageFormat, Throwable cause,
-            Object... messageArgs) {
-        super(String.format(messageFormat, messageArgs), cause);
+    public CayenneRuntimeException(String messageFormat, Throwable cause, Object... messageArgs) {
+        super(messageFormat == null ? null : String.format(messageFormat, messageArgs), cause);
     }
 
     /**
@@ -75,7 +91,7 @@ public class CayenneRuntimeException extends RuntimeException {
     public String getMessage() {
         String message = super.getMessage();
         return (message != null)
-                ? CayenneException.getExceptionLabel() + message
-                : CayenneException.getExceptionLabel() + "(no message)";
+                ? exceptionLabel + message
+                : exceptionLabel + "(no message)";
     }
 }

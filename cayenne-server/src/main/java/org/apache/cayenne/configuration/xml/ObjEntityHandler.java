@@ -19,19 +19,26 @@
 
 package org.apache.cayenne.configuration.xml;
 
+import org.apache.cayenne.exp.ExpressionException;
 import org.apache.cayenne.exp.ExpressionFactory;
 import org.apache.cayenne.map.CallbackDescriptor;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
+
+import static org.apache.cayenne.util.Util.isBlank;
 
 /**
  * @since 4.1
  */
 public class ObjEntityHandler extends NamespaceAwareNestedTagHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ObjEntityHandler.class);
 
     private static final String OBJ_ENTITY_TAG = "obj-entity";
     private static final String OBJ_ATTRIBUTE_TAG = "obj-attribute";
@@ -191,12 +198,16 @@ public class ObjEntityHandler extends NamespaceAwareNestedTagHandler {
     }
 
     private void createQualifier(String qualifier) {
-        if (qualifier.trim().length() == 0) {
+        if (isBlank(qualifier)) {
             return;
         }
 
         if (entity != null) {
-            entity.setDeclaredQualifier(ExpressionFactory.exp(qualifier));
+            try {
+                entity.setDeclaredQualifier(ExpressionFactory.exp(qualifier));
+            } catch (ExpressionException ex) {
+                logger.warn("Unable to parse entity " + entity.getName() + " qualifier", ex);
+            }
         }
     }
 

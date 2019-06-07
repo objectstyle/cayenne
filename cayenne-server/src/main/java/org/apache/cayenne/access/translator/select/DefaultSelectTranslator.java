@@ -42,6 +42,7 @@ import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.ObjRelationship;
 import org.apache.cayenne.map.PathComponent;
+import org.apache.cayenne.query.PrefetchProcessor;
 import org.apache.cayenne.query.PrefetchSelectQuery;
 import org.apache.cayenne.query.PrefetchTreeNode;
 import org.apache.cayenne.query.Query;
@@ -55,6 +56,8 @@ import org.apache.cayenne.reflect.ToOneProperty;
 import org.apache.cayenne.util.CayenneMapEntry;
 import org.apache.cayenne.util.EqualsBuilder;
 import org.apache.cayenne.util.HashCodeBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Types;
 import java.util.ArrayList;
@@ -71,6 +74,8 @@ import java.util.Set;
  * @since 4.0
  */
 public class DefaultSelectTranslator extends QueryAssembler implements SelectTranslator {
+
+	private static final Logger logger = LoggerFactory.getLogger(SelectTranslator.class);
 
 	protected static final int[] UNSUPPORTED_DISTINCT_TYPES = { Types.BLOB, Types.CLOB, Types.NCLOB,
 			Types.LONGVARBINARY, Types.LONGVARCHAR, Types.LONGNVARCHAR };
@@ -110,6 +115,8 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 	 */
 	AddJoinListener joinListener;
 
+	JointPrefetchChecker jointPrefetchChecker = new JointPrefetchChecker();
+
 
 	public DefaultSelectTranslator(Query query, DbAdapter adapter, EntityResolver entityResolver) {
 		super(query, adapter, entityResolver);
@@ -129,6 +136,8 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 	@Override
 	protected void doTranslate() {
 
+		checkLimitAndJointPrefetch();
+
 		DataMap dataMap = queryMetadata.getDataMap();
 		JoinStack joins = getJoinStack();
 
@@ -143,7 +152,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		StringBuilder whereQualifierBuffer = qualifierTranslator.appendPart(new StringBuilder());
 
 		// build having qualifier
-		Expression havingQualifier = ((SelectQuery)query).getHavingQualifier();
+		Expression havingQualifier = getSelectQuery().getHavingQualifier();
 		StringBuilder havingQualifierBuffer = null;
 		if(havingQualifier != null) {
 			haveAggregate = true;
@@ -246,6 +255,26 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		}
 
 		this.sql = queryBuf.toString();
+	}
+
+	/**
+	 * Warn user in case query uses both limit and joint prefetch, as we don't support this combination.
+	 */
+	private void checkLimitAndJointPrefetch() {
+		if(queryMetadata.getPrefetchTree() == null) {
+			return;
+		}
+
+		if(queryMetadata.getFetchLimit() == 0 && queryMetadata.getFetchOffset() == 0) {
+			return;
+		}
+
+		if(!jointPrefetchChecker.haveJointNode(queryMetadata.getPrefetchTree())) {
+			return;
+		}
+
+		logger.warn("Query uses both limit and joint prefetch, this most probably will lead to incorrect result. " +
+				"Either use disjointById prefetch or get full result set.");
 	}
 
 	/**
@@ -402,16 +431,12 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		QualifierTranslator qualifierTranslator = adapter.getQualifierTranslator(this);
 		AccumulatingBindingListener bindingListener = new AccumulatingBindingListener();
 		final String[] joinTableAliasForProperty = {null};
-		joinListener = new AddJoinListener() {
-			@Override
-			public void joinAdded() {
-				// capture last alias for joined table, will use it to resolve object columns
-				joinTableAliasForProperty[0] = getCurrentAlias();
-			}
-		};
+		// capture last alias for joined table, will use it to resolve object columns
+		joinListener = () -> joinTableAliasForProperty[0] = getCurrentAlias();
 		setAddBindingListener(bindingListener);
 
 		for(Property<?> property : query.getColumns()) {
+			joinTableAliasForProperty[0] = null;
 			int expressionType = property.getExpression().getType();
 
 			// forbid direct selection of toMany relationships columns
@@ -459,7 +484,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 				int type = getJdbcTypeForProperty(property);
 				ColumnDescriptor descriptor;
 				if(property.getType() != null) {
-					descriptor = new ColumnDescriptor(builder.toString(), type, property.getType().getName());
+					descriptor = new ColumnDescriptor(builder.toString(), type, property.getType().getCanonicalName());
 				} else {
 					descriptor = new ColumnDescriptor(builder.toString(), type);
 				}
@@ -591,6 +616,19 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 			public boolean visitToOne(ToOneProperty property) {
 				visitRelationship(property);
+
+				// add PKs for flattened tables in flattened path
+				ObjRelationship rel = property.getRelationship();
+				for(int i=0; i<rel.getDbRelationships().size() - 1; i++) {
+					DbRelationship dbRel = rel.getDbRelationships().get(i);
+					dbRelationshipAdded(dbRel, JoinType.LEFT_OUTER, null);
+
+					// append path PK attributes
+					for(DbAttribute dba : dbRel.getTargetEntity().getPrimaryKeys()) {
+						appendColumn(columns, null, dba, attributes, dbRel.getName() + '.' + dba.getName());
+					}
+				}
+
 				return true;
 			}
 
@@ -625,7 +663,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 		if (query instanceof PrefetchSelectQuery) {
 
 			// for each relationship path add PK of the target entity...
-			for (String path : ((PrefetchSelectQuery) query).getResultPaths()) {
+			for (String path : ((PrefetchSelectQuery<?>) query).getResultPaths()) {
 
 				ASTDbPath pathExp = (ASTDbPath) oe.translateToDbPath(ExpressionFactory.exp(path));
 
@@ -691,8 +729,8 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 				resetJoinStack();
 				DbRelationship r = null;
-				for (PathComponent<DbAttribute, DbRelationship> component : table.resolvePath(dbPrefetch,
-						getPathAliases())) {
+				for (PathComponent<DbAttribute, DbRelationship> component :
+						table.resolvePath(dbPrefetch, getPathAliases())) {
 					r = component.getRelationship();
 					dbRelationshipAdded(r, JoinType.LEFT_OUTER, null);
 				}
@@ -702,35 +740,48 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 							, prefetch, oe.getName());
 				}
 
-				// add columns from the target entity, including those that are
-				// matched
-				// against the FK of the source entity. This is needed to
-				// determine
-				// whether optional relationships are null
+				// add columns from the target entity, including those that are matched
+				// against the FK of the source entity.
+				// This is needed to determine whether optional relationships are null
 
-				// go via target OE to make sure that Java types are mapped
-				// correctly...
+				// go via target OE to make sure that Java types are mapped correctly...
 				ObjRelationship targetRel = (ObjRelationship) prefetchExp.evaluate(oe);
 				ObjEntity targetEntity = targetRel.getTargetEntity();
 
 				String labelPrefix = dbPrefetch.getPath();
-				for (ObjAttribute oa : targetEntity.getAttributes()) {
-					Iterator<CayenneMapEntry> dbPathIterator = oa.getDbPathIterator();
-					while (dbPathIterator.hasNext()) {
-						Object pathPart = dbPathIterator.next();
 
-						if (pathPart == null) {
-							throw new CayenneRuntimeException("ObjAttribute has no component: %s", oa.getName());
-						} else if (pathPart instanceof DbRelationship) {
-							DbRelationship rel = (DbRelationship) pathPart;
-							dbRelationshipAdded(rel, JoinType.INNER, null);
-						} else if (pathPart instanceof DbAttribute) {
-							DbAttribute attribute = (DbAttribute) pathPart;
+				PropertyVisitor prefetchVisitor = new PropertyVisitor() {
+					public boolean visitAttribute(AttributeProperty property) {
+						ObjAttribute oa = property.getAttribute();
+						Iterator<CayenneMapEntry> dbPathIterator = oa.getDbPathIterator();
+						while (dbPathIterator.hasNext()) {
+							Object pathPart = dbPathIterator.next();
 
-							appendColumn(columns, oa, attribute, attributes, labelPrefix + '.' + attribute.getName());
+							if (pathPart == null) {
+								throw new CayenneRuntimeException("ObjAttribute has no component: %s", oa.getName());
+							} else if (pathPart instanceof DbRelationship) {
+								DbRelationship rel = (DbRelationship) pathPart;
+								dbRelationshipAdded(rel, JoinType.INNER, null);
+							} else if (pathPart instanceof DbAttribute) {
+								DbAttribute dbAttr = (DbAttribute) pathPart;
+
+								appendColumn(columns, oa, dbAttr, attributes, labelPrefix + '.' + dbAttr.getName());
+							}
 						}
+						return true;
 					}
-				}
+
+					public boolean visitToMany(ToManyProperty property) {
+						return true;
+					}
+
+					public boolean visitToOne(ToOneProperty property) {
+						return true;
+					}
+				};
+
+				ClassDescriptor prefetchClassDescriptor = entityResolver.getClassDescriptor(targetEntity.getName());
+				prefetchClassDescriptor.visitAllProperties(prefetchVisitor);
 
 				// append remaining target attributes such as keys
 				DbEntity targetDbEntity = r.getTargetEntity();
@@ -843,7 +894,7 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 	@Override
 	public String getAliasForExpression(Expression exp) {
-		Collection<Property<?>> columns = ((SelectQuery<?>)query).getColumns();
+		Collection<Property<?>> columns = getSelectQuery().getColumns();
 		if(columns == null) {
 			return null;
 		}
@@ -910,5 +961,48 @@ public class DefaultSelectTranslator extends QueryAssembler implements SelectTra
 
 	interface AddJoinListener {
 		void joinAdded();
+	}
+
+	private static class JointPrefetchChecker implements PrefetchProcessor {
+		private boolean haveJointNode;
+
+		public JointPrefetchChecker() {
+		}
+
+		public boolean haveJointNode(PrefetchTreeNode prefetchTree) {
+			haveJointNode = false;
+			prefetchTree.traverse(this);
+			return haveJointNode;
+		}
+
+		@Override
+        public boolean startPhantomPrefetch(PrefetchTreeNode node) {
+            return true;
+        }
+
+		@Override
+        public boolean startDisjointPrefetch(PrefetchTreeNode node) {
+            return true;
+        }
+
+		@Override
+        public boolean startDisjointByIdPrefetch(PrefetchTreeNode prefetchTreeNode) {
+            return true;
+        }
+
+		@Override
+        public boolean startJointPrefetch(PrefetchTreeNode node) {
+            haveJointNode = true;
+            return false;
+        }
+
+		@Override
+        public boolean startUnknownPrefetch(PrefetchTreeNode node) {
+            return true;
+        }
+
+		@Override
+        public void finishPrefetch(PrefetchTreeNode node) {
+        }
 	}
 }

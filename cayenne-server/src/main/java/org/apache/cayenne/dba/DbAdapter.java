@@ -144,6 +144,13 @@ public interface DbAdapter {
 	PkGenerator getPkGenerator();
 
 	/**
+	 * Set custom PK generator  associated with this DbAdapter.
+	 * @param pkGenerator to set
+	 * @since 4.1
+	 */
+	void setPkGenerator(PkGenerator pkGenerator);
+
+	/**
 	 * Creates and returns a DbAttribute based on supplied parameters (usually
 	 * obtained from database meta data).
 	 *
@@ -192,13 +199,6 @@ public interface DbAdapter {
 	 * @since 3.0
 	 */
 	void createTableAppendColumn(StringBuffer sqlBuffer, DbAttribute column);
-
-	/**
-	 * @since 3.0
-	 * @deprecated since 4.0 use {@link #getQuotingStrategy()}.
-	 */
-	@Deprecated
-	QuotingStrategy getQuotingStrategy(boolean needQuotes);
 
 	/**
 	 * Returns SQL identifier quoting strategy object

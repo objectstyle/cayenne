@@ -14,7 +14,7 @@
     <parent>
         <groupId>org.apache.cayenne</groupId>
         <artifactId>cayenne-parent</artifactId>
-        <version>4.1.M2-SNAPSHOT</version>
+        <version>4.1.B3-SNAPSHOT</version>
     </parent>
     <artifactId>cayenne-protostuff</artifactId>
     <packaging>jar</packaging>
@@ -65,12 +65,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.cayenne</groupId>
-            <artifactId>cayenne-java8</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
@@ -115,6 +109,7 @@
                     <map>${project.basedir}/src/test/resources/protostuff.map.xml</map>
                     <destDir>${project.basedir}/src/test/java</destDir>
                     <client>true</client>
+                    <force>true</force>
                 </configuration>
                 <executions>
                     <execution>
@@ -127,29 +122,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>code-quality</id>
-
-            <activation>
-                <property>
-                    <name>!fast-and-dirty</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-checkstyle-plugin</artifactId>
-                        <!--<configuration>
-                            <suppressionsLocation>${project.basedir}/cayenne-checkstyle-suppression.xml</suppressionsLocation>
-                        </configuration>-->
-                    </plugin>
-                    <plugin>
-                        <artifactId>maven-pmd-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

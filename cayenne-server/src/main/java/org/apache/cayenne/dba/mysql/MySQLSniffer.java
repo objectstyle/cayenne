@@ -53,7 +53,7 @@ public class MySQLSniffer implements DbAdapterDetector {
 
 		String adapterStorageEngine = MySQLAdapter.DEFAULT_STORAGE_ENGINE;
 
-		try (Statement statement = md.getConnection().createStatement();) {
+		try (Statement statement = md.getConnection().createStatement()) {
 			// http://dev.mysql.com/doc/refman/5.0/en/storage-engines.html
 			// per link above "table type" concept is deprecated in favor of
 			// "storage
@@ -61,7 +61,7 @@ public class MySQLSniffer implements DbAdapterDetector {
 			// and in what
 			// version of MySQL it got introduced...
 
-			try (ResultSet rs = statement.executeQuery("SHOW VARIABLES LIKE 'table_type'");) {
+			try (ResultSet rs = statement.executeQuery("SHOW VARIABLES LIKE 'table_type'")) {
 				if (rs.next()) {
 					String storageEngine = rs.getString(2);
 					if (storageEngine != null) {
@@ -73,6 +73,7 @@ public class MySQLSniffer implements DbAdapterDetector {
 
 		MySQLAdapter adapter = objectFactory.newInstance(MySQLAdapter.class, MySQLAdapter.class.getName());
 		adapter.setStorageEngine(adapterStorageEngine);
+
 		return adapter;
 	}
 }

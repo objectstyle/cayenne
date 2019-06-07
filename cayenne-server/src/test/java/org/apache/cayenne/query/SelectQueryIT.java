@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.ResultSet;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collections;
@@ -127,7 +128,7 @@ public class SelectQueryIT extends ServerCase {
 
 		createArtistsDataSet();
 
-		int totalRows = new SelectQuery<>(Artist.class).select(context).size();
+		long totalRows = ObjectSelect.query(Artist.class).selectCount(context);
 
 		SelectQuery<Artist> query = new SelectQuery<>(Artist.class);
 		query.addOrdering("db:" + Artist.ARTIST_ID_PK_COLUMN, SortOrder.ASCENDING);
@@ -319,8 +320,7 @@ public class SelectQueryIT extends ServerCase {
 
 		createArtistsWildcardDataSet();
 
-		// CAY-1978 - combining LIKE..ESCAPE with another clause generated bad
-		// SQL
+		// CAY-1978 - combining LIKE..ESCAPE with another clause generated bad SQL
 		SelectQuery<Artist> query = new SelectQuery<>(Artist.class);
 		query.andQualifier(ExpressionFactory.likeIgnoreCaseExp("artistName", "=_%", '='));
 		query.andQualifier(Artist.ARTIST_NAME.eq("_X"));
@@ -506,7 +506,7 @@ public class SelectQueryIT extends ServerCase {
 		Expression qual = ExpressionFactory.matchExp("artistName", "artist1");
 		query.setQualifier(qual);
 
-		Artist artist = (Artist) query.selectOne(context);
+		Artist artist = query.selectOne(context);
 		assertEquals("artist1", artist.getArtistName());
 	}
 
@@ -835,18 +835,44 @@ public class SelectQueryIT extends ServerCase {
 	 * Tests INs with more than 1000 elements
 	 */
 	@Test
-	public void testSelectLongIn() {
-		// not all adapters strip INs, so we just make sure query with such
-		// qualifier
-		// fires OK
-		Object[] numbers = new String[2009];
-		for (int i = 0; i < numbers.length; i++) {
-			numbers[i] = "" + i;
+	public void testSelectLongIn() throws Exception {
+		createArtistsDataSet();
+
+		// not all adapters strip INs, so we just make sure query with such qualifier fires OK
+		Object[] names = new String[2009];
+		for (int i = 0; i < names.length; i++) {
+			names[i] = "artist" + (i + 2);
 		}
 
 		SelectQuery<Artist> query = new SelectQuery<>(Artist.class,
-				ExpressionFactory.inExp("artistName", numbers));
-		context.performQuery(query);
+				ExpressionFactory.inExp("artistName", names));
+		List<Artist> artists = query.select(context);
+		assertEquals(19, artists.size());
+	}
+
+	/**
+	 * Tests NOT INs with more than 1000 elements
+	 */
+	@Test
+	public void testSelectLongNotIn() throws Exception {
+		// Derby tries to compile SQL into Java bytecode and
+		// fails with max code length limit ...
+		if(!accessStackAdapter.supportsLongIn()) {
+			return;
+		}
+
+		createArtistsDataSet();
+
+		// not all adapters strip INs, so we just make sure query with such qualifier fires OK
+		Object[] names = new String[1001];
+		for (int i = 0; i < names.length; i++) {
+			names[i] = "artist" + (i + 2);
+		}
+
+		SelectQuery<Artist> query = new SelectQuery<>(Artist.class,
+				ExpressionFactory.notInExp("artistName", names));
+		List<Artist> artists = query.select(context);
+		assertEquals(1, artists.size());
 	}
 
 	@Test

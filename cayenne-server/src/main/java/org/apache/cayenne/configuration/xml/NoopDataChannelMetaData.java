@@ -39,4 +39,9 @@ public class NoopDataChannelMetaData implements DataChannelMetaData {
         return null;
     }
 
+    @Override
+    public <T> T remove(ConfigurationNode key, Class<T> type) {
+        return null;
+    }
+
 }

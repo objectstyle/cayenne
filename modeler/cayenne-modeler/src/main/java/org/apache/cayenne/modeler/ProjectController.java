@@ -19,6 +19,20 @@
 
 package org.apache.cayenne.modeler;
 
+import javax.swing.event.EventListenerList;
+import java.awt.Component;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EventListener;
+import java.util.EventObject;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.prefs.Preferences;
+
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.configuration.DataChannelDescriptor;
@@ -47,6 +61,7 @@ import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.map.ObjRelationship;
 import org.apache.cayenne.map.Procedure;
 import org.apache.cayenne.map.ProcedureParameter;
+import org.apache.cayenne.map.QueryDescriptor;
 import org.apache.cayenne.map.event.AttributeEvent;
 import org.apache.cayenne.map.event.DbAttributeListener;
 import org.apache.cayenne.map.event.DbEntityListener;
@@ -68,7 +83,42 @@ import org.apache.cayenne.modeler.action.SaveAction;
 import org.apache.cayenne.modeler.action.SaveAsAction;
 import org.apache.cayenne.modeler.editor.CallbackType;
 import org.apache.cayenne.modeler.editor.ObjCallbackMethod;
-import org.apache.cayenne.modeler.event.*;
+import org.apache.cayenne.modeler.event.AttributeDisplayEvent;
+import org.apache.cayenne.modeler.event.CallbackMethodEvent;
+import org.apache.cayenne.modeler.event.CallbackMethodListener;
+import org.apache.cayenne.modeler.event.DataMapDisplayEvent;
+import org.apache.cayenne.modeler.event.DataMapDisplayListener;
+import org.apache.cayenne.modeler.event.DataNodeDisplayEvent;
+import org.apache.cayenne.modeler.event.DataNodeDisplayListener;
+import org.apache.cayenne.modeler.event.DataSourceModificationEvent;
+import org.apache.cayenne.modeler.event.DataSourceModificationListener;
+import org.apache.cayenne.modeler.event.DbAttributeDisplayListener;
+import org.apache.cayenne.modeler.event.DbEntityDisplayListener;
+import org.apache.cayenne.modeler.event.DbRelationshipDisplayListener;
+import org.apache.cayenne.modeler.event.DisplayEvent;
+import org.apache.cayenne.modeler.event.DomainDisplayEvent;
+import org.apache.cayenne.modeler.event.DomainDisplayListener;
+import org.apache.cayenne.modeler.event.EmbeddableAttributeDisplayEvent;
+import org.apache.cayenne.modeler.event.EmbeddableAttributeDisplayListener;
+import org.apache.cayenne.modeler.event.EmbeddableDisplayEvent;
+import org.apache.cayenne.modeler.event.EmbeddableDisplayListener;
+import org.apache.cayenne.modeler.event.EntityDisplayEvent;
+import org.apache.cayenne.modeler.event.EntityListenerEvent;
+import org.apache.cayenne.modeler.event.EntityListenerListener;
+import org.apache.cayenne.modeler.event.MultipleObjectsDisplayEvent;
+import org.apache.cayenne.modeler.event.MultipleObjectsDisplayListener;
+import org.apache.cayenne.modeler.event.ObjAttributeDisplayListener;
+import org.apache.cayenne.modeler.event.ObjEntityDisplayListener;
+import org.apache.cayenne.modeler.event.ObjRelationshipDisplayListener;
+import org.apache.cayenne.modeler.event.ProcedureDisplayEvent;
+import org.apache.cayenne.modeler.event.ProcedureDisplayListener;
+import org.apache.cayenne.modeler.event.ProcedureParameterDisplayEvent;
+import org.apache.cayenne.modeler.event.ProcedureParameterDisplayListener;
+import org.apache.cayenne.modeler.event.ProjectOnSaveEvent;
+import org.apache.cayenne.modeler.event.ProjectOnSaveListener;
+import org.apache.cayenne.modeler.event.QueryDisplayEvent;
+import org.apache.cayenne.modeler.event.QueryDisplayListener;
+import org.apache.cayenne.modeler.event.RelationshipDisplayEvent;
 import org.apache.cayenne.modeler.pref.DataMapDefaults;
 import org.apache.cayenne.modeler.pref.DataNodeDefaults;
 import org.apache.cayenne.modeler.pref.ProjectStatePreferences;
@@ -77,23 +127,7 @@ import org.apache.cayenne.modeler.util.CircularArray;
 import org.apache.cayenne.modeler.util.Comparators;
 import org.apache.cayenne.project.ConfigurationNodeParentGetter;
 import org.apache.cayenne.project.Project;
-import org.apache.cayenne.map.QueryDescriptor;
 import org.apache.cayenne.util.IDUtil;
-
-import javax.swing.event.EventListenerList;
-import java.awt.Component;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EventListener;
-import java.util.EventObject;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.Vector;
-import java.util.prefs.Preferences;
 
 /**
  * A controller that works with the project tree, tracking selection and
@@ -230,6 +264,10 @@ public class ProjectController extends CayenneController {
         return parent.getView();
     }
 
+    public void setCurrentDataMap(DataMap dataMap) {
+        currentState.map = dataMap;
+    }
+
     public Project getProject() {
         return project;
     }
@@ -260,8 +298,7 @@ public class ProjectController extends CayenneController {
 
                 fileChangeTracker.reconfigure();
 
-                entityResolver = new EntityResolver(
-                        ((DataChannelDescriptor) currentProject.getRootNode()).getDataMaps());
+                entityResolver = new EntityResolver();
 
                 updateEntityResolver();
             }
@@ -272,9 +309,8 @@ public class ProjectController extends CayenneController {
 
         Collection<DataMap> dataMaps = ((DataChannelDescriptor) project.getRootNode()).getDataMaps();
 
-        entityResolver.setDataMaps(dataMaps);
-
         for (DataMap dataMap : dataMaps) {
+            entityResolver.addDataMap(dataMap);
             dataMap.setNamespace(entityResolver);
         }
     }
@@ -813,6 +849,7 @@ public class ProjectController extends CayenneController {
         if (!changed) {
             changed = currentState.dbEntity != null || currentState.objEntity != null || currentState.procedure != null
                     || currentState.query != null || currentState.embeddable != null;
+            currentState.node = e.getDataNode();
         }
 
         if (!e.isRefired()) {
@@ -821,7 +858,7 @@ public class ProjectController extends CayenneController {
             if (changed) {
                 clearState();
                 currentState.domain = e.getDomain();
-                currentState.node = e.getDataNode();
+                currentState.node  = e.getDataNode();
                 currentState.map = e.getDataMap();
             }
         }

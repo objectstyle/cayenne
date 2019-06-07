@@ -19,13 +19,6 @@
 
 package org.apache.cayenne.modeler.action;
 
-import java.sql.Connection;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
-import javax.swing.JOptionPane;
-	
 import org.apache.cayenne.dbsync.reverse.dbload.DbLoader;
 import org.apache.cayenne.modeler.Application;
 import org.apache.cayenne.modeler.dialog.db.DataSourceWizard;
@@ -33,6 +26,12 @@ import org.apache.cayenne.modeler.dialog.db.DbActionOptionsDialog;
 import org.apache.cayenne.modeler.util.CayenneAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import java.sql.Connection;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public abstract class DBWizardAction<T extends DbActionOptionsDialog> extends CayenneAction {
 	private static Logger LOGGER = LoggerFactory.getLogger(DBWizardAction.class);
@@ -51,7 +50,7 @@ public abstract class DBWizardAction<T extends DbActionOptionsDialog> extends Ca
         return connectWizard;
     }
 
-    protected abstract T createDialog(Collection<String> catalogs, Collection<String> schemas, String currentCatalog, String currentSchema);
+    protected abstract T createDialog(Collection<String> catalogs, Collection<String> schemas, String currentCatalog, String currentSchema, int command);
 
     protected T loaderOptionDialog(DataSourceWizard connectWizard) {
 
@@ -81,14 +80,22 @@ public abstract class DBWizardAction<T extends DbActionOptionsDialog> extends Ca
                     JOptionPane.ERROR_MESSAGE);
             return null;
         }
-
-        final T optionsDialog = createDialog(catalogs, schemas, currentCatalog, currentSchema);
+        T optionsDialog = getStartDialog(catalogs, schemas, currentCatalog, currentSchema);
         optionsDialog.setVisible(true);
-        if (optionsDialog.getChoice() == DbActionOptionsDialog.SELECT) {
-            return optionsDialog;
+        while ((optionsDialog.getChoice() != DbActionOptionsDialog.CANCEL)) {
+            if (optionsDialog.getChoice() == DbActionOptionsDialog.SELECT) {
+                return optionsDialog;
+            }
+            optionsDialog = createDialog(catalogs, schemas, currentCatalog, currentSchema, optionsDialog.getChoice());
+            optionsDialog.setVisible(true);
         }
 
         return null;
+    }
+
+    private T getStartDialog(List<String> catalogs, List<String> schemas, String currentCatalog, String currentSchema) {
+        int command = DbActionOptionsDialog.SELECT;
+        return createDialog(catalogs, schemas, currentCatalog, currentSchema, command);
     }
 
     @SuppressWarnings("unchecked")

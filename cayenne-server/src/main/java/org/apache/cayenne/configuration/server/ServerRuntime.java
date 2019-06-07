@@ -49,9 +49,8 @@ public class ServerRuntime extends CayenneRuntime {
      * @return a builder of ServerRuntime.
      * @since 4.0
      */
-    @SuppressWarnings("deprecation")
     public static ServerRuntimeBuilder builder() {
-        return new ServerRuntimeBuilder();
+        return new ServerRuntimeBuilder(null);
     }
 
     /**
@@ -60,56 +59,8 @@ public class ServerRuntime extends CayenneRuntime {
      * @param name optional symbolic name of the created runtime.
      * @return a named builder of ServerRuntime.
      */
-    @SuppressWarnings("deprecation")
     public static ServerRuntimeBuilder builder(String name) {
         return new ServerRuntimeBuilder(name);
-    }
-
-    @Deprecated
-    private static Collection<Module> collectModules(final String[] configurationLocations, Module... extraModules) {
-        Collection<Module> modules = new ArrayList<>();
-        modules.add(new ServerModule());
-
-        if (configurationLocations.length > 0) {
-            modules.add(binder -> {
-                ListBuilder<String> locationsBinder = ServerModule.contributeProjectLocations(binder);
-                for (String c : configurationLocations) {
-                    locationsBinder.add(c);
-                }
-            });
-        }
-
-        if (extraModules != null) {
-            modules.addAll(asList(extraModules));
-        }
-
-        return modules;
-    }
-
-    /**
-     * Creates a server runtime configuring it with a standard set of services
-     * contained in {@link ServerModule}. CayenneServerModule is created with
-     * provided 'configurationLocation'. An optional array of extra modules may
-     * contain service overrides and/or user services.
-     *
-     * @deprecated since 4.0 use {@link ServerRuntime#builder()}.
-     */
-    @Deprecated
-    public ServerRuntime(String configurationLocation, Module... extraModules) {
-        this(collectModules(new String[]{configurationLocation}, extraModules));
-    }
-
-    /**
-     * Creates a server runtime configuring it with a standard set of services
-     * contained in {@link ServerModule}. CayenneServerModule is created with
-     * one or more 'configurationLocations'. An optional array of extra modules
-     * may contain service overrides and/or user services.
-     *
-     * @deprecated since 4.0 use {@link ServerRuntime#builder()}.
-     */
-    @Deprecated
-    public ServerRuntime(String[] configurationLocations, Module... extraModules) {
-        this(collectModules(configurationLocations, extraModules));
     }
 
     /**

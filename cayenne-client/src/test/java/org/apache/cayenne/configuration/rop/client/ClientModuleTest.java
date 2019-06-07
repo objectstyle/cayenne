@@ -18,9 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.configuration.rop.client;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.cayenne.DataChannel;
 import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.ObjectContextFactory;
+import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
@@ -28,11 +32,7 @@ import org.apache.cayenne.event.DefaultEventManager;
 import org.apache.cayenne.remote.ClientChannel;
 import org.apache.cayenne.remote.ClientConnection;
 import org.apache.cayenne.remote.MockClientConnection;
-import org.apache.cayenne.rop.HttpClientConnection;
 import org.junit.Test;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -43,27 +43,10 @@ import static org.junit.Assert.assertTrue;
 public class ClientModuleTest {
 
     @Test
-    public void testClientConnection() {
-
-        Map<String, String> properties = new HashMap<>();
-        properties.put(ClientConstants.ROP_SERVICE_URL_PROPERTY, "http://localhost/YuM");
-        ClientModule module = new ClientModule(properties);
-
-        Injector injector = DIBootstrap.createInjector(module);
-
-        ClientConnection connection = injector.getInstance(ClientConnection.class);
-        assertNotNull(connection);
-        assertTrue(connection instanceof HttpClientConnection);
-
-        assertSame("Connection must be a singleton", connection, injector
-                .getInstance(ClientConnection.class));
-    }
-
-    @Test
     public void testObjectContextFactory() {
 
         Map<String, String> properties = new HashMap<>();
-        ClientModule module = new ClientModule(properties) {
+        ClientModule module = new ClientModule() {
 
             @Override
             public void configure(Binder binder) {
@@ -86,7 +69,7 @@ public class ClientModuleTest {
     public void testDataChannel() {
 
         Map<String, String> properties = new HashMap<>();
-        ClientModule module = new ClientModule(properties) {
+        ClientModule module = new ClientModule() {
 
             @Override
             public void configure(Binder binder) {
@@ -94,6 +77,8 @@ public class ClientModuleTest {
 
                 // use a noop connection to prevent startup errors...
                 binder.bind(ClientConnection.class).to(MockClientConnection.class);
+                ServerModule.contributeProperties(binder)
+                        .put(Constants.SERVER_CONTEXTS_SYNC_PROPERTY, String.valueOf(true));
             }
         };
 
@@ -109,28 +94,5 @@ public class ClientModuleTest {
         assertTrue(clientChannel.getConnection() instanceof MockClientConnection);
         assertTrue(clientChannel.getEventManager() instanceof DefaultEventManager);
         assertFalse(clientChannel.isChannelEventsEnabled());
-    }
-
-    @Test
-    public void testDataChannel_NoChannelEvents() {
-
-        Map<String, String> properties = new HashMap<>();
-        properties.put(ClientConstants.ROP_CHANNEL_EVENTS_PROPERTY, "true");
-        ClientModule module = new ClientModule(properties) {
-
-            @Override
-            public void configure(Binder binder) {
-                super.configure(binder);
-
-                // use a noop connection to prevent startup errors...
-                binder.bind(ClientConnection.class).to(MockClientConnection.class);
-            }
-        };
-
-        Injector injector = DIBootstrap.createInjector(module);
-
-        DataChannel channel = injector.getInstance(DataChannel.class);
-        ClientChannel clientChannel = (ClientChannel) channel;
-        assertTrue(clientChannel.isChannelEventsEnabled());
     }
 }

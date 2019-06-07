@@ -35,7 +35,6 @@ import org.apache.cayenne.reflect.ClassDescriptor;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,45 +59,197 @@ class HierarchicalObjectResolver {
     }
 
     HierarchicalObjectResolver(DataContext context, QueryMetadata metadata,
-            ClassDescriptor descriptor, boolean needToSaveDuplicates) {
+                               ClassDescriptor descriptor, boolean needToSaveDuplicates) {
         this(context, metadata);
         this.descriptor = descriptor;
         this.needToSaveDuplicates = needToSaveDuplicates;
     }
 
     /**
-     * Properly synchronized version of 'resolveObjectTree'.
+     * Properly synchronized object resolution
      */
     PrefetchProcessorNode synchronizedRootResultNodeFromDataRows(
             PrefetchTreeNode tree,
-            List mainResultRows,
-            Map extraResultsByPath) {
+            List<DataRow> mainResultRows,
+            Map<String, List<?>> extraResultsByPath) {
 
+        PrefetchProcessorNode decoratedTree = decorateTree(tree, mainResultRows, extraResultsByPath);
+
+        // prepare data for disjoint by id prefetches
+        decoratedTree.traverse(new DisjointByIdProcessor());
+
+        // resolve objects under global lock to keep object graph consistent
         synchronized (context.getObjectStore()) {
-            return resolveObjectTree(tree, mainResultRows, extraResultsByPath);
+            // do a single path for disjoint prefetches, joint subtrees will be processed at
+            // each disjoint node that is a parent of joint prefetches.
+            decoratedTree.traverse(new DisjointProcessor());
+
+            // connect related objects
+            decoratedTree.traverse(new PostProcessor());
         }
-    }
-
-    private PrefetchProcessorNode resolveObjectTree(
-            PrefetchTreeNode tree,
-            List mainResultRows,
-            Map extraResultsByPath) {
-
-        // create a copy of the tree using DecoratedPrefetchNodes and then traverse it
-        // resolving objects...
-        PrefetchProcessorNode decoratedTree = new PrefetchProcessorTreeBuilder(
-                this,
-                mainResultRows,
-                extraResultsByPath).buildTree(tree);
-
-        // do a single path for disjoint prefetches, joint subtrees will be processed at
-        // each disjoint node that is a parent of joint prefetches.
-        decoratedTree.traverse(new DisjointProcessor());
-
-        // connect related objects
-        decoratedTree.traverse(new PostProcessor());
 
         return decoratedTree;
+    }
+
+    /**
+     * create a copy of the tree using DecoratedPrefetchNodes and then traverse it resolving objects...
+     */
+    private PrefetchProcessorNode decorateTree(PrefetchTreeNode tree,
+                                               List<DataRow> mainResultRows,
+                                               Map<String, List<?>> extraResultsByPath) {
+        return new PrefetchProcessorTreeBuilder(this, mainResultRows, extraResultsByPath)
+                .buildTree(tree);
+    }
+
+    final class DisjointByIdProcessor implements PrefetchProcessor {
+
+        @Override
+        public boolean startDisjointByIdPrefetch(PrefetchTreeNode node) {
+            if (node.getParent().isPhantom()) {
+                // doing nothing in current implementation if parent node is phantom
+                return true;
+            }
+
+            PrefetchProcessorNode processorNode = (PrefetchProcessorNode) node;
+            PrefetchProcessorNode parentProcessorNode = (PrefetchProcessorNode) processorNode.getParent();
+            ObjRelationship relationship = processorNode.getIncoming().getRelationship();
+
+            List<DbRelationship> dbRelationships = relationship.getDbRelationships();
+            DbRelationship lastDbRelationship = dbRelationships.get(0);
+
+            String pathPrefix = "";
+            if (dbRelationships.size() > 1) {
+                // we need path prefix for flattened relationships
+                StringBuilder buffer = new StringBuilder();
+                for (int i = dbRelationships.size() - 1; i >= 1; i--) {
+                    if (buffer.length() > 0) {
+                        buffer.append(".");
+                    }
+
+                    buffer.append(dbRelationships.get(i).getReverseRelationship().getName());
+                }
+
+                pathPrefix = buffer.append(".").toString();
+            }
+
+            List<DataRow> parentDataRows;
+
+            // note that a disjoint prefetch that has adjacent joint prefetches
+            // will be a PrefetchProcessorJointNode, so here check for semantics, not node type
+            if (parentProcessorNode.getSemantics() == PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS) {
+                parentDataRows = ((PrefetchProcessorJointNode) parentProcessorNode).getResolvedRows();
+            } else {
+                parentDataRows = parentProcessorNode.getDataRows();
+            }
+
+            int maxIdQualifierSize = context.getParentDataDomain().getMaxIdQualifierSize();
+            List<DbJoin> joins = lastDbRelationship.getJoins();
+
+            List<PrefetchSelectQuery<DataRow>> queries = new ArrayList<>();
+            PrefetchSelectQuery<DataRow> currentQuery = null;
+            int qualifiersCount = 0;
+            Set<List<Object>> values = new HashSet<>();
+
+            for (DataRow dataRow : parentDataRows) {
+                // handling too big qualifiers
+                if (currentQuery == null
+                        || (maxIdQualifierSize > 0 && qualifiersCount + joins.size() > maxIdQualifierSize)) {
+
+                    createDisjointByIdPrefetchQualifier(pathPrefix, currentQuery, joins, values);
+
+                    currentQuery = new PrefetchSelectQuery<>(node.getPath(), relationship);
+                    currentQuery.setFetchingDataRows(true);
+                    queries.add(currentQuery);
+                    qualifiersCount = 0;
+                    values = new HashSet<>();
+                }
+
+                List<Object> joinValues = new ArrayList<>(joins.size());
+                for (DbJoin join : joins) {
+                    Object targetValue = dataRow.get(join.getSourceName());
+                    joinValues.add(targetValue);
+                }
+
+                if(values.add(joinValues)) {
+                    qualifiersCount += joins.size();
+                }
+            }
+            // add final part of values
+            createDisjointByIdPrefetchQualifier(pathPrefix, currentQuery, joins, values);
+
+            PrefetchTreeNode jointSubtree = node.cloneJointSubtree();
+
+            String reversePath = null;
+            if (relationship.isSourceIndependentFromTargetChange()) {
+                reversePath = "db:" + relationship.getReverseDbRelationshipPath();
+            }
+
+            List<DataRow> dataRows = new ArrayList<>();
+            for (PrefetchSelectQuery<DataRow> query : queries) {
+                // need to pass the remaining tree to make joint prefetches work
+                if (jointSubtree.hasChildren()) {
+                    query.setPrefetchTree(jointSubtree);
+                }
+
+                if (reversePath != null) {
+                    // setup extra result columns to be able to relate result rows to the parent result objects.
+                    query.addResultPath(reversePath);
+                }
+
+                dataRows.addAll(query.select(context));
+            }
+            processorNode.setDataRows(dataRows);
+
+            return true;
+        }
+
+        private void createDisjointByIdPrefetchQualifier(String pathPrefix, PrefetchSelectQuery currentQuery,
+                                                         List<DbJoin> joins, Set<List<Object>> values) {
+            Expression allJoinsQualifier;
+            if(currentQuery != null) {
+                Expression[] qualifiers = new Expression[values.size()];
+                int i = 0;
+                for(List<Object> joinValues : values) {
+                    allJoinsQualifier = null;
+                    for(int j=0; j<joins.size(); j++) {
+                        Expression joinQualifier = ExpressionFactory
+                                .matchDbExp(pathPrefix + joins.get(j).getTargetName(), joinValues.get(j));
+                        if (allJoinsQualifier == null) {
+                            allJoinsQualifier = joinQualifier;
+                        } else {
+                            allJoinsQualifier = allJoinsQualifier.andExp(joinQualifier);
+                        }
+                    }
+                    qualifiers[i++] = allJoinsQualifier;
+                }
+
+                currentQuery.orQualifier(ExpressionFactory.joinExp(Expression.OR, qualifiers));
+            }
+        }
+
+        @Override
+        public boolean startPhantomPrefetch(PrefetchTreeNode node) {
+            return true;
+        }
+
+        @Override
+        public boolean startDisjointPrefetch(PrefetchTreeNode node) {
+            return true;
+        }
+
+        @Override
+        public boolean startJointPrefetch(PrefetchTreeNode node) {
+            return true;
+        }
+
+        @Override
+        public boolean startUnknownPrefetch(PrefetchTreeNode node) {
+            throw new CayenneRuntimeException("Unknown prefetch node: %s", node);
+        }
+
+        @Override
+        public void finishPrefetch(PrefetchTreeNode node) {
+        }
     }
 
     final class DisjointProcessor implements PrefetchProcessor {
@@ -113,8 +264,7 @@ class HierarchicalObjectResolver {
                 return false;
             }
 
-            // ... continue with processing even if the objects list is empty to handle
-            // multi-step prefetches.
+            // continue with processing even if the objects list is empty to handle multi-step prefetches.
             if (processorNode.getDataRows().isEmpty()) {
                 return true;
             }
@@ -127,127 +277,7 @@ class HierarchicalObjectResolver {
 
         @Override
         public boolean startDisjointByIdPrefetch(PrefetchTreeNode node) {
-            PrefetchProcessorNode processorNode = (PrefetchProcessorNode) node;
-
-            if (node.getParent().isPhantom()) {
-                // TODO: doing nothing in current implementation if parent node is phantom
-                return true;
-            }
-
-            PrefetchProcessorNode parentProcessorNode = (PrefetchProcessorNode) processorNode
-                    .getParent();
-            ObjRelationship relationship = processorNode.getIncoming().getRelationship();
-
-            List<DbRelationship> dbRelationships = relationship.getDbRelationships();
-            DbRelationship lastDbRelationship = dbRelationships.get(0);
-
-            String pathPrefix = "";
-            if (dbRelationships.size() > 1) {
-
-                // we need path prefix for flattened relationships
-                StringBuilder buffer = new StringBuilder();
-                for (int i = dbRelationships.size() - 1; i >= 1; i--) {
-                    if (buffer.length() > 0) {
-                        buffer.append(".");
-                    }
-
-                    buffer.append(dbRelationships
-                            .get(i)
-                            .getReverseRelationship()
-                            .getName());
-                }
-
-                pathPrefix = buffer.append(".").toString();
-            }
-
-            List<?> parentDataRows;
-            
-			// note that a disjoint prefetch that has adjacent joint prefetches
-			// will be a PrefetchProcessorJointNode, so here check for
-			// semantics, not node type
-			if (parentProcessorNode.getSemantics() == PrefetchTreeNode.JOINT_PREFETCH_SEMANTICS) {
-				parentDataRows = ((PrefetchProcessorJointNode) parentProcessorNode).getResolvedRows();
-			} else {
-				parentDataRows = parentProcessorNode.getDataRows();
-			}
-
-            int maxIdQualifierSize = context
-                    .getParentDataDomain()
-                    .getMaxIdQualifierSize();
-
-            List<PrefetchSelectQuery> queries = new ArrayList<>();
-            int qualifiersCount = 0;
-            PrefetchSelectQuery currentQuery = null;
-            List<DbJoin> joins = lastDbRelationship.getJoins();
-            Set<List<Object>> values = new HashSet<>();
-
-            for (Object dataRow : parentDataRows) {
-                // handling too big qualifiers
-                if (currentQuery == null
-                        || (maxIdQualifierSize > 0 && qualifiersCount + joins.size() > maxIdQualifierSize)) {
-
-                    createDisjointByIdPrefetchQualifier(pathPrefix, currentQuery, joins, values);
-
-                    currentQuery = new PrefetchSelectQuery(node.getPath(), relationship);
-                    queries.add(currentQuery);
-                    qualifiersCount = 0;
-                    values = new HashSet<>();
-                }
-
-                List<Object> joinValues = new ArrayList<>(joins.size());
-                for (DbJoin join : joins) {
-                    Object targetValue = ((DataRow) dataRow).get(join.getSourceName());
-                    joinValues.add(targetValue);
-                }
-
-                if(values.add(joinValues)) {
-                    qualifiersCount += joins.size();
-                }
-            }
-            // add final part of values
-            createDisjointByIdPrefetchQualifier(pathPrefix, currentQuery, joins, values);
-
-            PrefetchTreeNode jointSubtree = node.cloneJointSubtree();
-
-            List<DataRow> dataRows = new ArrayList<>();
-            for (PrefetchSelectQuery query : queries) {
-                // need to pass the remaining tree to make joint prefetches work
-                if (jointSubtree.hasChildren()) {
-                    query.setPrefetchTree(jointSubtree);
-                }
-
-                query.setFetchingDataRows(true);
-                if (relationship.isSourceIndependentFromTargetChange()) {
-                    // setup extra result columns to be able to relate result rows to the
-                    // parent result objects.
-                    query.addResultPath("db:"
-                            + relationship.getReverseDbRelationshipPath());
-                }
-                dataRows.addAll((List<DataRow>)context.performQuery(query));
-            }
-            processorNode.setDataRows(dataRows);
-
             return startDisjointPrefetch(node);
-        }
-
-        private void createDisjointByIdPrefetchQualifier(String pathPrefix, PrefetchSelectQuery currentQuery,
-                                                         List<DbJoin> joins, Set<List<Object>> values) {
-            Expression allJoinsQualifier;
-            if(currentQuery != null) {
-                for(List<Object> joinValues : values) {
-                    allJoinsQualifier = null;
-                    for(int i=0; i<joins.size(); i++) {
-                        Expression joinQualifier = ExpressionFactory.matchDbExp(pathPrefix
-                                + joins.get(i).getTargetName(), joinValues.get(i));
-                        if (allJoinsQualifier == null) {
-                            allJoinsQualifier = joinQualifier;
-                        } else {
-                            allJoinsQualifier = allJoinsQualifier.andExp(joinQualifier);
-                        }
-                    }
-                    currentQuery.orQualifier(allJoinsQualifier);
-                }
-            }
         }
 
         @Override
@@ -324,13 +354,8 @@ class HierarchicalObjectResolver {
 
                     if (objects != null && objects.size() > 1) {
 
-                        Set<Persistent> seen = new HashSet<Persistent>(objects.size());
-                        Iterator<Persistent> it = objects.iterator();
-                        while (it.hasNext()) {
-                            if (!seen.add(it.next())) {
-                                it.remove();
-                            }
-                        }
+                        Set<Persistent> seen = new HashSet<>(objects.size());
+                        objects.removeIf(persistent -> !seen.add(persistent));
                     }
                 }
             }
@@ -339,7 +364,7 @@ class HierarchicalObjectResolver {
 
     // a processor of a single joint result set that walks a subtree of prefetch nodes
     // that use this result set.
-    final class JointProcessor implements PrefetchProcessor {
+    final static class JointProcessor implements PrefetchProcessor {
 
         DataRow currentFlatRow;
         PrefetchProcessorNode rootNode;
@@ -368,11 +393,9 @@ class HierarchicalObjectResolver {
         public boolean startJointPrefetch(PrefetchTreeNode node) {
             PrefetchProcessorJointNode processorNode = (PrefetchProcessorJointNode) node;
 
-            Persistent object = null;
-
             // find existing object, if found skip further processing
             Map id = processorNode.idFromFlatRow(currentFlatRow);
-            object = processorNode.getResolved(id);
+            Persistent object = processorNode.getResolved(id);
             DataRow row = null;
             if (object == null) {
 
@@ -388,9 +411,7 @@ class HierarchicalObjectResolver {
                 processorNode.addObject(object, row);
             }
 
-            // linking by parent needed even if an object is already there
-            // (many-to-many case)
-
+            // linking by parent needed even if an object is already there (many-to-many case)
             processorNode.getParentAttachmentStrategy().linkToParent(row, object);
 
             processorNode.setLastResolved(object);

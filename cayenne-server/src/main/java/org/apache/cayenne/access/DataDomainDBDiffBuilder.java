@@ -24,9 +24,16 @@ import org.apache.cayenne.access.DataDomainSyncBucket.PropagatedValueFactory;
 import org.apache.cayenne.exp.parser.ASTDbPath;
 import org.apache.cayenne.graph.GraphChangeHandler;
 import org.apache.cayenne.graph.GraphDiff;
-import org.apache.cayenne.map.*;
+import org.apache.cayenne.map.DbAttribute;
+import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.map.DbJoin;
+import org.apache.cayenne.map.DbRelationship;
+import org.apache.cayenne.map.ObjAttribute;
+import org.apache.cayenne.map.ObjEntity;
+import org.apache.cayenne.map.ObjRelationship;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -112,14 +119,15 @@ class DataDomainDBDiffBuilder implements GraphChangeHandler {
                 if (relation == null) {
                     dbRelation = dbEntity.getRelationship(arcIdString.substring(ASTDbPath.DB_PREFIX.length()));
                 } else {
-                    dbRelation = relation.getDbRelationships().get(0);
+                    dbRelation = relation.getDbRelationships().get(relation.getDbRelationships().size() - 1);
                 }
 
                 // In case of a vertical inheritance, ensure that it belongs to this bucket...
                 if (dbRelation.getSourceEntity() == dbEntity) {
                     ObjectId targetId = (ObjectId) entry.getValue();
                     for (DbJoin join : dbRelation.getJoins()) {
-                        Object value = (targetId != null) ? new PropagatedValueFactory(targetId, join.getTargetName())
+                        Object value = (targetId != null)
+                                ? new PropagatedValueFactory(targetId, join.getTargetName())
                                 : null;
 
                         dbDiff.put(join.getSourceName(), value);
@@ -161,9 +169,8 @@ class DataDomainDBDiffBuilder implements GraphChangeHandler {
         if (relationship == null) {
             // phantom FK
             if (arcIdString.startsWith(ASTDbPath.DB_PREFIX)) {
-
-                DbRelationship dbRelationship = dbEntity.getRelationship(arcIdString.substring(ASTDbPath.DB_PREFIX
-                        .length()));
+                String relName = arcIdString.substring(ASTDbPath.DB_PREFIX.length());
+                DbRelationship dbRelationship = dbEntity.getRelationship(relName);
                 if (!dbRelationship.isSourceIndependentFromTargetChange()) {
                     doArcCreated(targetNodeId, arcId);
                 }
@@ -171,8 +178,12 @@ class DataDomainDBDiffBuilder implements GraphChangeHandler {
                 throw new IllegalArgumentException("Bad arcId: " + arcId);
             }
 
-        } else if (!relationship.isSourceIndependentFromTargetChange()) {
-            doArcCreated(targetNodeId, arcId);
+        } else {
+            List<DbRelationship> dbRelationships = relationship.getDbRelationships();
+            DbRelationship lastDbRelationship = dbRelationships.get(dbRelationships.size() - 1);
+            if (!relationship.isToMany() && lastDbRelationship.isToPK() && !lastDbRelationship.isToDependentPK()) {
+                doArcCreated(targetNodeId, arcId);
+            }
         }
     }
 
@@ -201,8 +212,12 @@ class DataDomainDBDiffBuilder implements GraphChangeHandler {
                 throw new IllegalArgumentException("Bad arcId: " + arcId);
             }
 
-        } else if (!relationship.isSourceIndependentFromTargetChange()) {
-            doArcDeleted(targetNodeId, arcId);
+        } else {
+            List<DbRelationship> dbRelationships = relationship.getDbRelationships();
+            DbRelationship lastDbRelationship = dbRelationships.get(dbRelationships.size() - 1);
+            if (!relationship.isToMany() && lastDbRelationship.isToPK() && !lastDbRelationship.isToDependentPK()) {
+                doArcDeleted(targetNodeId, arcId);
+            }
         }
     }
 

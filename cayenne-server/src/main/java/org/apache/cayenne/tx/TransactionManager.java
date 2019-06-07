@@ -32,7 +32,8 @@ public interface TransactionManager {
      * {@link org.apache.cayenne.tx.TransactionalOperation#perform()}, and then committing or rolling back the
      * transaction.
      *
-     * @param op an operation to perform within the trsnaction.
+     * @param op an operation to perform within the transaction.
+     * @param <T> returned value type
      * @return a value returned by the "op" operation.
      */
     <T> T performInTransaction(TransactionalOperation<T> op);
@@ -43,9 +44,38 @@ public interface TransactionManager {
      * transaction. As transaction goes through stages, callback methods are invoked allowing the caller to customize
      * transaction parameters.
      *
-     * @param op       an operation to perform within the trsnaction.
+     * @param op       an operation to perform within the transaction.
      * @param callback a callback to notify as transaction progresses through stages.
+     * @param <T> returned value type
      * @return a value returned by the "op" operation.
      */
     <T> T performInTransaction(TransactionalOperation<T> op, TransactionListener callback);
+
+
+    /**
+     * Performs operation in a transaction which parameters described by descriptor.
+     *
+     * @param op         an operation to perform within the transaction.
+     * @param descriptor transaction descriptor
+     * @param <T> result type
+     * @return a value returned by the "op" operation.
+     *
+     * @since 4.1
+     */
+    <T> T performInTransaction(TransactionalOperation<T> op, TransactionDescriptor descriptor);
+
+    /**
+     * Performs operation in a transaction which parameters described by descriptor.
+     * As transaction goes through stages, callback methods are invoked allowing the caller to customize
+     * transaction parameters.
+     *
+     * @param op         an operation to perform within the transaction.
+     * @param callback   a callback to notify as transaction progresses through stages.
+     * @param descriptor transaction descriptor
+     * @param <T> returned value type
+     * @return a value returned by the "op" operation.
+     *
+     * @since 4.1
+     */
+    <T> T performInTransaction(TransactionalOperation<T> op, TransactionListener callback, TransactionDescriptor descriptor);
 }

@@ -31,11 +31,17 @@ import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
+import javax.swing.tree.TreePath;
 
 import org.apache.cayenne.configuration.ConfigurationNode;
+import org.apache.cayenne.configuration.DataChannelDescriptor;
+import org.apache.cayenne.map.Entity;
 import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.modeler.CayenneModelerFrame;
 import org.apache.cayenne.modeler.ProjectController;
+import org.apache.cayenne.modeler.ProjectTreeModel;
 import org.apache.cayenne.modeler.dialog.ErrorDebugDialog;
+import org.apache.cayenne.modeler.editor.EditorView;
 import org.apache.cayenne.project.Project;
 import org.apache.cayenne.swing.components.image.FilteredIconFactory;
 import org.apache.cayenne.util.Util;
@@ -234,31 +240,10 @@ public abstract class CayenneAction extends AbstractAction {
 
         public CayenneMenuItem(String title, Icon icon) {
             super(title, icon);
-            updateActiveIcon();
         }
 
         public CayenneMenuItem(AbstractAction action) {
             super(action);
-            updateActiveIcon();
-        }
-
-        protected void updateActiveIcon() {
-            final Icon icon = getIcon();
-            final Icon selectedIcon = FilteredIconFactory.createIcon(icon, FilteredIconFactory.FilterType.WHITE);
-            // this wouldn't work on MacOS, as it uses native menu
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if(isEnabled()) {
-                        setIcon(selectedIcon);
-                    }
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    setIcon(icon);
-                }
-            });
         }
     }
 
@@ -321,5 +306,43 @@ public abstract class CayenneAction extends AbstractAction {
                 super.setToolTipText(text);
             }
         }
+    }
+    
+    protected static EditorView editor() {
+        return ((CayenneModelerFrame) Application
+                .getInstance()
+                .getFrameController()
+                .getView()).getView();
+    }
+    
+    /**
+     * Builds a tree path for a given entity. Urgent for later selection.
+     * 
+     * @param entity to build path for
+     * @return tree path
+     */
+    protected static TreePath buildTreePath(Entity entity) {
+        DataChannelDescriptor domain = (DataChannelDescriptor) Application
+                .getInstance()
+                .getProject()
+                .getRootNode();
+        
+        Object[] path = new Object[] {domain, entity.getDataMap(), entity};
+
+        Object[] mutableTreeNodes = new Object[path.length];
+        mutableTreeNodes[0] = ((ProjectTreeModel) editor().getProjectTreeView().getModel())
+                .getRootNode();
+
+        Object[] helper;
+        for (int i = 1; i < path.length; i++) {
+            helper = new Object[i];
+            for (int j = 0; j < i;) {
+                helper[j] = path[++j];
+            }
+            mutableTreeNodes[i] = ((ProjectTreeModel) editor()
+                    .getProjectTreeView()
+                    .getModel()).getNodeForObjectPath(helper);
+        }
+        return new TreePath(mutableTreeNodes);
     }
 }

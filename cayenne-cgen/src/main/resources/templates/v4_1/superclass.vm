@@ -41,7 +41,12 @@ ${importUtils.addType("${basePackageName}.${baseClassName}")}##
 ${importUtils.addType("java.io.IOException")}##
 ${importUtils.addType("java.io.ObjectInputStream")}##
 ${importUtils.addType("java.io.ObjectOutputStream")}##
-#if((${object.DeclaredAttributes} && !${object.DeclaredAttributes.isEmpty()}) || (${object.DeclaredRelationships} && !${object.DeclaredRelationships.isEmpty()}))
+#if( $createPKProperties )
+${importUtils.addType("org.apache.cayenne.exp.ExpressionFactory")}##
+#end
+#if((${object.DeclaredAttributes} && !${object.DeclaredAttributes.isEmpty()}) ||
+        (${object.DeclaredRelationships} && !${object.DeclaredRelationships.isEmpty()}) ||
+        $createPKProperties)
 ${importUtils.addType('org.apache.cayenne.exp.Property')}##
 #end
 #foreach( $attr in ${object.DeclaredAttributes} )
@@ -77,18 +82,29 @@ public abstract class ${superClassName} extends ${baseClassName} {
 #end
 
 #end
+###########################
+## Create PK properties  ##
+###########################
 #if( $object.DbEntity )
-#foreach( $idAttr in ${object.DbEntity.PrimaryKeys} )
+    #foreach( $idAttr in ${object.DbEntity.PrimaryKeys} )
+        #if( $createPKProperties && !${entityUtils.declaresDbAttribute($idAttr)})
+            #set ( $type = "$importUtils.dbAttributeToJavaType($idAttr)")
+    public static final Property<$type> ${stringUtils.capitalizedAsConstant($idAttr.Name)}_PK_PROPERTY = Property.create(ExpressionFactory.dbPathExp("${idAttr.Name}"), ${type}.class);
+        #end
     public static final String ${stringUtils.capitalizedAsConstant($idAttr.Name)}_PK_COLUMN = "${idAttr.Name}";
-#end
+    #end
 #end
 
 #######################
 ## Create Properties ##
 #######################
 #foreach( $attr in ${object.DeclaredAttributes} )
-    #set ( $type = "$importUtils.formatJavaType(${attr.Type}, false)")
-    public static final Property<$type> ${stringUtils.capitalizedAsConstant($attr.Name)} = Property.create("${attr.Name}", ${stringUtils.stripGeneric($type)}.class);
+    #set ( $type = "$importUtils.formatJavaType(${attr.Type}, false)" )
+    #set ( $propName = $stringUtils.capitalizedAsConstant($attr.Name) )
+    #if ( $propName.equals($attr.name) )
+        #set ( $propName = $propName + "_")
+    #end
+    public static final Property<$type> $propName = Property.create("${attr.Name}", ${stringUtils.stripGeneric($type)}.class);
 #end
 #foreach( $rel in ${object.DeclaredRelationships} )
 #if( $rel.ToMany )
@@ -109,7 +125,8 @@ public abstract class ${superClassName} extends ${baseClassName} {
 ## Create Fields ##
 ###################
 #foreach( $attr in ${object.DeclaredAttributes} )
-#set ( $type = "$importUtils.formatJavaType(${attr.Type})")
+#set ( $flag = $importUtils.canUsePrimitive($attr) )
+#set ( $type = "$importUtils.formatJavaType(${attr.Type}, $flag)" )
     protected $type $stringUtils.formatVariableName(${attr.Name});
 #end
 
@@ -122,10 +139,12 @@ public abstract class ${superClassName} extends ${baseClassName} {
 #########################################################
 #foreach( $attr in ${object.DeclaredAttributes} )
 #set ( $name = "$stringUtils.formatVariableName(${attr.Name})")
+#set ( $type = "$importUtils.formatJavaType(${attr.Type})")
 ##
 ## setter
+##
 #if ("true" != "${object.isReadOnly()}")
-    public void set${stringUtils.capitalized($attr.Name)}($importUtils.formatJavaType(${attr.Type}) $name) {
+    public void set${stringUtils.capitalized($attr.Name)}($type $name) {
         beforePropertyWrite("${attr.Name}", this.$name, $name);
         this.$name = $name;
     }
@@ -133,16 +152,26 @@ public abstract class ${superClassName} extends ${baseClassName} {
 #end
 ##
 ## getter
+##
 #if ( $importUtils.isBoolean(${attr.Type}) )
 	public boolean is${stringUtils.capitalized($attr.Name)}() {
 #else
-    public $importUtils.formatJavaType(${attr.Type}) get${stringUtils.capitalized($attr.Name)}() {
+    public $type get${stringUtils.capitalized($attr.Name)}() {
 #end
         beforePropertyRead("${attr.Name}");
-        return this.$stringUtils.formatVariableName(${attr.Name});
+#if ($importUtils.isPrimitive($type) && !$attr.isMandatory())
+        if(this.$name == null) {
+#if ($importUtils.isBoolean($type))
+            return false;
+#else
+            return 0;
+#end
+        }
+#end
+        return this.$name;
     }
 
-#end
+#end## of foreach declared attribute
 ##
 ## Create list add/remove/get methods
 #foreach( $rel in ${object.DeclaredRelationships} )
@@ -220,13 +249,13 @@ public abstract class ${superClassName} extends ${baseClassName} {
 
         switch (propName) {
 #foreach( $attr in ${object.DeclaredAttributes} )
-#set ( $type = "$importUtils.formatJavaType(${attr.Type}, false)")
-#set ( $realType = "$importUtils.formatJavaType(${attr.Type})")
 #set ( $name = "$stringUtils.formatVariableName(${attr.Name})")
+#set ( $flag = $importUtils.canUsePrimitive($attr) )
+#set ( $type = "$importUtils.formatJavaType(${attr.Type}, $flag)")
             case "${attr.Name}":
-#if ( $importUtils.isBoolean($realType) )
+#if ( $importUtils.isBoolean($type) )
                 this.${name} = val == null ? false : ($type)val;
-#elseif ($importUtils.isPrimitive($realType))
+#elseif ($importUtils.isPrimitive($type))
                 this.${name} = val == null ? 0 : ($type)val;
 #else
                 this.${name} = ($type)val;
@@ -259,7 +288,8 @@ public abstract class ${superClassName} extends ${baseClassName} {
         super.writeState(out);
 #foreach( $attr in ${object.DeclaredAttributes} )
 #set ( $name = "$stringUtils.formatVariableName(${attr.Name})")
-#set ( $type = "$importUtils.formatJavaType(${attr.Type})")
+#set ( $flag = $importUtils.canUsePrimitive($attr) )
+#set ( $type = "$importUtils.formatJavaType(${attr.Type}, $flag)")
 #if($importUtils.isPrimitive($type))
         out.write${stringUtils.capitalized($type)}(this.$name);
 #else
@@ -276,7 +306,8 @@ public abstract class ${superClassName} extends ${baseClassName} {
         super.readState(in);
 #foreach( $attr in ${object.DeclaredAttributes} )
 #set ( $name = "$stringUtils.formatVariableName(${attr.Name})")
-#set ( $type = "$importUtils.formatJavaType(${attr.Type})")
+#set ( $flag = $importUtils.canUsePrimitive($attr) )
+#set ( $type = "$importUtils.formatJavaType(${attr.Type}, $flag)")
 #if($importUtils.isPrimitive($type))
         this.$name = in.read${stringUtils.capitalized($type)}();
 #else

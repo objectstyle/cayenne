@@ -34,12 +34,13 @@ import org.xml.sax.ContentHandler;
  */
 final class DataChannelChildrenHandler extends NamespaceAwareNestedTagHandler {
 
-    private static Logger logger = LoggerFactory.getLogger(XMLDataChannelDescriptorLoader.class);
+    private static final Logger logger = LoggerFactory.getLogger(XMLDataChannelDescriptorLoader.class);
 
     static final String OLD_MAP_TAG = "map";
     static final String NODE_TAG = "node";
     static final String PROPERTY_TAG = "property";
     static final String DATA_MAP_TAG = "data-map";
+    static final String DOMAIN_TAG = "domain";
 
 
     private XMLDataChannelDescriptorLoader xmlDataChannelDescriptorLoader;
@@ -66,6 +67,9 @@ final class DataChannelChildrenHandler extends NamespaceAwareNestedTagHandler {
 
             case NODE_TAG:
                 addNode(attributes);
+                return true;
+
+            case DOMAIN_TAG:
                 return true;
         }
 
@@ -108,7 +112,6 @@ final class DataChannelChildrenHandler extends NamespaceAwareNestedTagHandler {
         DataMap dataMap = xmlDataChannelDescriptorLoader.dataMapLoader.load(dataMapResource);
         dataMap.setName(dataMapName);
         dataMap.setLocation(dataMapLocation);
-        dataMap.setConfigurationSource(dataMapResource);
         dataMap.setDataChannelDescriptor(descriptor);
 
         descriptor.getDataMaps().add(dataMap);

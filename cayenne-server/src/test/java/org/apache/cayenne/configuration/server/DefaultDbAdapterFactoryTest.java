@@ -29,6 +29,9 @@ import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.dba.AutoAdapter;
 import org.apache.cayenne.dba.DbAdapter;
+import org.apache.cayenne.dba.JdbcAdapter;
+import org.apache.cayenne.dba.JdbcPkGenerator;
+import org.apache.cayenne.dba.PkGenerator;
 import org.apache.cayenne.dba.sybase.SybaseAdapter;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.ClassLoaderManager;
@@ -45,8 +48,6 @@ import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
 import org.junit.Test;
 
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,16 +61,12 @@ public class DefaultDbAdapterFactoryTest {
     @Test
     public void testCreatedAdapter_Auto() throws Exception {
 
-        final DbAdapter adapter = mock(DbAdapter.class);
+        final DbAdapter adapter = mock(JdbcAdapter.class);
         when(adapter.createTable(any(DbEntity.class))).thenReturn("XXXXX");
+        when(adapter.unwrap()).thenReturn(adapter);
 
-        List<DbAdapterDetector> detectors = new ArrayList<DbAdapterDetector>();
-        detectors.add(new DbAdapterDetector() {
-
-            public DbAdapter createAdapter(DatabaseMetaData md) throws SQLException {
-                return adapter;
-            }
-        });
+        List<DbAdapterDetector> detectors = new ArrayList<>();
+        detectors.add(md -> adapter);
 
         MockConnection connection = new MockConnection();
 
@@ -78,11 +75,15 @@ public class DefaultDbAdapterFactoryTest {
 
         Module testModule = binder -> {
             ServerModule.contributeProperties(binder);
+            ServerModule.contributePkGenerators(binder);
 
+            binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+            binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
             binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
             binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
             binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
             binder.bind(RuntimeProperties.class).to(DefaultRuntimeProperties.class);
+            binder.bind(BatchTranslatorFactory.class).toInstance(mock(BatchTranslatorFactory.class));
         };
 
         Injector injector = DIBootstrap.createInjector(testModule);
@@ -105,7 +106,10 @@ public class DefaultDbAdapterFactoryTest {
             ServerModule.contributeDefaultTypes(binder);
             ServerModule.contributeUserTypes(binder);
             ServerModule.contributeTypeFactories(binder);
+            ServerModule.contributePkGenerators(binder);
 
+            binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+            binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
             binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
             binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
             binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
@@ -135,14 +139,17 @@ public class DefaultDbAdapterFactoryTest {
         DataNodeDescriptor nodeDescriptor = new DataNodeDescriptor();
         nodeDescriptor.setAdapterType(SybaseAdapter.class.getName());
 
-        List<DbAdapterDetector> detectors = new ArrayList<DbAdapterDetector>();
+        List<DbAdapterDetector> detectors = new ArrayList<>();
 
         Module testModule = binder -> {
             ServerModule.contributeProperties(binder);
             ServerModule.contributeDefaultTypes(binder);
             ServerModule.contributeUserTypes(binder);
             ServerModule.contributeTypeFactories(binder);
+            ServerModule.contributePkGenerators(binder);
 
+            binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+            binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
             binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
             binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
             binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
@@ -168,16 +175,12 @@ public class DefaultDbAdapterFactoryTest {
     @Test
     public void testCreatedAdapter_AutoExplicit() throws Exception {
 
-        final DbAdapter adapter = mock(DbAdapter.class);
+        final DbAdapter adapter = mock(JdbcAdapter.class);
         when(adapter.createTable(any(DbEntity.class))).thenReturn("XXXXX");
+        when(adapter.unwrap()).thenReturn(adapter);
 
-        List<DbAdapterDetector> detectors = new ArrayList<DbAdapterDetector>();
-        detectors.add(new DbAdapterDetector() {
-
-            public DbAdapter createAdapter(DatabaseMetaData md) throws SQLException {
-                return adapter;
-            }
-        });
+        List<DbAdapterDetector> detectors = new ArrayList<>();
+        detectors.add(md -> adapter);
 
         MockConnection connection = new MockConnection();
 
@@ -186,11 +189,15 @@ public class DefaultDbAdapterFactoryTest {
 
         Module testModule = binder -> {
             ServerModule.contributeProperties(binder);
+            ServerModule.contributePkGenerators(binder);
 
+            binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+            binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
             binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
             binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
             binder.bind(AdhocObjectFactory.class).to(DefaultAdhocObjectFactory.class);
             binder.bind(RuntimeProperties.class).to(DefaultRuntimeProperties.class);
+            binder.bind(BatchTranslatorFactory.class).toInstance(mock(BatchTranslatorFactory.class));
         };
 
         Injector injector = DIBootstrap.createInjector(testModule);

@@ -22,7 +22,7 @@
     <parent>
         <artifactId>cayenne-parent</artifactId>
         <groupId>org.apache.cayenne</groupId>
-        <version>4.1.M2-SNAPSHOT</version>
+        <version>4.1.B3-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -121,6 +121,16 @@
                                 <artifact>
                                     <file>build/libs/${project.artifactId}-${project.version}.jar</file>
                                     <type>jar</type>
+                                </artifact>
+                                <artifact>
+                                    <file>build/libs/${project.artifactId}-${project.version}-sources.jar</file>
+                                    <type>jar</type>
+                                    <classifier>sources</classifier>
+                                </artifact>
+                                <artifact>
+                                    <file>build/libs/${project.artifactId}-${project.version}-javadoc.jar</file>
+                                    <type>jar</type>
+                                    <classifier>javadoc</classifier>
                                 </artifact>
                             </artifacts>
                         </configuration>

@@ -19,11 +19,11 @@
 package org.apache.cayenne.dbsync.reverse.filters;
 
 
-import org.apache.cayenne.util.Util;
-
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+
+import org.apache.cayenne.util.Util;
 
 /**
  * TableFilter contain at least one IncludeTable always.
@@ -35,16 +35,8 @@ public class TableFilter {
 
     /**
      * Includes can contain only one include table
-     *
-     * @param includes
-     * @param excludes
      */
     public TableFilter(SortedSet<IncludeTableFilter> includes, SortedSet<Pattern> excludes) {
-        if (includes.isEmpty()) {
-            throw new IllegalArgumentException("TableFilter should contain at least one IncludeTableFilter always " +
-                    "and it is builder responsibility. If you need table filter without includes, use EmptyTableFilter");
-        }
-
         this.includes = includes;
         this.excludes = excludes;
     }
@@ -56,11 +48,25 @@ public class TableFilter {
 
     /**
      * Return filter for columns in case we should take this table
-     *
-     * @param tableName
-     * @return
      */
     public PatternFilter getIncludeTableColumnFilter(String tableName) {
+        IncludeTableFilter include = getIncludeTableFilter(tableName);
+        if (include == null) return null;
+
+        return include.columnsFilter;
+    }
+
+    /**
+     * @since 4.1
+     */
+    public PatternFilter getIncludeTableRelationshipFilter(String tableName) {
+        IncludeTableFilter include = getIncludeTableFilter(tableName);
+        if (include == null) return null;
+
+        return include.relationshipFilter;
+    }
+
+    private IncludeTableFilter getIncludeTableFilter(String tableName) {
         IncludeTableFilter include = null;
         for (IncludeTableFilter p : includes) {
             if (p.pattern == null || p.pattern.matcher(tableName).matches()) {
@@ -80,22 +86,25 @@ public class TableFilter {
                 }
             }
         }
+        return include;
+    }
 
-        return include.columnsFilter;
+    public SortedSet<IncludeTableFilter> getIncludes() {
+        return includes;
     }
 
     public static TableFilter include(String tablePattern) {
-        TreeSet<IncludeTableFilter> includes = new TreeSet<IncludeTableFilter>();
+        TreeSet<IncludeTableFilter> includes = new TreeSet<>();
         includes.add(new IncludeTableFilter(tablePattern == null ? null : tablePattern.replaceAll("%", ".*")));
 
-        return new TableFilter(includes, new TreeSet<Pattern>());
+        return new TableFilter(includes, new TreeSet<>());
     }
 
     public static TableFilter everything() {
-        TreeSet<IncludeTableFilter> includes = new TreeSet<IncludeTableFilter>();
+        TreeSet<IncludeTableFilter> includes = new TreeSet<>();
         includes.add(new IncludeTableFilter(null));
 
-        return new TableFilter(includes, new TreeSet<Pattern>());
+        return new TableFilter(includes, new TreeSet<>());
     }
 
     protected StringBuilder toString(StringBuilder res, String prefix) {

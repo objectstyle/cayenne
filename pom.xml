@@ -24,7 +24,7 @@
 	<groupId>org.apache.cayenne</groupId>
 	<name>cayenne-parent: Top-level parent of Cayenne modules</name>
 
-	<version>4.1.M2-SNAPSHOT</version>
+	<version>4.1.B3-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<description>
@@ -39,11 +39,7 @@
 		<project.build.datetime>${maven.build.timestamp}</project.build.datetime>
         <jacoco.version>0.7.9</jacoco.version>
 		<slf4j.version>1.7.25</slf4j.version>
-		<ant.version>1.9.9</ant.version>
-
-        <pmd.skip>true</pmd.skip>
-        <checkstyle.skip>true</checkstyle.skip>
-        <findbugs.skip>true</findbugs.skip>
+		<ant.version>1.10.5</ant.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -63,7 +59,6 @@
 		<module>cayenne-dbsync</module>
 		<module>cayenne-di</module>
 		<module>cayenne-gradle-plugin</module>
-		<module>cayenne-java8</module>
 		<module>cayenne-jcache</module>
 		<module>cayenne-joda</module>
 		<module>cayenne-lifecycle</module>
@@ -72,14 +67,18 @@
 		<module>cayenne-protostuff</module>
 		<module>cayenne-server</module>
 		<module>cayenne-velocity</module>
-		<module>eventbridges</module>
-		<module>itests</module>
+		<module>cayenne-web</module>
+		<module>cayenne-osgi</module>
+		<module>cayenne-rop-server</module>
+		<module>cayenne-jgroups</module>
+		<module>cayenne-jms</module>
+		<module>cayenne-xmpp</module>
 		<module>maven-plugins</module>
 		<module>modeler</module>
 		<module>tutorials</module>
 		<module>docs</module>
 		<module>assembly</module>
-    </modules>
+	</modules>
 	<issueManagement>
 		<system>jira</system>
 		<url>https://issues.apache.org/jira/browse/CAY</url>
@@ -261,6 +260,22 @@
 			</roles>
 			<timezone>+3</timezone>
 		</developer>
+		<developer>
+			<name>Hugi Þórðarson</name>
+			<email>hugi@karlmenn.is</email>
+			<roles>
+				<role>Committer</role>
+			</roles>
+		</developer>
+		<developer>
+			<id>abulatski</id>
+			<name>Arseni Bulatski</name>
+			<email>abulatski@apache.org</email>
+			<organization>ObjectStyle</organization>
+			<roles>
+				<role>Committer</role>
+			</roles>
+		</developer>
 	</developers>
 	<licenses>
 		<license>
@@ -322,17 +337,12 @@
 			<dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-dbcp2</artifactId>
-                <version>2.1.1</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-pool2</artifactId>
-                <version>2.4.2</version>
+                <version>2.2.0</version>
             </dependency>
             <dependency>
                 <groupId>com.caucho</groupId>
                 <artifactId>hessian</artifactId>
-                <version>4.0.38</version>
+                <version>4.0.51</version>
                 <scope>provided</scope>
             </dependency>
 			<dependency>
@@ -361,12 +371,6 @@
 				<groupId>ognl</groupId>
 				<artifactId>ognl</artifactId>
 				<version>2.6.7</version>
-			</dependency>
-			<dependency>
-				<groupId>opensymphony</groupId>
-				<artifactId>oscache</artifactId>
-				<version>2.3.2</version>
-				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>javax.servlet</groupId>
@@ -398,8 +402,8 @@
 			</dependency>
 			<dependency>
 				<groupId>org.apache.velocity</groupId>
-				<artifactId>velocity</artifactId>
-				<version>1.7</version>
+				<artifactId>velocity-engine-core</artifactId>
+				<version>2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>foundrylogic.vpp</groupId>
@@ -425,7 +429,7 @@
 			<dependency>
 				<groupId>org.mockito</groupId>
 				<artifactId>mockito-core</artifactId>
-				<version>2.8.9</version>
+				<version>2.23.4</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
@@ -437,13 +441,13 @@
 			<dependency>
 				<groupId>org.hsqldb</groupId>
 				<artifactId>hsqldb</artifactId>
-				<version>2.3.5</version>
+				<version>2.3.6</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
             	<groupId>org.apache.derby</groupId>
             	<artifactId>derby</artifactId>
-            	<version>10.12.1.1</version>
+            	<version>10.14.2.0</version>
             	<scope>test</scope>
         	</dependency>
         	<dependency>
@@ -494,7 +498,7 @@
 		<repository>
 			<id>objectstyle</id>
 			<name>ObjectStyle Repository</name>
-			<url>http://maven.objectstyle.org/nexus/content/groups/cayenne-deps</url>
+			<url>https://maven.objectstyle.org/nexus/content/groups/cayenne-deps</url>
 			<layout>default</layout>
 			<snapshots>
 				<enabled>false</enabled>
@@ -503,12 +507,20 @@
 				<enabled>true</enabled>
 			</releases>
 		</repository>
+		<repository>
+			<id>apache.snapshots</id>
+			<name>Apache Snapshot Repository</name>
+			<url>https://repository.apache.org/snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+		</repository>
 	</repositories>
 	<pluginRepositories>
 		<pluginRepository>
 			<id>objectstyle</id>
 			<name>ObjectStyle repository</name>
-			<url>http://maven.objectstyle.org/nexus/content/groups/cayenne-deps</url>
+			<url>https://maven.objectstyle.org/nexus/content/groups/cayenne-deps</url>
 			<layout>default</layout>
 			<snapshots>
 				<enabled>false</enabled>
@@ -704,15 +716,15 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-plugin-plugin</artifactId>
-                    <version>3.5</version>
+                    <version>3.6.0</version>
                 </plugin>
 				<plugin>
 					<artifactId>maven-resources-plugin</artifactId>
-					<version>3.0.2</version>
+					<version>3.1.0</version>
 				</plugin>
 				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.6.1</version>
+					<version>3.8.0</version>
 					<configuration>
 						<source>1.8</source>
 						<target>1.8</target>
@@ -736,6 +748,10 @@
 					<version>3.8</version>
 				</plugin>
 				<plugin>
+					<artifactId>maven-checkstyle-plugin</artifactId>
+					<version>3.0.0</version>
+				</plugin>
+				<plugin>
 					<artifactId>maven-enforcer-plugin</artifactId>
 					<version>1.4.1</version>
 				</plugin>
@@ -754,11 +770,15 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-assembly-plugin</artifactId>
-					<version>2.2</version>
+					<version>3.1.0</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-antrun-plugin</artifactId>
+					<version>1.7</version>
 				</plugin>
 				<plugin>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>2.20</version>
+					<version>2.22.1</version>
 				</plugin>
 				<plugin>   
 					<groupId>org.apache.felix</groupId>
@@ -767,7 +787,7 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-surefire-report-plugin</artifactId>
-					<version>2.20</version>
+					<version>2.22.1</version>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
@@ -790,10 +810,12 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-javadoc-plugin</artifactId>
-					<version>2.10.4</version>
+					<version>3.0.1</version>
 					<configuration>
 						<!-- Java 8 is too strict about Javadoc omissions --> 
-						<additionalparam>${javadoc.doclint.none}</additionalparam>
+						<doclint>${javadoc.doclint}</doclint>
+						<additionalOptions>${javadoc.additionalOptions}</additionalOptions>
+						<source>1.8</source>
 					</configuration>
 				</plugin>
 				<plugin>
@@ -809,12 +831,12 @@
 				<plugin>
 					<groupId>org.objectstyle.japp</groupId>
 					<artifactId>japp-maven-plugin</artifactId>
-					<version>3.0</version>
+					<version>3.1</version>
 				</plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>2.20</version>
+                    <version>2.22.1</version>
                     <executions>
                         <execution>
                             <id>integration-test</id>
@@ -827,12 +849,12 @@
                 </plugin>
                 <plugin>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.0.2</version>
+                    <version>3.1.0</version>
                 </plugin>
                 <plugin>
                     <groupId>io.fabric8</groupId>
                     <artifactId>docker-maven-plugin</artifactId>
-                    <version>0.21.0</version>
+                    <version>0.29.0</version>
                 </plugin>
             </plugins>
 		</pluginManagement>
@@ -945,232 +967,227 @@
 		<repository>
 			<id>cayenne-unofficial</id>
 			<name>Cayenne Unofficial Releases @ ObjectStyle</name>
-			<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
+			<url>https://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
 		</repository>
 		<snapshotRepository>
 			<id>cayenne-unofficial-snapshots</id>
 			<name>Cayenne Unofficial Snapshots @ ObjectStyle</name>
-			<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial-snapshots/</url>
+			<url>https://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial-snapshots/</url>
 		</snapshotRepository>
 	</distributionManagement>
 	
 	<profiles>
-        <profile>
-            <id>code-quality</id>
+		<profile>
+			<id>code-quality</id>
 
-            <activation>
-                <property>
-                    <name>!fast-and-dirty</name>
-                </property>
-            </activation>
-            <build>
-                <pluginManagement>
-                    <plugins>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-checkstyle-plugin</artifactId>
-                            <version>2.17</version>
-                            <configuration>
-                                <skip>${checkstyle.skip}</skip>
-                                <consoleOutput>true</consoleOutput>
-                                <enableRulesSummary>false</enableRulesSummary>
-                                <failOnViolation>false</failOnViolation>
-                                <!-- TODO make it 'true' when we will be ready -->
-                                <violationSeverity>warning</violationSeverity>
-                                <configLocation>/cayenne-checkstyle.xml</configLocation>
-                            </configuration>
-                            <executions>
-                                <execution>
-                                    <phase>process-sources</phase>
-                                    <goals>
-                                        <goal>check</goal>
-                                    </goals>
-                                </execution>
-                            </executions>
-                            <dependencies>
-                                <dependency>
-                                    <groupId>org.apache.cayenne.build-tools</groupId>
-                                    <artifactId>cayenne-checkers</artifactId>
-                                    <version>${project.version}</version>
-                                </dependency>
-                            </dependencies>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-pmd-plugin</artifactId>
-                            <version>3.8</version>
-                            <configuration>
-                                <skip>${pmd.skip}</skip>
-                                <sourceEncoding>utf-8</sourceEncoding>
-                                <targetJdk>1.7</targetJdk>
-                                <verbose>true</verbose>
-                                <failOnViolation>false</failOnViolation>
-                                <!-- TODO make it 'true' when we will be ready -->
-                                <failurePriority>2</failurePriority>
-                                <rulesets>
-                                    <!-- go back on one dir to parent project -->
-                                    <ruleset>/cayenne-pmd.xml</ruleset>
-                                </rulesets>
-                            </configuration>
-                            <executions>
-                                <execution>
-                                    <phase>process-sources</phase>
-                                    <goals>
-                                        <goal>check</goal>
-                                    </goals>
-                                </execution>
-                            </executions>
-                            <dependencies>
-                                <dependency>
-                                    <groupId>org.apache.cayenne.build-tools</groupId>
-                                    <artifactId>cayenne-checkers</artifactId>
-                                    <version>${project.version}</version>
-                                </dependency>
-                            </dependencies>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.codehaus.mojo</groupId>
-                            <artifactId>findbugs-maven-plugin</artifactId>
-                            <version>3.0.4</version>
-                            <configuration>
-                                <effort>Max</effort>
-                                <!-- do max effort at CI Server -->
-                                <threshold>Low</threshold>
-                                <!-- make it 'low' at CI Server -->
-                            </configuration>
-                            <executions>
-                                <execution>
-                                    <phase>process-classes</phase>
-                                    <goals>
-                                        <goal>check</goal>
-                                    </goals>
-                                </execution>
-                            </executions>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.codehaus.mojo</groupId>
-                            <artifactId>clirr-maven-plugin</artifactId>
-                            <version>2.8</version>
-                            <configuration>
-                                <comparisonVersion>3.1RC1</comparisonVersion>
-                                <minSeverity>info</minSeverity>
-                                <logResults>true</logResults>
-                            </configuration>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.codehaus.mojo</groupId>
-                            <artifactId>jdepend-maven-plugin</artifactId>
-                            <version>2.0</version>
-                        </plugin>
-                    </plugins>
-                </pluginManagement>
-            </build>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-checkstyle-plugin</artifactId>
+						<configuration>
+							<skip>false</skip>
+							<consoleOutput>false</consoleOutput>
+							<enableRulesSummary>false</enableRulesSummary>
+							<failOnViolation>false</failOnViolation>
+							<!-- TODO make it 'true' when we will be ready -->
+							<violationSeverity>warning</violationSeverity>
+							<configLocation>build-tools/cayenne-checkers/src/main/resources/cayenne-checkstyle.xml</configLocation>
+							<suppressionsLocation>build-tools/cayenne-checkers/src/main/resources/cayenne-checkstyle-suppression.xml</suppressionsLocation>
+						</configuration>
+						<executions>
+							<execution>
+								<phase>process-sources</phase>
+								<goals>
+									<goal>check</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<configuration>
+							<skip>false</skip>
+							<sourceEncoding>utf-8</sourceEncoding>
+							<targetJdk>1.8</targetJdk>
+							<verbose>true</verbose>
+							<failOnViolation>false</failOnViolation>
+							<!-- TODO make it 'true' when we will be ready -->
+							<failurePriority>2</failurePriority>
+							<rulesets>
+								<!-- go back on one dir to parent project -->
+								<ruleset>/cayenne-pmd.xml</ruleset>
+							</rulesets>
+							<excludes>
+								<exclude>**/ParseException.java</exclude>
+								<exclude>**/Token.java</exclude>
+								<exclude>**/TokenMgrError.java</exclude>
+								<exclude>**/ParseException.java</exclude>
+								<exclude>**/Parser.java.java</exclude>
+								<exclude>**/ParserConstants.java</exclude>
+								<exclude>**/ParserTokenManager.java</exclude>
+								<exclude>**/SimpleCharStream.java</exclude>
+								<exclude>**/TokenMgrError.java</exclude>
+								<exclude>org/apache/cayenne/ejbql/parser/*</exclude>
+								<exclude>org/apache/cayenne/exp/parser/*</exclude>
+								<exclude>org/apache/cayenne/template/parser/*</exclude>
+							</excludes>
+						</configuration>
+						<executions>
+							<execution>
+								<phase>process-sources</phase>
+								<goals>
+									<goal>check</goal>
+								</goals>
+							</execution>
+						</executions>
+						<dependencies>
+							<dependency>
+								<groupId>org.apache.cayenne.build-tools</groupId>
+								<artifactId>cayenne-checkers</artifactId>
+								<version>${project.version}</version>
+							</dependency>
+						</dependencies>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>clirr-maven-plugin</artifactId>
+						<version>2.8</version>
+						<configuration>
+							<comparisonVersion>3.1RC1</comparisonVersion>
+							<minSeverity>info</minSeverity>
+							<logResults>true</logResults>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>jdepend-maven-plugin</artifactId>
+						<version>2.0</version>
+					</plugin>
+				</plugins>
+			</build>
 
-            <reporting>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-checkstyle-plugin</artifactId>
-                        <inherited>true</inherited>
-                    </plugin>
-                    <plugin>
-                        <artifactId>maven-pmd-plugin</artifactId>
-                        <inherited>true</inherited>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>findbugs-maven-plugin</artifactId>
-                        <configuration>
-                            <effort>Max</effort>
-                            <threshold>Low</threshold>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>jdepend-maven-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>clirr-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </reporting>
-        </profile>
-        <profile>
-            <id>tests-development</id>
-            <activation>
-                <property>
-                    <name>tests-development</name>
-                </property>
-            </activation>
+			<reporting>
+				<plugins>
+					<plugin>
+						<artifactId>maven-checkstyle-plugin</artifactId>
+						<inherited>true</inherited>
+					</plugin>
+					<plugin>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<inherited>true</inherited>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>findbugs-maven-plugin</artifactId>
+						<configuration>
+							<effort>Max</effort>
+							<threshold>Low</threshold>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>jdepend-maven-plugin</artifactId>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>clirr-maven-plugin</artifactId>
+					</plugin>
+				</plugins>
+			</reporting>
+		</profile>
 
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <argLine>
-                                -DcayenneTestConnection=${cayenneTestConnection} -Djava.net.preferIPv4Stack=true -Dcayenne.runtime.db.collation.assume.ci=${collationCi} ${surefireArgLine}
-                            </argLine>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-report-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>report-only</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jacoco</groupId>
-                        <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>${jacoco.version}</version>
-                        <executions>
-                            <!--
-                                Prepares the property pointing to the JaCoCo runtime agent which
-                                is passed as VM argument when Maven the Surefire plugin is executed.
-                            -->
-                            <execution>
-                                <id>pre-unit-test</id>
-                                <goals>
-                                    <goal>prepare-agent</goal>
-                                </goals>
-                                <configuration>
-                                    <!-- Sets the path to the file which contains the execution data. -->
-                                    <destFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
-                                    <!--
-                                        Sets the name of the property containing the settings
-                                        for JaCoCo runtime agent.
-                                    -->
-                                    <propertyName>surefireArgLine</propertyName>
-                                </configuration>
-                            </execution>
-                            <!--
-                                Ensures that the code coverage report for unit tests is created after
-                                unit tests have been run.
-                            -->
-                            <execution>
-                                <id>post-unit-test</id>
-                                <phase>test</phase>
-                                <goals>
-                                    <goal>report</goal>
-                                </goals>
-                                <configuration>
-                                    <!-- Sets the path to the file which contains the execution data. -->
-                                    <dataFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</dataFile>
-                                    <!-- Sets the output directory for the code coverage report. -->
-                                    <outputDirectory>${project.reporting.outputDirectory}/jacoco-ut</outputDirectory>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
+
+		<profile>
+			<id>code-coverage</id>
+			<properties>
+				<jacoco.it.execution.data.file>${project.build.directory}/coverage-reports/jacoco-it.exec</jacoco.it.execution.data.file>
+				<jacoco.ut.execution.data.file>${project.build.directory}/coverage-reports/jacoco-ut.exec</jacoco.ut.execution.data.file>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<version>0.8.0</version>
+						<executions>
+							<execution>
+								<id>pre-unit-test</id>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+								<configuration>
+									<destFile>${jacoco.ut.execution.data.file}</destFile>
+									<propertyName>surefireArgLine</propertyName>
+								</configuration>
+							</execution>
+							<execution>
+								<id>post-unit-test</id>
+								<phase>test</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+								<configuration>
+									<dataFile>${jacoco.ut.execution.data.file}</dataFile>
+									<outputDirectory>${project.reporting.outputDirectory}/jacoco-ut</outputDirectory>
+								</configuration>
+							</execution>
+
+							<execution>
+								<id>pre-integration-test</id>
+								<phase>pre-integration-test</phase>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+								<configuration>
+									<destFile>${jacoco.it.execution.data.file}</destFile>
+									<propertyName>failsafeArgLine</propertyName>
+								</configuration>
+							</execution>
+
+							<execution>
+								<id>post-integration-test</id>
+								<phase>post-integration-test</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+								<configuration>
+									<dataFile>${jacoco.it.execution.data.file}</dataFile>
+									<outputDirectory>${project.reporting.outputDirectory}/jacoco-it</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<configuration>
+							<argLine>${surefireArgLine}</argLine>
+						</configuration>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>integration-tests</id>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+								<configuration>
+									<argLine>${failsafeArgLine}</argLine>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
 
 		<!-- Optional profile used to sign artifacts -->
 		<profile>
@@ -1241,8 +1258,8 @@
 			<dependencies>
 				<dependency>
 					<groupId>org.firebirdsql.jdbc</groupId>
-					<artifactId>jaybird-jdk17</artifactId>
-					<version>2.2.12</version>
+					<artifactId>jaybird-jdk18</artifactId>
+					<version>3.0.3</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
@@ -1343,7 +1360,7 @@
 								<cayenneAdapter>org.apache.cayenne.dba.mysql.MySQLAdapter</cayenneAdapter>
 								<cayenneJdbcUsername>root</cayenneJdbcUsername>
 								<cayenneJdbcPassword />
-								<cayenneJdbcUrl>jdbc:mysql://${db.host}:${db.port}/cayenne?useUnicode=true&amp;characterEncoding=UTF-8&amp;generateSimpleParameterMetadata=true</cayenneJdbcUrl>
+								<cayenneJdbcUrl>jdbc:mysql://${db.host}:${db.port}/cayenne?useUnicode=true&amp;characterEncoding=UTF-8&amp;generateSimpleParameterMetadata=true&amp;useSSL=false</cayenneJdbcUrl>
 								<cayenneJdbcDriver>com.mysql.jdbc.Driver</cayenneJdbcDriver>
 							</systemPropertyVariables>
 						</configuration>
@@ -1356,6 +1373,70 @@
 								<image>
 									<alias>db</alias>
 									<name>mysql:5.7</name>
+									<run>
+										<ports>
+											<port>${db.host}:${db.port}:3306</port>
+										</ports>
+										<wait>
+											<log>MySQL init process done. Ready for start up.</log>
+											<time>60000</time>
+										</wait>
+										<env>
+											<MYSQL_ALLOW_EMPTY_PASSWORD>yes</MYSQL_ALLOW_EMPTY_PASSWORD>
+											<MYSQL_DATABASE>cayenne</MYSQL_DATABASE>
+										</env>
+										<cmd>
+											--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+										</cmd>
+									</run>
+								</image>
+							</images>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>mariadb-docker</id>
+			<activation>
+				<property>
+					<name>cayenneTestConnection</name>
+					<value>mariadb-docker</value>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>mysql</groupId>
+					<artifactId>mysql-connector-java</artifactId>
+					<version>5.1.42</version>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+							<systemPropertyVariables>
+								<!-- See https://hub.docker.com/_/mariadb/ for details-->
+								<!-- ${db.host} and ${db.port} are dynamically set by docker-maven-plugin below -->
+								<cayenneAdapter>org.apache.cayenne.dba.mysql.MySQLAdapter</cayenneAdapter>
+								<cayenneJdbcUsername>root</cayenneJdbcUsername>
+								<cayenneJdbcPassword />
+								<cayenneJdbcUrl>jdbc:mysql://${db.host}:${db.port}/cayenne?useUnicode=true&amp;characterEncoding=UTF-8&amp;generateSimpleParameterMetadata=true&amp;useSSL=false</cayenneJdbcUrl>
+								<cayenneJdbcDriver>com.mysql.jdbc.Driver</cayenneJdbcDriver>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>io.fabric8</groupId>
+						<artifactId>docker-maven-plugin</artifactId>
+						<configuration>
+							<images>
+								<image>
+									<alias>db</alias>
+									<name>mariadb:10.4</name>
 									<run>
 										<ports>
 											<port>${db.host}:${db.port}:3306</port>
@@ -1497,10 +1578,73 @@
 				<dependency>
 					<groupId>com.microsoft.sqlserver</groupId>
 					<artifactId>mssql-jdbc</artifactId>
-					<version>6.1.0.jre7</version>
+					<version>7.0.0.jre8</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
+		</profile>
+		<profile>
+			<id>sqlserver-docker</id>
+			<activation>
+				<property>
+					<name>cayenneTestConnection</name>
+					<value>sqlserver-docker</value>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>com.microsoft.sqlserver</groupId>
+					<artifactId>mssql-jdbc</artifactId>
+					<version>7.0.0.jre8</version>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+							<systemPropertyVariables>
+								<!-- ${db.host} and ${db.port} are dynamically set by docker-maven-plugin below -->
+								<cayenneAdapter>org.apache.cayenne.dba.sqlserver.SQLServerAdapter</cayenneAdapter>
+								<cayenneJdbcUsername>sa</cayenneJdbcUsername>
+								<cayenneJdbcPassword>Cayenne#123</cayenneJdbcPassword>
+								<cayenneJdbcUrl>jdbc:sqlserver://${sqlserver.host}:${sqlserver.port};</cayenneJdbcUrl>
+								<cayenneJdbcDriver>com.microsoft.sqlserver.jdbc.SQLServerDriver</cayenneJdbcDriver>
+								<cayenne.runtime.db.collation.assume.ci>true</cayenne.runtime.db.collation.assume.ci>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>io.fabric8</groupId>
+						<artifactId>docker-maven-plugin</artifactId>
+						<configuration>
+							<verbose>true</verbose>
+							<images>
+								<image>
+									<alias>sqlserver</alias>
+									<name>microsoft/mssql-server-linux:2017-latest</name>
+									<run>
+										<ports>
+											<port>${sqlserver.host}:${sqlserver.port}:1433</port>
+										</ports>
+										<env>
+											<ACCEPT_EULA>Y</ACCEPT_EULA>
+											<SA_PASSWORD>Cayenne#123</SA_PASSWORD>
+										</env>
+										<wait>
+											<log>SQL Server is now ready for client connections.</log>
+											<time>60000</time>
+										</wait>
+										<cmd>/opt/mssql/bin/sqlservr</cmd>
+									</run>
+								</image>
+							</images>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 		<profile>
 			<id>ingres</id>
@@ -1548,7 +1692,7 @@
 				<dependency>
 					<groupId>org.xerial</groupId>
 					<artifactId>sqlite-jdbc</artifactId>
-					<version>3.18.0</version>
+					<version>3.25.2</version>
 				</dependency>
 			</dependencies>
 		</profile>
@@ -1575,7 +1719,17 @@
 				<jdk>[1.8,)</jdk>
 			</activation>
 			<properties>
-				<javadoc.doclint.none>-Xdoclint:none</javadoc.doclint.none>
+				<javadoc.doclint>none</javadoc.doclint>
+				<javadoc.additionalOptions />
+			</properties>
+		</profile>
+		<profile>
+			<id>java9-javadoc-html5</id>
+			<activation>
+				<jdk>[9,)</jdk>
+			</activation>
+			<properties>
+				<javadoc.additionalOptions>-html5</javadoc.additionalOptions>
 			</properties>
 		</profile>
 	</profiles>

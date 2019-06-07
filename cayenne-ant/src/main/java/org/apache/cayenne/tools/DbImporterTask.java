@@ -24,11 +24,12 @@ import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
 import org.apache.cayenne.dbsync.reverse.configuration.ToolsModule;
 import org.apache.cayenne.dbsync.reverse.dbimport.Catalog;
 import org.apache.cayenne.dbsync.reverse.dbimport.DbImportAction;
-import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfigurationValidator;
 import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfiguration;
+import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfigurationValidator;
 import org.apache.cayenne.dbsync.reverse.dbimport.DbImportModule;
 import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeColumn;
 import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeProcedure;
+import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeRelationship;
 import org.apache.cayenne.dbsync.reverse.dbimport.ExcludeTable;
 import org.apache.cayenne.dbsync.reverse.dbimport.IncludeColumn;
 import org.apache.cayenne.dbsync.reverse.dbimport.IncludeProcedure;
@@ -77,6 +78,13 @@ public class DbImporterTask extends Task {
         reverseEngineering.addExcludeTable(excludeTable);
     }
 
+    /**
+     * @since 4.1
+     */
+    public void addExcludeRelationship(ExcludeRelationship excludeRelationship){
+        reverseEngineering.addExcludeRelationship(excludeRelationship);
+    }
+
     public void addIncludeProcedure(IncludeProcedure includeProcedure) {
         reverseEngineering.addIncludeProcedure(includeProcedure);
     }
@@ -107,6 +115,9 @@ public class DbImporterTask extends Task {
 
     @Override
     public void execute() {
+        if (reverseEngineering.getCatalogs().size() == 0 && reverseEngineering.isEmptyContainer()) {
+            config.setUseDataMapReverseEngineering(true);
+        }
         config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
         validateAttributes();
 
@@ -216,6 +227,9 @@ public class DbImporterTask extends Task {
         config.setUsePrimitives(flag);
     }
 
+    /**
+     * @since 4.0
+     */
     public void setUseJava7Types(boolean flag) {
         config.setUseJava7Types(flag);
     }
@@ -238,6 +252,20 @@ public class DbImporterTask extends Task {
 
     public void setMap(File map) {
         config.setTargetDataMap(map);
+    }
+
+    /**
+     * @since 4.1
+     */
+    public File getCayenneProject() {
+        return config.getCayenneProject();
+    }
+
+    /**
+     * @since 4.1
+     */
+    public void setCayenneProject(File cayenneProject) {
+        config.setCayenneProject(cayenneProject);
     }
 
     public DbImportConfiguration toParameters() {

@@ -19,23 +19,30 @@
 
 package org.apache.cayenne.dbsync.reverse.configuration;
 
+import java.util.Objects;
+
 import org.apache.cayenne.access.translator.batch.BatchTranslatorFactory;
 import org.apache.cayenne.access.translator.batch.DefaultBatchTranslatorFactory;
 import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
 import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.configuration.Constants;
+import org.apache.cayenne.configuration.DataChannelDescriptorLoader;
 import org.apache.cayenne.configuration.DataMapLoader;
 import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.DbAdapterFactory;
 import org.apache.cayenne.configuration.server.DefaultDbAdapterFactory;
+import org.apache.cayenne.configuration.server.PkGeneratorFactoryProvider;
 import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.configuration.xml.DataChannelMetaData;
 import org.apache.cayenne.configuration.xml.DefaultDataChannelMetaData;
 import org.apache.cayenne.configuration.xml.HandlerFactory;
+import org.apache.cayenne.configuration.xml.XMLDataChannelDescriptorLoader;
 import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
 import org.apache.cayenne.configuration.xml.XMLReaderProvider;
+import org.apache.cayenne.dba.JdbcPkGenerator;
+import org.apache.cayenne.dba.PkGenerator;
 import org.apache.cayenne.dba.db2.DB2Sniffer;
 import org.apache.cayenne.dba.derby.DerbySniffer;
 import org.apache.cayenne.dba.firebird.FirebirdSniffer;
@@ -43,6 +50,7 @@ import org.apache.cayenne.dba.frontbase.FrontBaseSniffer;
 import org.apache.cayenne.dba.h2.H2Sniffer;
 import org.apache.cayenne.dba.hsqldb.HSQLDBSniffer;
 import org.apache.cayenne.dba.ingres.IngresSniffer;
+import org.apache.cayenne.dba.mariadb.MariaDBSniffer;
 import org.apache.cayenne.dba.mysql.MySQLSniffer;
 import org.apache.cayenne.dba.openbase.OpenBaseSniffer;
 import org.apache.cayenne.dba.oracle.OracleSniffer;
@@ -57,8 +65,8 @@ import org.apache.cayenne.di.Key;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
-import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.log.JdbcEventLogger;
+import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.project.ProjectModule;
 import org.apache.cayenne.project.extension.ExtensionAwareHandlerFactory;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
@@ -77,12 +85,7 @@ public class ToolsModule implements Module {
     private Logger logger;
 
     public ToolsModule(Logger logger) {
-
-        if (logger == null) {
-            throw new NullPointerException("Null logger");
-        }
-
-        this.logger = logger;
+        this.logger = Objects.requireNonNull(logger);
     }
 
     public void configure(Binder binder) {
@@ -111,12 +114,17 @@ public class ToolsModule implements Module {
                 .add(FrontBaseSniffer.class).add(IngresSniffer.class).add(SQLiteSniffer.class).add(DB2Sniffer.class)
                 .add(H2Sniffer.class).add(HSQLDBSniffer.class).add(SybaseSniffer.class).add(DerbySniffer.class)
                 .add(SQLServerSniffer.class).add(OracleSniffer.class).add(PostgresSniffer.class)
-                .add(MySQLSniffer.class);
+                .add(MySQLSniffer.class).add(MariaDBSniffer.class);
+
+        binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
+        binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+        ServerModule.contributePkGenerators(binder);
 
         binder.bind(DbAdapterFactory.class).to(DefaultDbAdapterFactory.class);
         binder.bind(DataSourceFactory.class).to(DriverDataSourceFactory.class);
 
         binder.bind(DataMapLoader.class).to(XMLDataMapLoader.class);
+        binder.bind(DataChannelDescriptorLoader.class).to(XMLDataChannelDescriptorLoader.class);
         binder.bind(HandlerFactory.class).to(ExtensionAwareHandlerFactory.class);
         binder.bind(DataChannelMetaData.class).to(DefaultDataChannelMetaData.class);
         binder.bind(XMLReader.class).toProviderInstance(new XMLReaderProvider(true)).withoutScope();

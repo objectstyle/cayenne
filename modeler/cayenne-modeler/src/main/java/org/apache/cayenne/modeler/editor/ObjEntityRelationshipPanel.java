@@ -31,6 +31,7 @@ import org.apache.cayenne.modeler.ProjectController;
 import org.apache.cayenne.modeler.action.ActionManager;
 import org.apache.cayenne.modeler.action.CopyAttributeRelationshipAction;
 import org.apache.cayenne.modeler.action.CutAttributeRelationshipAction;
+import org.apache.cayenne.modeler.action.ObjEntityToSuperEntityAction;
 import org.apache.cayenne.modeler.action.PasteAction;
 import org.apache.cayenne.modeler.action.RemoveAttributeRelationshipAction;
 import org.apache.cayenne.modeler.dialog.objentity.ObjRelationshipInfo;
@@ -41,17 +42,18 @@ import org.apache.cayenne.modeler.pref.TableColumnPreferences;
 import org.apache.cayenne.modeler.util.CayenneAction;
 import org.apache.cayenne.modeler.util.CayenneTable;
 import org.apache.cayenne.modeler.util.CellRenderers;
+import org.apache.cayenne.modeler.util.Comparators;
 import org.apache.cayenne.modeler.util.DbRelationshipPathComboBoxEditor;
 import org.apache.cayenne.modeler.util.ModelerUtil;
 import org.apache.cayenne.modeler.util.PanelFactory;
 import org.apache.cayenne.modeler.util.UIUtil;
-import org.apache.cayenne.swing.components.image.FilteredIconFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
 import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -63,17 +65,17 @@ import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Font;
-import java.awt.event.ActionEvent;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionListener;
-import java.util.Collection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 
 /**
@@ -83,6 +85,8 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
         ObjEntityListener, ObjRelationshipListener {
 
     private static Logger logObj = LoggerFactory.getLogger(ObjEntityRelationshipPanel.class);
+
+    private static final ImageIcon INHERITANCE_ICON = ModelerUtil.buildIcon("icon-inheritance.png");
 
     private static final Object[] DELETE_RULES = new Object[]{
             DeleteRule.deleteRuleName(DeleteRule.NO_ACTION),
@@ -132,6 +136,24 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
                 ObjRelationshipTableModel.class,
                 "objEntity/relationshipTable");
 
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                ObjRelationshipTableModel tableModel = ((ObjRelationshipTableModel) table.getModel());
+                ObjRelationship relationship = tableModel.getRelationship(row);
+                int columnFromModel = table.getColumnModel().getColumn(col).getModelIndex();
+                if (row >= 0 && columnFromModel == ObjRelationshipTableModel.REL_NAME) {
+                    if(relationship.getSourceEntity() != tableModel.getEntity()) {
+                        TableCellRenderer renderer = table.getCellRenderer(row, col);
+                        Rectangle rectangle = table.getCellRect(row, col, false);
+                        ((StringRenderer) renderer).mouseClicked(e, rectangle.x);
+                    }
+                }
+            }
+        });
+
         // Create and install a popup
         Icon ico = ModelerUtil.buildIcon("icon-edit.png");
         resolveMenu = new CayenneAction.CayenneMenuItem("Database Mapping", ico);
@@ -154,29 +176,22 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
         mediator.addObjEntityListener(this);
         mediator.addObjRelationshipListener(this);
 
-        resolver = new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                int row = table.getSelectedRow();
-                if (row < 0) {
-                    return;
-                }
-
-                ObjRelationshipTableModel model = (ObjRelationshipTableModel) table
-                        .getModel();
-                new ObjRelationshipInfo(mediator, model.getRelationship(row)).startupAction();
-
-                /**
-                 * This is required for a table to be updated properly
-                 */
-                table.cancelEditing();
-
-                // need to refresh selected row... do this by unselecting/selecting the
-                // row
-                table.getSelectionModel().clearSelection();
-                table.select(row);
-                enabledResolve = false;
+        resolver = e -> {
+            int row = table.getSelectedRow();
+            if (row < 0) {
+                return;
             }
+
+            ObjRelationshipTableModel model = (ObjRelationshipTableModel) table.getModel();
+            new ObjRelationshipInfo(mediator, model.getRelationship(row)).startupAction();
+
+            // This is required for a table to be updated properly
+            table.cancelEditing();
+
+            // need to refresh selected row... do this by unselecting/selecting the row
+            table.getSelectionModel().clearSelection();
+            table.select(row);
+            enabledResolve = false;
         };
         resolveMenu.addActionListener(resolver);
 
@@ -204,6 +219,8 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
         }
 
         table.select(newSel);
+        parentPanel.getResolve().removeActionListener(getResolver());
+        parentPanel.getResolve().addActionListener(getResolver());
     }
 
     /**
@@ -253,8 +270,9 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
             return new Object[0];
         }
 
-        Collection objEntities = map.getNamespace().getObjEntities();
-        return objEntities.toArray();
+        return map.getNamespace().getObjEntities().stream()
+                .sorted(Comparators.getDataMapChildrenComparator())
+                .toArray();
     }
 
     public void objEntityChanged(EntityEvent e) {
@@ -279,7 +297,7 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
 
     public void objRelationshipRemoved(RelationshipEvent e) {
         ObjRelationshipTableModel model = (ObjRelationshipTableModel) table.getModel();
-        int ind = model.getObjectList().indexOf((ObjRelationship)e.getRelationship());
+        int ind = model.getObjectList().indexOf(e.getRelationship());
         model.removeRow((ObjRelationship) e.getRelationship());
         table.select(ind);
     }
@@ -316,14 +334,11 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
                 mediator,
                 this);
 
-        model.addTableModelListener(new TableModelListener() {
-
-            public void tableChanged(TableModelEvent e) {
-                if (table.getSelectedRow() >= 0) {
-                    ObjRelationship rel = model.getRelationship(table.getSelectedRow());
-                    enabledResolve = rel.getSourceEntity().getDbEntity() != null;
-                    resolveMenu.setEnabled(enabledResolve);
-                }
+        model.addTableModelListener(e -> {
+            if (table.getSelectedRow() >= 0) {
+                ObjRelationship rel = model.getRelationship(table.getSelectedRow());
+                enabledResolve = rel.getSourceEntity().getDbEntity() != null;
+                resolveMenu.setEnabled(enabledResolve);
             }
         });
 
@@ -388,7 +403,6 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
 
             Icon icon = CellRenderers.iconForObject(oldValue);
             if(isSelected) {
-                icon = FilteredIconFactory.createIcon(icon, FilteredIconFactory.FilterType.SELECTION);
                 setForeground(UIManager.getColor("Table.selectionForeground"));
             }
             setIcon(icon);
@@ -425,18 +439,33 @@ public class ObjEntityRelationshipPanel extends JPanel implements ObjEntityDispl
                     .getModel();
             ObjRelationship relationship = model.getRelationship(row);
 
+            setIcon(null);
+
+            column = table.getColumnModel().getColumn(column).getModelIndex();
             if (relationship != null
                     && relationship.getSourceEntity() != model.getEntity()) {
-                setForeground(Color.GRAY);
+                setForeground(isSelected ? new Color(0xEEEEEE) : Color.GRAY);
+                if(column == ObjRelationshipTableModel.REL_NAME) {
+                    setIcon(INHERITANCE_ICON);
+                }
             } else {
                 setForeground(isSelected && !hasFocus
                         ? table.getSelectionForeground()
                         : table.getForeground());
             }
+
             setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
             setFont(UIManager.getFont("Label.font"));
 
             return this;
+        }
+
+        public void mouseClicked(MouseEvent event, int x) {
+            Point point = event.getPoint();
+            if(point.x - x <= INHERITANCE_ICON.getIconWidth()) {
+                ActionManager actionManager = Application.getInstance().getActionManager();
+                actionManager.getAction(ObjEntityToSuperEntityAction.class).performAction(null);
+            }
         }
     }
 

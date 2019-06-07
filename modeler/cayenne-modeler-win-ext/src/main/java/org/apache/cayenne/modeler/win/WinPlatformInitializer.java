@@ -47,14 +47,19 @@ public class WinPlatformInitializer implements PlatformInitializer {
     }
 
     private void overrideUIDefaults() {
-        Color darkGrey = new Color(225, 225, 225);
+        Color darkGrey = new Color(203, 203, 203);
 
         UIManager.put("TextFieldUI",            WinCustomTextFieldUI.class.getName());
         UIManager.put("Tree.expandedIcon",      ModelerUtil.buildIcon("icon-arrow-open.png"));
         UIManager.put("Tree.collapsedIcon",     ModelerUtil.buildIcon("icon-arrow-closed.png"));
         UIManager.put("Tree.paintLines",        Boolean.FALSE);
         UIManager.put("Tree.drawDashedFocusIndicator",  Boolean.FALSE);
+        UIManager.put("Tree.selectionBackground",       darkGrey);
+        UIManager.put("Tree.selectionForeground",       Color.BLACK);
         UIManager.put("Tree.selectionBorderColor",      UIManager.get("Tree.selectionBackground"));
+        UIManager.put("Table.selectionForeground",      Color.BLACK);
+        UIManager.put("Table.selectionBackground",      darkGrey);
+        UIManager.put("Table.focusCellHighlightBorder", BorderFactory.createEmptyBorder());
         UIManager.put("ScrollPane.border",      BorderFactory.createEmptyBorder());
         UIManager.put("Table.scrollPaneBorder", BorderFactory.createEmptyBorder());
         UIManager.put("SplitPane.border",       BorderFactory.createEmptyBorder());
@@ -62,5 +67,9 @@ public class WinPlatformInitializer implements PlatformInitializer {
         UIManager.put("Separator.background",   darkGrey);
         UIManager.put("Separator.foreground",   darkGrey);
         UIManager.put("Separator.opaque",       Boolean.TRUE);
+        UIManager.put("MenuItem.selectionBackground",   darkGrey);
+        UIManager.put("MenuItem.selectionForeground",   Color.BLACK);
+        UIManager.put("MenuItem.opaque",        Boolean.TRUE);
+        UIManager.put("Button.border", BorderFactory.createEmptyBorder());
     }
 }

@@ -24,9 +24,10 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.project.upgrade.UpgradeUnit;
 import org.apache.cayenne.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -35,6 +36,8 @@ import org.w3c.dom.Node;
  * @since 4.1
  */
 public class UpgradeHandler_V9 implements UpgradeHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(UpgradeHandler_V9.class);
 
     @Override
     public String getVersion() {
@@ -53,7 +56,7 @@ public class UpgradeHandler_V9 implements UpgradeHandler {
         Element dataMap = document.getDocumentElement();
         dataMap.setAttribute("xmlns","http://cayenne.apache.org/schema/9/modelMap");
         dataMap.setAttribute("xsi:schemaLocation", "http://cayenne.apache.org/schema/9/modelMap " +
-                "http://cayenne.apache.org/schema/9/modelMap.xsd");
+                "https://cayenne.apache.org/schema/9/modelMap.xsd");
         dataMap.setAttribute("project-version", getVersion());
 
         XPath xpath = XPathFactory.newInstance().newXPath();
@@ -66,16 +69,14 @@ public class UpgradeHandler_V9 implements UpgradeHandler {
 
                 File file = new File(directoryPath + "/" + reFileName);
                 if (file.exists()) {
-                    file.delete();
+                    if(!file.delete()) {
+                        logger.warn("Can't delete file " + file);
+                    }
                 }
                 dataMap.removeChild(reNode);
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            logger.warn("Can't process dataMap DOM: ", ex);
         }
-    }
-
-    @Override
-    public void processModel(DataChannelDescriptor dataChannelDescriptor) {
     }
 }

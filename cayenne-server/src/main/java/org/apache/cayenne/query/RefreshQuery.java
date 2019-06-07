@@ -18,12 +18,11 @@
  ****************************************************************/
 package org.apache.cayenne.query;
 
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.Persistent;
-import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.EntityResolver;
 
 /**
@@ -63,7 +62,7 @@ public class RefreshQuery implements Query {
      * its relationships.
      */
     public RefreshQuery(Persistent object) {
-        this(Arrays.asList(object));
+        this(Collections.singletonList(object));
     }
 
     /**
@@ -83,10 +82,6 @@ public class RefreshQuery implements Query {
 
     public QueryMetadata getMetaData(EntityResolver resolver) {
         return new BaseQueryMetadata();
-    }
-
-    public String getName() {
-        return null;
     }
 
     public void route(QueryRouter router, EntityResolver resolver, Query substitutedQuery) {
@@ -138,27 +133,13 @@ public class RefreshQuery implements Query {
                 return wrappedMd;
             }
 
-            @Deprecated
-            public String getName() {
-                return query.getName();
-            }
-
             public void route(
                     QueryRouter router,
                     EntityResolver resolver,
                     Query substitutedQuery) {
                 query.route(router, resolver, this);
             }
-
-            @Deprecated
-            public DataMap getDataMap() {
-                return query.getDataMap();
-            }
         };
     }
 
-    @Deprecated
-    public DataMap getDataMap() {
-        return null;
-    }
 }

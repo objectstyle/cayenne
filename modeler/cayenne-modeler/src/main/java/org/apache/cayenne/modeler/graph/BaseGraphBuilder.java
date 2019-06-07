@@ -24,8 +24,6 @@ import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
@@ -131,31 +129,7 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
         GraphLayoutCache view = new GraphLayoutCache(model, new DefaultCellViewFactory());
         graph.setGraphLayoutCache(view);
 
-        graph.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (e.isPopupTrigger()) {
-                    Object selected = graph.getSelectionCell();
-                    if (selected != null && selected instanceof DefaultGraphCell) {
-                        Object userObject = ((DefaultGraphCell) selected).getUserObject();
-                        if (userObject instanceof EntityCellMetadata) {
-                            showPopup(e.getPoint(), ((EntityCellMetadata) userObject).fetchEntity());
-                        }
-                    }
-                }
-            }
-        });
-
-        graph.addMouseWheelListener(new MouseWheelListener() {
-            @Override
-            public void mouseWheelMoved(MouseWheelEvent e) {
-                // limit scale
-                double scale = graph.getScale() / Math.pow(ZOOM_FACTOR, e.getWheelRotation());
-                scale = Math.max(scale, 0.1);
-                scale = Math.min(scale, 3);
-                graph.setScale(scale);
-            }
-        });
+        addMouseListeners();
 
         entityCells = new HashMap<>();
         createdObjects = new ArrayList<>();
@@ -198,7 +172,24 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
         }
         view.insert(createdObjects.toArray());
 
-        if (doLayout) {
+        setLayout(doLayout);
+
+        /*
+         * Adding isolated objects
+         * 
+         * We're placing them so that they will take maximum space in left top
+         * corner. The sample order is below:
+         * 
+         * 1 2 6 7... 3 5 8 ... 4 9... 10 ...
+         */
+        addIsolatedObjects(isolatedObjects);
+
+        view.insert(isolatedObjects.toArray());
+        graph.getModel().addUndoableEditListener(this);
+    }
+
+	private void setLayout(boolean doLayout) {
+		if (doLayout) {
             JGraphFacade facade = new JGraphFacade(graph);
 
             JGraphOrganicLayout layout = new JGraphOrganicLayout();
@@ -221,16 +212,35 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
             // Apply the results to the actual graph
             edit(nested);
         }
+	}
 
-        /*
-         * Adding isolated objects
-         * 
-         * We're placing them so that they will take maximum space in left top
-         * corner. The sample order is below:
-         * 
-         * 1 2 6 7... 3 5 8 ... 4 9... 10 ...
-         */
-        if (isolatedObjects.size() > 0) {
+	private void addMouseListeners() {
+		graph.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    Object selected = graph.getSelectionCell();
+                    if (selected != null && selected instanceof DefaultGraphCell) {
+                        Object userObject = ((DefaultGraphCell) selected).getUserObject();
+                        if (userObject instanceof EntityCellMetadata) {
+                            showPopup(e.getPoint(), ((EntityCellMetadata) userObject).fetchEntity());
+                        }
+                    }
+                }
+            }
+        });
+		
+		graph.addMouseWheelListener(e -> {
+            // limit scale
+            double scale = graph.getScale() / Math.pow(ZOOM_FACTOR, e.getWheelRotation());
+            scale = Math.max(scale, 0.1);
+            scale = Math.min(scale, 3);
+            graph.setScale(scale);
+        });
+	}
+
+	private void addIsolatedObjects(List<DefaultGraphCell> isolatedObjects) {
+		if (isolatedObjects.size() > 0) {
             int n = isolatedObjects.size() / 2; // number of isolated entities
             int x = (int) Math.ceil((Math.sqrt(1 + 8 * n) - 1) / 2); // side of
                                                                      // triangle
@@ -256,10 +266,7 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
                 row++;
             }
         }
-
-        view.insert(isolatedObjects.toArray());
-        graph.getModel().addUndoableEditListener(this);
-    }
+	}
 
     protected DefaultGraphCell createEntityCell(Entity entity) {
         DefaultGraphCell cell = new DefaultGraphCell(getCellMetadata(entity));
@@ -399,12 +406,7 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
     protected void removeEntityCell(Entity e) {
         final DefaultGraphCell cell = entityCells.get(e.getName());
         if (cell != null) {
-            runWithUndoDisabled(new Runnable() {
-                @Override
-                public void run() {
-                    graph.getGraphLayoutCache().remove(new Object[] { cell }, true, true);
-                }
-            });
+            runWithUndoDisabled(() -> graph.getGraphLayoutCache().remove(new Object[] { cell }, true, true));
             entityCells.remove(e.getName());
         }
     }
@@ -412,12 +414,7 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
     protected void removeRelationshipCell(Relationship rel) {
         final DefaultEdge edge = relCells.get(getQualifiedName(rel));
         if (edge != null) {
-            runWithUndoDisabled(new Runnable() {
-                @Override
-                public void run() {
-                    graph.getGraphLayoutCache().remove(new Object[] { edge });
-                }
-            });
+            runWithUndoDisabled(() -> graph.getGraphLayoutCache().remove(new Object[] { edge }));
             relCells.remove(getQualifiedName(rel));
         }
     }
@@ -579,21 +576,11 @@ abstract class BaseGraphBuilder implements GraphBuilder, DataMapListener {
     }
 
     private void edit(final Map map) {
-        runWithUndoDisabled(new Runnable() {
-
-            public void run() {
-                graph.getGraphLayoutCache().edit(map);
-            }
-        });
+        runWithUndoDisabled(() -> graph.getGraphLayoutCache().edit(map));
     }
 
     private void insert(final Object cell) {
-        runWithUndoDisabled(new Runnable() {
-
-            public void run() {
-                graph.getGraphLayoutCache().insert(cell);
-            }
-        });
+        runWithUndoDisabled(() -> graph.getGraphLayoutCache().insert(cell));
     }
 
     private void runWithUndoDisabled(Runnable r) {

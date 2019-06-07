@@ -24,7 +24,7 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.1.M2-SNAPSHOT</version>
+		<version>4.1.B3-SNAPSHOT</version>
 	</parent>
 
 	<groupId>org.apache.cayenne.assembly</groupId>
@@ -33,6 +33,10 @@
 	<name>cayenne-assembly: Cayenne Release Assembly</name>
 
 	<description>An assembly of Cayenne into a generically runnable package.</description>
+
+	<properties>
+		<build.docs>process-resources</build.docs>
+	</properties>
 
 	<dependencies>
 
@@ -89,12 +93,6 @@
 			<artifactId>cayenne-joda</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
-        <dependency>
-            <groupId>org.apache.cayenne</groupId>
-            <artifactId>cayenne-java8</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
 		 <dependency>
             <groupId>org.apache.cayenne</groupId>
@@ -156,6 +154,24 @@
 			<version>${project.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.apache.cayenne</groupId>
+			<artifactId>cayenne-web</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.cayenne</groupId>
+			<artifactId>cayenne-osgi</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.cayenne</groupId>
+			<artifactId>cayenne-rop-server</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -174,6 +190,9 @@
 		<!-- SOURCE assembly - the base assembly of a release build -->
 		<profile>
 			<id>src</id>
+			<properties>
+				<build.docs>none</build.docs>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>
@@ -187,7 +206,7 @@
 								</goals>
 								<configuration>
 									<descriptors>
-										<descriptor>src/main/resources/assemblies/assembly-src.xml</descriptor>
+										<descriptor>src/main/resources/assemblies/src/assembly-src.xml</descriptor>
 									</descriptors>
 									<finalName>cayenne-${project.version}-src</finalName>
 								</configuration>
@@ -224,6 +243,28 @@
 							<tarLongFileMode>gnu</tarLongFileMode>
 						</configuration>
 					</plugin>
+					<plugin>
+						<artifactId>maven-antrun-plugin</artifactId>
+						<executions>
+							<execution>
+								<phase>${build.docs}</phase>
+								<configuration>
+									<tasks>
+										<copy todir="${project.build.directory}/doc-staging">
+											<fileset dir="${basedir}/../docs/asciidoc">
+												<include name="**/target/generated-docs/*.pdf" />
+												<include name="**/target/generated-docs/*.html" />
+											</fileset>
+											<flattenmapper />
+										</copy>
+									</tasks>
+								</configuration>
+								<goals>
+									<goal>run</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
 				</plugins>
 			</build>
 		</profile>
@@ -250,7 +291,7 @@
 								</goals>
 								<configuration>
 									<descriptors>
-										<descriptor>src/main/resources/assemblies/assembly-generic.xml</descriptor>
+										<descriptor>src/main/resources/assemblies/generic/assembly-generic.xml</descriptor>
 									</descriptors>
 									<finalName>cayenne-${project.version}</finalName>
 								</configuration>
@@ -271,6 +312,9 @@
 					<version>${project.version}</version>
 				</dependency>
 			</dependencies>
+			<properties>
+				<content.dir>cayenne-${project.version}</content.dir>
+			</properties>
 			<build>
 				<plugins>
 					<!-- Make sure we are running on Mac -->
@@ -304,7 +348,7 @@
 								</goals>
 								<configuration>
 									<descriptors>
-										<descriptor>src/main/resources/assemblies/assembly-mac.xml</descriptor>
+										<descriptor>src/main/resources/assemblies/mac/assembly-mac.xml</descriptor>
 									</descriptors>
 									<finalName>cayenne-${project.version}-macosx</finalName>
 									<attach>false</attach>
@@ -330,12 +374,11 @@
 									<executable>/bin/chmod</executable>
 									<arguments>
 										<argument>755</argument>
-										<argument>target/cayenne-${project.version}-macosx/CayenneModeler.app/Contents/MacOS/JavaAppLauncher</argument>
+										<argument>target/cayenne-${project.version}-macosx/CayenneModeler.app/Contents/MacOS/CayenneModeler</argument>
 									</arguments>
 								</configuration>
 							</execution>
 
-							<!-- Package into .dmg -->
 							<execution>
 								<id>dmg-distro</id>
 								<phase>package</phase>
@@ -343,16 +386,9 @@
 									<goal>exec</goal>
 								</goals>
 								<configuration>
-									<executable>/usr/bin/hdiutil</executable>
+									<executable>src/main/resources/assemblies/mac/create-dmg.sh</executable>
 									<arguments>
-										<argument>create</argument>
-										<argument>-srcfolder</argument>
-										<argument>target/cayenne-${project.version}-macosx/</argument>
-										<argument>-format</argument>
-										<argument>UDZO</argument>
-										<argument>-volname</argument>
-										<argument>cayenne-${project.version}</argument>
-										<argument>target/cayenne-${project.version}-macosx</argument>
+										<argument>${project.version}</argument>
 									</arguments>
 								</configuration>
 							</execution>
@@ -405,7 +441,7 @@
 								</goals>
 								<configuration>
 									<descriptors>
-										<descriptor>src/main/resources/assemblies/assembly-windows.xml</descriptor>
+										<descriptor>src/main/resources/assemblies/windows/assembly-windows.xml</descriptor>
 									</descriptors>
 									<finalName>cayenne-${project.version}-win</finalName>
 								</configuration>

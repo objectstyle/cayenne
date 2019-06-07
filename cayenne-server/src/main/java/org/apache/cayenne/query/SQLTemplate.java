@@ -19,17 +19,13 @@
 
 package org.apache.cayenne.query;
 
+import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.access.QueryEngine;
-import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjEntity;
-import org.apache.cayenne.map.Procedure;
-import org.apache.cayenne.map.QueryDescriptor;
 import org.apache.cayenne.map.SQLResult;
-import org.apache.cayenne.util.XMLEncoder;
-import org.apache.cayenne.util.XMLSerializable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +35,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -86,6 +81,10 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 	protected CapsStrategy columnNamesCapitalization;
 	protected SQLResult result;
 	private String dataNodeName;
+	protected boolean returnGeneratedKeys;
+
+	private List<Class<?>> resultColumnsTypes;
+	private boolean useScalar;
 
 	SQLTemplateMetadata metaData = new SQLTemplateMetadata();
 
@@ -110,11 +109,18 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 		setFetchingDataRows(isFetchingDataRows);
 	}
 
+	public void setResultColumnsTypes(Class<?> ...types) {
+		if(resultColumnsTypes == null) {
+			resultColumnsTypes = new ArrayList<>(types.length);
+		}
+		Collections.addAll(resultColumnsTypes, types);
+	}
+
 	@Override
 	public void setRoot(Object value) {
 		// allow null root...
 		if (value == null) {
-			this.root = value;
+			this.root = null;
 		} else {
 			super.setRoot(value);
 		}
@@ -436,7 +442,7 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 	 * Returns a collection of configured template keys.
 	 */
 	public synchronized Collection<String> getTemplateKeys() {
-		return (templates != null) ? templates.keySet() : Collections.<String> emptyList();
+		return (templates != null) ? templates.keySet() : Collections.emptyList();
 	}
 
 	/**
@@ -446,7 +452,7 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 	 */
 	public Map<String, ?> getParams() {
 		Map<String, ?> map = (parameters != null && parameters.length > 0) ? parameters[0] : null;
-		return (map != null) ? map : Collections.<String, Object> emptyMap();
+		return (map != null) ? map : Collections.emptyMap();
 	}
 
 	/**
@@ -479,7 +485,7 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 			// are not serializable with Hessian...
 			this.parameters = new Map[parameters.length];
 			for (int i = 0; i < parameters.length; i++) {
-				this.parameters[i] = parameters[i] != null ? new HashMap<>(parameters[i]) : new HashMap<String, Object>();
+				this.parameters[i] = parameters[i] != null ? new HashMap<>(parameters[i]) : new HashMap<>();
 			}
 		}
 	}
@@ -490,6 +496,7 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 	public PrefetchTreeNode getPrefetchTree() {
 		return metaData.getPrefetchTree();
 	}
+
 
 	/**
 	 * Adds a prefetch.
@@ -507,7 +514,21 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 	 * @since 4.0
 	 */
 	public void addPrefetch(PrefetchTreeNode prefetchElement) {
+		checkForDisjointNode(prefetchElement);
 		metaData.mergePrefetch(prefetchElement);
+	}
+
+	/**
+	 * Check for disjoint element and throw if it's found.
+	 * @param prefetchElement to check
+	 */
+	private void checkForDisjointNode(PrefetchTreeNode prefetchElement) {
+		if (prefetchElement.isDisjointPrefetch()) {
+			throw new CayenneRuntimeException("This query supports only 'joint' and 'disjointById' prefetching semantics.");
+		}
+		for (PrefetchTreeNode child : prefetchElement.getChildren()) {
+			checkForDisjointNode(child);
+		}
 	}
 
 	/**
@@ -623,5 +644,44 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
 	 */
 	public void setDataNodeName(String dataNodeName) {
 		this.dataNodeName = dataNodeName;
+	}
+
+	/**
+	 * @return returnGeneratedKeys flag
+	 *
+	 * @since 4.1
+	 */
+	public boolean isReturnGeneratedKeys() {
+		return returnGeneratedKeys;
+	}
+
+	/**
+	 * Sets flag to return generated keys.
+	 *
+	 * @since 4.1
+	 */
+	public void setReturnGeneratedKeys(boolean returnGeneratedKeys) {
+		this.returnGeneratedKeys = returnGeneratedKeys;
+	}
+
+	public List<Class<?>> getResultColumnsTypes() {
+		return resultColumnsTypes;
+	}
+
+	public void setResultColumnsTypes(List<Class<?>> resultColumnsTypes) {
+		this.resultColumnsTypes = resultColumnsTypes;
+	}
+
+	/**
+	 * Sets flag to use scalars.
+	 *
+	 * @since 4.1
+	 */
+	public void setUseScalar(boolean useScalar) {
+	    this.useScalar = useScalar;
+	}
+
+	public boolean isUseScalar() {
+		return useScalar;
 	}
 }

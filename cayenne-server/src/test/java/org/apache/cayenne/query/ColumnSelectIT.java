@@ -21,6 +21,7 @@ package org.apache.cayenne.query;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.text.DateFormat;
 import java.util.Date;
@@ -45,6 +46,7 @@ import org.apache.cayenne.test.jdbc.TableHelper;
 import org.apache.cayenne.testdo.testmap.Artist;
 import org.apache.cayenne.testdo.testmap.Gallery;
 import org.apache.cayenne.testdo.testmap.Painting;
+import org.apache.cayenne.testdo.testmap.PaintingInfo;
 import org.apache.cayenne.unit.PostgresUnitDbAdapter;
 import org.apache.cayenne.unit.UnitDbAdapter;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
@@ -475,6 +477,37 @@ public class ColumnSelectIT extends ServerCase {
                 .selectFirst(context);
         assertNotNull(a);
         assertEquals("ng1 artist1", a);
+    }
+
+    @Test
+    public void testAliasOrder() {
+        // test that all table aliases are correct
+        List<Object[]> result = ObjectSelect.columnQuery(Artist.class,
+                Artist.PAINTING_ARRAY.outer().count(),
+                Property.createSelf(Artist.class),
+                Artist.PAINTING_ARRAY.dot(Painting.PAINTING_TITLE),
+                Property.createSelf(Artist.class),
+                Artist.PAINTING_ARRAY.dot(Painting.TO_GALLERY).dot(Gallery.GALLERY_NAME),
+                Artist.ARTIST_NAME,
+                Property.createSelf(Artist.class)
+        ).select(context);
+        assertEquals(21, result.size());
+        for(Object[] next : result) {
+            long count = (Long)next[0];
+            Artist artist = (Artist)next[1];
+            String paintingTitle = (String)next[2];
+            Artist artist2 = (Artist)next[3];
+            String galleryName = (String)next[4];
+            String artistName = (String)next[5];
+            Artist artist3 = (Artist)next[6];
+
+            assertTrue(paintingTitle.startsWith("painting"));
+            assertTrue(count == 4L || count == 5L);
+            assertEquals("tate modern", galleryName);
+            assertEquals(PersistenceState.COMMITTED, artist.getPersistenceState());
+            assertEquals(PersistenceState.COMMITTED, artist2.getPersistenceState());
+            assertEquals(PersistenceState.COMMITTED, artist3.getPersistenceState());
+        }
     }
 
     /*
@@ -976,19 +1009,6 @@ public class ColumnSelectIT extends ServerCase {
     }
 
     /*
-     * Test deprecated property constructor
-     */
-
-    @Test
-    @SuppressWarnings("deprecation")
-    public void testDeprecateConstructor() {
-        Property<String> property = new Property<>("artistName");
-        List<String> names = ObjectSelect.columnQuery(Artist.class, property).select(context);
-        assertEquals(20, names.size());
-    }
-
-
-    /*
      * Test selection from nested context
      */
 
@@ -1041,6 +1061,23 @@ public class ColumnSelectIT extends ServerCase {
             assertTrue(next[0] instanceof String);
             assertTrue(next[1] instanceof Artist);
         }
+    }
+
+    @Test
+    public void testByteArraySelect() throws SQLException {
+        new TableHelper(dbHelper, "PAINTING_INFO")
+                .setColumns("IMAGE_BLOB", "PAINTING_ID")
+                .setColumnTypes(Types.LONGVARBINARY, Types.INTEGER)
+                .insert(new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5}, 1)
+                .insert(new byte[]{(byte)5, (byte)4, (byte)3, (byte)2}, 2);
+
+        List<byte[]> blobs = ObjectSelect.columnQuery(PaintingInfo.class, PaintingInfo.IMAGE_BLOB)
+                .orderBy("db:" + PaintingInfo.PAINTING_ID_PK_COLUMN)
+                .select(context);
+
+        assertEquals(2, blobs.size());
+        assertArrayEquals(new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5}, blobs.get(0));
+        assertArrayEquals(new byte[]{(byte)5, (byte)4, (byte)3, (byte)2}, blobs.get(1));
     }
 
 }

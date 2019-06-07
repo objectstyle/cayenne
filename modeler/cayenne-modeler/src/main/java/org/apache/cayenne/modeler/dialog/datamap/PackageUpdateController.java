@@ -80,18 +80,8 @@ public class PackageUpdateController extends DefaultsPreferencesController {
     }
     
     private void initController() {
-        view.getCancelButton().addActionListener(new ActionListener() {
-            
-            public void actionPerformed(ActionEvent arg0) {
-                view.dispose();
-            }
-        });
-        view.getUpdateButton().addActionListener(new ActionListener() {
-            
-            public void actionPerformed(ActionEvent arg0) {
-                updatePackage();
-            }
-        });
+        view.getCancelButton().addActionListener(e -> view.dispose());
+        view.getUpdateButton().addActionListener(e -> updatePackage());
     }
 
     protected void updatePackage() {
@@ -103,11 +93,10 @@ public class PackageUpdateController extends DefaultsPreferencesController {
         Collection<Embeddable> embeddables = new ArrayList<>(dataMap.getEmbeddables());
         for (Embeddable embeddable : embeddables) {
             String oldName = embeddable.getClassName();
-            
-            Pattern p = Pattern.compile("[.]");
-            String[] tokens = p.split(oldName);
+
+            String[] tokens = oldName.split("\\.");
             String className = tokens[tokens.length-1];
-            
+
             if (doAll || Util.isEmptyString(oldName) || oldName.indexOf('.') < 0) {
                 EmbeddableEvent e = new EmbeddableEvent(this, embeddable, embeddable.getClassName());
                 String newClassName = getNameWithDefaultPackage(className);
@@ -116,16 +105,15 @@ public class PackageUpdateController extends DefaultsPreferencesController {
                 mediator.fireEmbeddableEvent(e, mediator.getCurrentDataMap());
             }
         }
-        
+
         for (ObjEntity entity : dataMap.getObjEntities()) {
             String oldName = getClassName(entity);
 
             if (doAll || Util.isEmptyString(oldName) || oldName.indexOf('.') < 0) {
-                String className = extractClassName(Util.isEmptyString(oldName) ? entity
-                        .getName() : oldName);
+                String className = extractClassName(Util.isEmptyString(oldName) ? entity.getName() : oldName);
                 setClassName(entity, getNameWithDefaultPackage(className));
             }
-            
+
             for(ObjAttribute attribute: entity.getAttributes()){
                 if(attribute instanceof EmbeddedAttribute){
                     if(oldNameEmbeddableToNewName.size()>0 && oldNameEmbeddableToNewName.containsKey(attribute.getType())){
@@ -146,9 +134,9 @@ public class PackageUpdateController extends DefaultsPreferencesController {
         }
 
         int dot = name.lastIndexOf('.');
-        return (dot < 0) ? name : (dot + 1 < name.length())
-                ? name.substring(dot + 1)
-                : "";
+        return (dot < 0)
+                ? name
+                : (dot + 1 < name.length()) ? name.substring(dot + 1) : "";
     }
 
     protected String getNameWithDefaultPackage(String name) {

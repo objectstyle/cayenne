@@ -20,6 +20,7 @@ package org.apache.cayenne.modeler.osx;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Graphics;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -31,6 +32,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.UIManager;
+import javax.swing.border.AbstractBorder;
 import javax.swing.border.Border;
 
 import org.apache.cayenne.di.Inject;
@@ -40,12 +42,7 @@ import org.apache.cayenne.modeler.action.ConfigurePreferencesAction;
 import org.apache.cayenne.modeler.action.ExitAction;
 import org.apache.cayenne.modeler.init.platform.PlatformInitializer;
 
-import com.apple.eawt.AboutHandler;
-import com.apple.eawt.AppEvent;
 import com.apple.eawt.Application;
-import com.apple.eawt.PreferencesHandler;
-import com.apple.eawt.QuitHandler;
-import com.apple.eawt.QuitResponse;
 
 public class OSXPlatformInitializer implements PlatformInitializer {
 
@@ -58,27 +55,18 @@ public class OSXPlatformInitializer implements PlatformInitializer {
         overrideUIDefaults();
 
         // configure special Mac menu handlers
-        Application app = Application.getApplication();
-        app.setAboutHandler(new AboutHandler() {
-            @Override
-            public void handleAbout(AppEvent.AboutEvent aboutEvent) {
-                actionManager.getAction(AboutAction.class).showAboutDialog();
-            }
-        });
+        OSXApplicationWrapper wrapper = new OSXApplicationWrapper(Application.getApplication());
+        wrapper.setAboutHandler(()
+                -> actionManager.getAction(AboutAction.class).showAboutDialog());
 
-        app.setPreferencesHandler(new PreferencesHandler() {
-            @Override
-            public void handlePreferences(AppEvent.PreferencesEvent preferencesEvent) {
-                actionManager.getAction(ConfigurePreferencesAction.class).showPreferencesDialog();
-            }
-        });
+        wrapper.setPreferencesHandler(()
+                -> actionManager.getAction(ConfigurePreferencesAction.class).showPreferencesDialog());
 
-        app.setQuitHandler(new QuitHandler() {
-            @Override
-            public void handleQuitRequestWith(AppEvent.QuitEvent quitEvent, QuitResponse quitResponse) {
-                if(!actionManager.getAction(ExitAction.class).exit()) {
-                    quitResponse.cancelQuit();
-                }
+        wrapper.setQuitHandler(r -> {
+            if(!actionManager.getAction(ExitAction.class).exit()) {
+                r.cancelQuit();
+            } else {
+                r.performQuit();
             }
         });
     }
@@ -88,18 +76,38 @@ public class OSXPlatformInitializer implements PlatformInitializer {
         Color darkGrey  = new Color(225, 225, 225);
         Border darkBorder = BorderFactory.createLineBorder(darkGrey);
 
-        UIManager.put("ToolBarSeparatorUI",          OSXToolBarSeparatorUI.class.getName());
-        UIManager.put("PanelUI",                     OSXPanelUI.class.getName());
+        UIManager.put("ToolBarSeparatorUI",           OSXToolBarSeparatorUI.class.getName());
+        UIManager.put("PanelUI",                      OSXPanelUI.class.getName());
         // next two is custom made for Cayenne's MainToolBar
-        UIManager.put("MainToolBar.background",      UIManager.get("ToolBar.background"));
-        UIManager.put("MainToolBar.border",          BorderFactory.createEmptyBorder(0, 7, 0, 7));
-        UIManager.put("ToolBar.background",          lightGrey);
-        UIManager.put("ToolBar.border",              darkBorder);
-        UIManager.put("ScrollPane.border",           darkBorder);
-        UIManager.put("Table.scrollPaneBorder",      darkBorder);
-        UIManager.put("SplitPane.border",            BorderFactory.createEmptyBorder());
-        UIManager.put("SplitPane.background",        darkGrey);
-        UIManager.put("Tree.rendererFillBackground", Boolean.TRUE);
+        UIManager.put("MainToolBar.background",       UIManager.get("ToolBar.background"));
+        UIManager.put("MainToolBar.border",           BorderFactory.createEmptyBorder(0, 7, 0, 7));
+        UIManager.put("ToolBar.background",           lightGrey);
+        UIManager.put("ToolBar.border",               darkBorder);
+        UIManager.put("ScrollPane.border",            darkBorder);
+        UIManager.put("Table.scrollPaneBorder",       darkBorder);
+        UIManager.put("SplitPane.border",             BorderFactory.createEmptyBorder());
+        UIManager.put("SplitPane.background",         darkGrey);
+        UIManager.put("Tree.rendererFillBackground",  Boolean.TRUE);
+        UIManager.put("ComboBox.background",          Color.WHITE);
+        UIManager.put("ComboBox.selectionBackground", darkGrey);
+        UIManager.put("ComboBox.selectionForeground", Color.BLACK);
+        UIManager.put("Tree.selectionForeground",     Color.BLACK);
+        UIManager.put("Tree.selectionBackground",     lightGrey);
+        UIManager.put("Tree.selectionBorderColor",    lightGrey);
+        UIManager.put("Table.selectionForeground",    Color.BLACK);
+        UIManager.put("Table.selectionBackground",    lightGrey);
+        UIManager.put("Table.focusCellHighlightBorder", BorderFactory.createEmptyBorder());
+
+        Border backgroundPainter = new AbstractBorder() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                g.setColor(lightGrey);
+                g.fillRect(0, 0, width - 1, height - 1);
+            }
+        };
+        UIManager.put("MenuItem.selectedBackgroundPainter", backgroundPainter);
+        UIManager.put("MenuItem.selectionForeground",       Color.BLACK);
+
     }
 
     public void setupMenus(JFrame frame) {

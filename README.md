@@ -30,7 +30,7 @@ To use the unofficial builds, add the following repository to your ```pom.xml```
 <repository>
 	<id>cayenne-unofficial</id>
 	<name>Cayenne Unofficial Releases @ ObjectStyle</name>
-	<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
+	<url>https://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial/</url>
 	<releases>
         <enabled>true</enabled>
     </releases>
@@ -46,7 +46,7 @@ To use the unofficial snapshots, add the following repository to your ```pom.xml
 <repository>
 	<id>cayenne-unofficial</id>
 	<name>Cayenne Unofficial Releases @ ObjectStyle</name>
-	<url>http://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial-snapshots/</url>
+	<url>https://maven.objectstyle.org/nexus/content/repositories/cayenne-unofficial-snapshots/</url>
 	<releases>
         <enabled>false</enabled>
     </releases>
@@ -55,4 +55,3 @@ To use the unofficial snapshots, add the following repository to your ```pom.xml
     </snapshots>
 </repository>
 ```
-

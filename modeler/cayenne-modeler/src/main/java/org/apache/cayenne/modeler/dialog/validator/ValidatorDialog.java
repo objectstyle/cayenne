@@ -19,16 +19,14 @@
 
 package org.apache.cayenne.modeler.dialog.validator;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Collections;
-import java.util.List;
+import com.jgoodies.forms.builder.PanelBuilder;
+import com.jgoodies.forms.layout.CellConstraints;
+import com.jgoodies.forms.layout.FormLayout;
+import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.modeler.CayenneModelerFrame;
+import org.apache.cayenne.modeler.action.ValidateAction;
+import org.apache.cayenne.modeler.util.CayenneDialog;
+import org.apache.cayenne.validation.ValidationFailure;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -36,20 +34,16 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
-
-import org.apache.cayenne.modeler.Application;
-import org.apache.cayenne.modeler.CayenneModelerFrame;
-import org.apache.cayenne.modeler.action.ValidateAction;
-import org.apache.cayenne.modeler.util.CayenneDialog;
-import org.apache.cayenne.validation.ValidationFailure;
-
-import com.jgoodies.forms.builder.PanelBuilder;
-import com.jgoodies.forms.layout.CellConstraints;
-import com.jgoodies.forms.layout.FormLayout;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Dialog for displaying validation errors.
@@ -84,7 +78,7 @@ public class ValidatorDialog extends CayenneDialog {
             instance = null;
         }
 
-        JOptionPane.showMessageDialog(Application.getFrame(), "Cayenne project is valid.");
+        JOptionPane.showMessageDialog(editor, "Cayenne project is valid.");
     }
 
     protected ValidatorDialog(CayenneModelerFrame editor) {
@@ -117,9 +111,11 @@ public class ValidatorDialog extends CayenneDialog {
         builder.addLabel("Click on any row below to go to the object that has a validation problem:", cc.xy(1, 1));
         builder.add(new JScrollPane(problemsTable), cc.xy(1, 3));
 
+        getRootPane().setDefaultButton(refreshButton);
+
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttons.add(refreshButton);
         buttons.add(closeButton);
+        buttons.add(refreshButton);
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(builder.getPanel(), BorderLayout.CENTER);
@@ -132,27 +128,15 @@ public class ValidatorDialog extends CayenneDialog {
     private void initController() {
 
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        problemsTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+        problemsTable.getSelectionModel().addListSelectionListener(e -> showFailedObject());
 
-            public void valueChanged(ListSelectionEvent e) {
-                showFailedObject();
-            }
+        closeButton.addActionListener(e -> {
+            setVisible(false);
+            dispose();
         });
 
-        closeButton.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                setVisible(false);
-                dispose();
-            }
-        });
-
-        refreshButton.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                Application.getInstance().getActionManager().getAction(ValidateAction.class).actionPerformed(e);
-            }
-        });
+        refreshButton.addActionListener(e -> Application.getInstance().getActionManager()
+                .getAction(ValidateAction.class).actionPerformed(e));
 
         this.problemsTable.addMouseListener(new MouseAdapter() {
 
@@ -217,6 +201,7 @@ public class ValidatorDialog extends CayenneDialog {
             if (value != null) {
                 ValidationFailure info = (ValidationFailure) value;
                 value = info.getDescription();
+                setToolTipText(info.getDescription());
             }
 
             setBackground(error ? ERROR_COLOR : WARNING_COLOR);

@@ -27,7 +27,7 @@ import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.modeler.editor.ObjAttributeTableModel;
 import org.apache.cayenne.util.CayenneMapEntry;
-import org.apache.commons.lang.StringUtils;
+import org.apache.cayenne.util.Util;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JLabel;
@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
 
 public class DbAttributePathComboBoxEditor extends PathChooserComboBoxCellEditor {
 
-    private static final int DB_ATTRIBUTE_PATH_COLUMN = 3;
+    private static final int DB_ATTRIBUTE_PATH_COLUMN = ObjAttributeTableModel.DB_ATTRIBUTE;
 
     private String savePath;
     private ObjAttributeTableModel model;
@@ -58,7 +58,7 @@ public class DbAttributePathComboBoxEditor extends PathChooserComboBoxCellEditor
         initializeCombo(model, row, table);
 
         String dbAttributePath = ((JTextComponent) (comboBoxPathChooser).getEditor().getEditorComponent()).getText();
-        previousEmbeddedLevel = StringUtils.countMatches(dbAttributePath, ".");
+        previousEmbeddedLevel = Util.countMatches(dbAttributePath, ".");
         return comboBoxPathChooser;
     }
 
@@ -96,7 +96,6 @@ public class DbAttributePathComboBoxEditor extends PathChooserComboBoxCellEditor
         String dbAttributePath =((JTextComponent) comboBoxPathChooser.
                 getEditor().getEditorComponent()).getText();
         Object currentNode = getCurrentNode(dbAttributePath);
-
         String[] pathStrings = dbAttributePath.split(Pattern.quote("."));
         String lastStringInPath = pathStrings[pathStrings.length - 1];
         if (ModelerUtil.getObjectName(currentNode).equals(lastStringInPath) &&
@@ -117,12 +116,11 @@ public class DbAttributePathComboBoxEditor extends PathChooserComboBoxCellEditor
 
             if (dbAttributePath.charAt(dbAttributePath.length()-1) != '.') {
                 dbAttributePath = dbAttributePath + '.';
-                previousEmbeddedLevel =  StringUtils.countMatches(dbAttributePath,".");
+                previousEmbeddedLevel =  Util.countMatches(dbAttributePath,".");
                 ((JTextComponent) (comboBoxPathChooser).
                         getEditor().getEditorComponent()).setText(dbAttributePath);
             }
-            List<String> currentNodeChildren = new ArrayList<>();
-            currentNodeChildren.addAll(getChildren(getCurrentNode(dbAttributePath), dbAttributePath));
+            List<String> currentNodeChildren = new ArrayList<>(getChildren(getCurrentNode(dbAttributePath), dbAttributePath));
             comboBoxPathChooser.setModel(new DefaultComboBoxModel(currentNodeChildren.toArray()));
             comboBoxPathChooser.setSelectedItem(dbAttributePath);
             comboBoxPathChooser.showPopup();

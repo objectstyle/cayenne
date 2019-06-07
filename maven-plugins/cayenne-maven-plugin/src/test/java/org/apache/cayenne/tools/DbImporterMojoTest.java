@@ -18,25 +18,6 @@
  ****************************************************************/
 package org.apache.cayenne.tools;
 
-import org.apache.cayenne.dbsync.reverse.dbimport.Catalog;
-import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfiguration;
-import org.apache.cayenne.dbsync.reverse.dbimport.IncludeTable;
-import org.apache.cayenne.dbsync.reverse.dbimport.Schema;
-import org.apache.cayenne.test.jdbc.SQLReader;
-import org.apache.cayenne.test.resource.ResourceUtil;
-import org.slf4j.Logger;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.testing.AbstractMojoTestCase;
-import org.codehaus.plexus.util.FileUtils;
-import org.custommonkey.xmlunit.DetailedDiff;
-import org.custommonkey.xmlunit.Diff;
-import org.custommonkey.xmlunit.ElementNameAndAttributeQualifier;
-import org.custommonkey.xmlunit.XMLUnit;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -49,7 +30,31 @@ import java.sql.Statement;
 import java.util.Iterator;
 import java.util.Objects;
 
-import static org.apache.commons.lang.StringUtils.isBlank;
+import org.apache.cayenne.dbsync.reverse.dbimport.Catalog;
+import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfiguration;
+import org.apache.cayenne.dbsync.reverse.dbimport.IncludeTable;
+import org.apache.cayenne.dbsync.reverse.dbimport.Schema;
+import org.apache.cayenne.test.jdbc.SQLReader;
+import org.apache.cayenne.test.resource.ResourceUtil;
+import org.apache.maven.execution.DefaultMavenExecutionRequest;
+import org.apache.maven.execution.MavenExecutionRequest;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.testing.AbstractMojoTestCase;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.ProjectBuilder;
+import org.apache.maven.project.ProjectBuildingRequest;
+import org.codehaus.plexus.util.FileUtils;
+import org.custommonkey.xmlunit.DetailedDiff;
+import org.custommonkey.xmlunit.Diff;
+import org.custommonkey.xmlunit.ElementNameAndAttributeQualifier;
+import org.custommonkey.xmlunit.XMLUnit;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+
+import static org.apache.cayenne.util.Util.isBlank;
 import static org.mockito.Mockito.mock;
 
 
@@ -161,6 +166,21 @@ public class DbImporterMojoTest extends AbstractMojoTestCase {
     @Test
     public void testOneToOne() throws Exception {
         test("testOneToOne");
+    }
+
+    @Test
+    public void testExcludeRelationship() throws Exception {
+        test("testExcludeRelationship");
+    }
+
+    @Test
+    public void testExcludeRelationshipFirst() throws Exception {
+        test("testExcludeRelationshipFirst");
+    }
+
+    @Test
+    public void testNamingStrategy() throws Exception {
+        test("testNamingStrategy");
     }
 
     /**
@@ -452,5 +472,14 @@ public class DbImporterMojoTest extends AbstractMojoTestCase {
                 }
             }
         }
+    }
+
+
+    private MavenProject getMavenProject(String pomPath) throws Exception {
+        File pom = new File(pomPath);
+        MavenExecutionRequest request = new DefaultMavenExecutionRequest();
+        request.setPom(pom);
+        ProjectBuildingRequest configuration = request.getProjectBuildingRequest();
+        return lookup( ProjectBuilder.class ).build( pom, configuration ).getProject();
     }
 }

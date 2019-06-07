@@ -19,20 +19,7 @@
 
 package org.apache.cayenne.access.jdbc;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.cayenne.CayenneException;
-import org.apache.cayenne.DataRow;
+import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.ResultIterator;
 import org.apache.cayenne.access.DataNode;
 import org.apache.cayenne.access.OperationObserver;
@@ -44,12 +31,25 @@ import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.TypesMapping;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.map.DefaultScalarResultSegment;
 import org.apache.cayenne.map.ObjAttribute;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.query.QueryMetadata;
 import org.apache.cayenne.query.SQLAction;
 import org.apache.cayenne.query.SQLTemplate;
 import org.apache.cayenne.util.Util;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Implements a strategy for execution of SQLTemplates.
@@ -97,7 +97,7 @@ public class SQLTemplateAction implements SQLAction {
 
 		// sanity check - misconfigured templates
 		if (template == null) {
-			throw new CayenneException("No template string configured for adapter " + dbAdapter.getClass().getName());
+			throw new CayenneRuntimeException("No template string configured for adapter " + dbAdapter.getClass().getName());
 		}
 
 		boolean loggable = dataNode.getJdbcEventLogger().isLoggable();
@@ -186,15 +186,23 @@ public class SQLTemplateAction implements SQLAction {
 
 		long t1 = System.currentTimeMillis();
 		boolean iteratedResult = callback.isIteratedResult();
-		PreparedStatement statement = connection.prepareStatement(compiled.getSql());
+		int generatedKeys = query.isReturnGeneratedKeys() ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS;
+		PreparedStatement statement = connection.prepareStatement(compiled.getSql(), generatedKeys);
 		try {
 			bind(statement, compiled.getBindings());
 
 			// process a mix of results
 			boolean isResultSet = statement.execute();
+
+			if(query.isReturnGeneratedKeys()) {
+				ResultSet generatedKeysResultSet = statement.getGeneratedKeys();
+				if (generatedKeysResultSet != null) {
+					processSelectResult(compiled, connection, statement, generatedKeysResultSet, callback, t1);
+				}
+			}
+
 			boolean firstIteration = true;
 			while (true) {
-
 				if (firstIteration) {
 					firstIteration = false;
 				} else {
@@ -204,7 +212,6 @@ public class SQLTemplateAction implements SQLAction {
 				if (isResultSet) {
 
 					ResultSet resultSet = statement.getResultSet();
-
 					if (resultSet != null) {
 
 						try {
@@ -242,12 +249,11 @@ public class SQLTemplateAction implements SQLAction {
 									   ResultSet resultSet, OperationObserver callback, final long startTime) throws Exception {
 
 		boolean iteratedResult = callback.isIteratedResult();
-
 		ExtendedTypeMap types = dataNode.getAdapter().getExtendedTypes();
 		RowDescriptorBuilder builder = configureRowDescriptorBuilder(compiled, resultSet);
+		recreateQueryMetadata(resultSet);
 		RowReader<?> rowReader = dataNode.rowReader(builder.getDescriptor(types), queryMetadata);
-
-		ResultIterator it = new JDBCResultIterator(statement, resultSet, rowReader);
+		ResultIterator<?> it = new JDBCResultIterator<>(statement, resultSet, rowReader);
 
 		if (iteratedResult) {
 
@@ -260,7 +266,7 @@ public class SQLTemplateAction implements SQLAction {
 			};
 		}
 
-		it = new LimitResultIterator(it, getFetchOffset(), query.getFetchLimit());
+		it = new LimitResultIterator<>(it, getFetchOffset(), query.getFetchLimit());
 
 		if (iteratedResult) {
 			try {
@@ -273,12 +279,48 @@ public class SQLTemplateAction implements SQLAction {
 			// note that we are not closing the iterator here, relying on caller
 			// to close the underlying ResultSet on its own... this is a hack,
 			// maybe a cleaner flow is due here.
-			List<DataRow> resultRows = (List<DataRow>) it.allRows();
+			List<?> resultRows = it.allRows();
 
 			dataNode.getJdbcEventLogger().logSelectCount(resultRows.size(), System.currentTimeMillis() - startTime);
 
 			callback.nextRows(query, resultRows);
 		}
+	}
+
+	private void recreateQueryMetadata(ResultSet resultSet) throws SQLException {
+		if(query.isUseScalar() && queryMetadata.getResultSetMapping() != null && queryMetadata.getResultSetMapping().isEmpty()){
+			for(int i = 0; i < resultSet.getMetaData().getColumnCount(); i++) {
+				queryMetadata.getResultSetMapping().add(new DefaultScalarResultSegment(String.valueOf(i), i));
+			}
+		}
+	}
+
+	/**
+	 * Creates column descriptors based on compiled statement and query metadata
+	 */
+	private ColumnDescriptor[] createColumnDescriptors(SQLStatement compiled) {
+		// SQLTemplate #result columns take precedence over other ways to determine the type
+		if (compiled.getResultColumns().length > 0) {
+			if(query.getResultColumnsTypes() != null) {
+				throw new CayenneRuntimeException("Caused by setting return types by directives and by parameters in query.");
+			} else {
+				return compiled.getResultColumns();
+			}
+		}
+
+		// check explicitly set column types
+		if(query.getResultColumnsTypes() == null) {
+			return null;
+		}
+
+		int size = query.getResultColumnsTypes().size();
+		ColumnDescriptor[] columnDescriptors = new ColumnDescriptor[size];
+		for(int i = 0; i < size; i++) {
+			ColumnDescriptor columnDescriptor = new ColumnDescriptor();
+			columnDescriptor.setJavaClass(query.getResultColumnsTypes().get(i).getName());
+			columnDescriptors[i] = columnDescriptor;
+		}
+		return columnDescriptors;
 	}
 
 	/**
@@ -288,15 +330,15 @@ public class SQLTemplateAction implements SQLAction {
 			throws SQLException {
 		RowDescriptorBuilder builder = new RowDescriptorBuilder()
 				.setResultSet(resultSet)
+				.setColumns(createColumnDescriptors(compiled))
 				.validateDuplicateColumnNames();
 
-		// SQLTemplate #result columns take precedence over other ways to determine the type
-		if (compiled.getResultColumns().length > 0) {
-			builder.setColumns(compiled.getResultColumns());
+		if(query.getResultColumnsTypes() != null) {
+			builder.mergeColumnsWithRsMetadata();
 		}
 
 		ObjEntity entity = queryMetadata.getObjEntity();
-		if (entity != null) {
+		if (entity != null && isResultColumnTypesEmpty()) {
 			// TODO: andrus 2008/03/28 support flattened attributes with aliases...
 			for (ObjAttribute attribute : entity.getAttributes()) {
 				String column = attribute.getDbAttributePath();
@@ -310,7 +352,7 @@ public class SQLTemplateAction implements SQLAction {
 		// override numeric Java types based on JDBC defaults for DbAttributes, as Oracle
 		// ResultSetMetadata is not very precise about NUMERIC distinctions...
 		// (BigDecimal vs Long vs. Integer)
-		if (dbEntity != null) {
+		if (dbEntity != null && isResultColumnTypesEmpty()) {
 			for (DbAttribute attribute : dbEntity.getAttributes()) {
 				if (!builder.isOverriden(attribute.getName()) && TypesMapping.isNumeric(attribute.getType())) {
 					builder.overrideColumnType(attribute.getName(), TypesMapping.getJavaBySqlType(attribute.getType()));
@@ -328,6 +370,10 @@ public class SQLTemplateAction implements SQLAction {
 		}
 
 		return builder;
+	}
+
+	private boolean isResultColumnTypesEmpty(){
+		return query.getResultColumnsTypes() == null || query.getResultColumnsTypes().isEmpty();
 	}
 
 	/**

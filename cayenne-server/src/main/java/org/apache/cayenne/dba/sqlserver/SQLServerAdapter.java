@@ -118,5 +118,4 @@ public class SQLServerAdapter extends SybaseAdapter {
 		translator.setCaseInsensitive(caseInsensitiveCollations);
 		return translator;
 	}
-
 }

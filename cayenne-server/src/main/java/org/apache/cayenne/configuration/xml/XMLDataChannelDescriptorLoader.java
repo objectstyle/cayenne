@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.util.Arrays;
 
 /**
  * @since 3.1
@@ -47,9 +48,15 @@ import java.net.URL;
  */
 public class XMLDataChannelDescriptorLoader implements DataChannelDescriptorLoader {
 
-	private static Logger logger = LoggerFactory.getLogger(XMLDataChannelDescriptorLoader.class);
+	private static final Logger logger = LoggerFactory.getLogger(XMLDataChannelDescriptorLoader.class);
 
-	static final String CURRENT_PROJECT_VERSION = "10";
+	/**
+	 * Versions of project XML files that this loader can read.
+	 */
+	static final String[] SUPPORTED_PROJECT_VERSIONS = {"10"};
+	static {
+		Arrays.sort(SUPPORTED_PROJECT_VERSIONS);
+	}
 
 	/**
 	 * @deprecated the caller should use password resolving strategy instead of
@@ -131,12 +138,7 @@ public class XMLDataChannelDescriptorLoader implements DataChannelDescriptorLoad
 		try(InputStream in = configurationURL.openStream()) {
 			XMLReader parser = xmlReaderProvider.get();
 			LoaderContext loaderContext = new LoaderContext(parser, handlerFactory);
-			loaderContext.addDataMapListener(new DataMapLoaderListener() {
-				@Override
-				public void onDataMapLoaded(DataMap dataMap) {
-					descriptor.getDataMaps().add(dataMap);
-				}
-			});
+			loaderContext.addDataMapListener(dataMap -> descriptor.getDataMaps().add(dataMap));
 
 			DataChannelHandler rootHandler = new DataChannelHandler(this, descriptor, loaderContext);
 			parser.setContentHandler(rootHandler);

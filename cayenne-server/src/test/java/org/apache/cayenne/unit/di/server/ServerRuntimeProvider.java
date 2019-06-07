@@ -18,9 +18,15 @@
  ****************************************************************/
 package org.apache.cayenne.unit.di.server;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+
 import org.apache.cayenne.ConfigurationException;
 import org.apache.cayenne.access.DataDomain;
+import org.apache.cayenne.configuration.Constants;
 import org.apache.cayenne.configuration.server.DataNodeFactory;
+import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.Binder;
@@ -28,9 +34,6 @@ import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.di.Provider;
 import org.apache.cayenne.unit.UnitDbAdapter;
-
-import java.util.Collection;
-import java.util.Collections;
 
 public class ServerRuntimeProvider implements Provider<ServerRuntime> {
 
@@ -51,7 +54,6 @@ public class ServerRuntimeProvider implements Provider<ServerRuntime> {
         this.unitDbAdapter = unitDbAdapter;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public ServerRuntime get() throws ConfigurationException {
 
@@ -61,9 +63,12 @@ public class ServerRuntimeProvider implements Provider<ServerRuntime> {
                     + "annotate your test case with @UseServerRuntime");
         }
 
-        Collection<? extends Module> modules = getExtraModules();
+        Collection<Module> modules = new ArrayList<>(getExtraModules());
 
-        return new ServerRuntime(configurationLocation, modules.toArray(new Module[modules.size()]));
+        return ServerRuntime.builder()
+                        .addConfig(configurationLocation)
+                        .addModules(modules)
+                        .build();
     }
 
     protected Collection<? extends Module> getExtraModules() {
@@ -82,6 +87,11 @@ public class ServerRuntimeProvider implements Provider<ServerRuntime> {
             binder.bind(DataDomain.class).toProvider(ServerCaseDataDomainProvider.class);
             binder.bind(DataNodeFactory.class).to(ServerCaseDataNodeFactory.class);
             binder.bind(UnitDbAdapter.class).toInstance(unitDbAdapter);
+
+            ServerModule.contributeProperties(binder)
+                    // Use soft references instead of default weak.
+                    // Should remove problems with random-failing tests (those that are GC-sensitive).
+                    .put(Constants.SERVER_OBJECT_RETAIN_STRATEGY_PROPERTY, "soft");
 
             // map DataSources for all test DataNode names
             binder.bind(ServerCaseDataSourceFactory.class).toInstance(dataSourceFactory);

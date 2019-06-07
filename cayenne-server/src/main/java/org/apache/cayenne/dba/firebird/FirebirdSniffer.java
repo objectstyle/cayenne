@@ -16,18 +16,19 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
- 
-package org.apache.cayenne.dba.firebird;
 
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
+package org.apache.cayenne.dba.firebird;
 
 import org.apache.cayenne.configuration.server.DbAdapterDetector;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
 
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+
 public class FirebirdSniffer implements DbAdapterDetector {
+
     protected AdhocObjectFactory objectFactory;
 
     public FirebirdSniffer(@Inject AdhocObjectFactory objectFactory) {
@@ -37,7 +38,12 @@ public class FirebirdSniffer implements DbAdapterDetector {
     @Override
     public DbAdapter createAdapter(DatabaseMetaData md) throws SQLException {
         String dbName = md.getDatabaseProductName();
-        return dbName != null && dbName.toUpperCase().contains("FIREBIRD")
-                ? (DbAdapter) objectFactory.newInstance(DbAdapter.class, FirebirdAdapter.class.getName()) : null;
+        if (dbName == null || !dbName.toUpperCase().contains("FIREBIRD")) {
+            return null;
+        }
+
+        return objectFactory.newInstance(
+                DbAdapter.class,
+                FirebirdAdapter.class.getName());
     }
 }

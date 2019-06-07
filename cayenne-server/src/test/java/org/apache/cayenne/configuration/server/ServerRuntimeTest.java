@@ -31,16 +31,19 @@ import org.apache.cayenne.graph.GraphDiff;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.query.Query;
 import org.apache.cayenne.tx.BaseTransaction;
+import org.apache.cayenne.tx.TransactionDescriptor;
 import org.apache.cayenne.tx.TransactionFactory;
 import org.apache.cayenne.tx.TransactionalOperation;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -52,6 +55,7 @@ public class ServerRuntimeTest {
         final BaseTransaction tx = mock(BaseTransaction.class);
         final TransactionFactory txFactory = mock(TransactionFactory.class);
         when(txFactory.createTransaction()).thenReturn(tx);
+        when(txFactory.createTransaction(any(TransactionDescriptor.class))).thenReturn(tx);
 
         Module module = binder -> binder.bind(TransactionFactory.class).toInstance(txFactory);
 
@@ -73,40 +77,7 @@ public class ServerRuntimeTest {
 
     }
 
-    @Deprecated
     @Test
-    public void testDefaultConstructor_SingleLocation() {
-        ServerRuntime runtime = new ServerRuntime("xxxx");
-
-        List<String> locations = runtime.getInjector().getInstance(
-                Key.getListOf(String.class, Constants.SERVER_PROJECT_LOCATIONS_LIST));
-
-        assertEquals(Arrays.asList("xxxx"), locations);
-
-        Collection<Module> modules = runtime.getModules();
-        assertEquals(2, modules.size());
-        Module m0 = modules.iterator().next();
-        assertTrue(m0 instanceof ServerModule);
-    }
-
-    @Test
-    @Deprecated
-    public void testDefaultConstructor_MultipleLocations() {
-        ServerRuntime runtime = new ServerRuntime(new String[]{"xxxx", "yyyy"});
-
-        List<String> locations = runtime.getInjector().getInstance(
-                Key.getListOf(String.class, Constants.SERVER_PROJECT_LOCATIONS_LIST));
-
-        assertEquals(Arrays.asList("xxxx", "yyyy"), locations);
-
-        Collection<Module> modules = runtime.getModules();
-        assertEquals(2, modules.size());
-        Module m0 = modules.iterator().next();
-        assertTrue(m0 instanceof ServerModule);
-    }
-
-    @Test
-    @Deprecated
     public void testConstructor_Modules() {
 
         final boolean[] configured = new boolean[2];
@@ -125,7 +96,6 @@ public class ServerRuntimeTest {
     }
 
     @Test
-    @Deprecated
     public void testGetDataChannel_CustomModule() {
         final DataChannel channel = new DataChannel() {
 
@@ -148,12 +118,11 @@ public class ServerRuntimeTest {
 
         Module module = binder -> binder.bind(DataChannel.class).toInstance(channel);
 
-        ServerRuntime runtime = new ServerRuntime("Yuis", module);
+        ServerRuntime runtime = new ServerRuntime(Collections.singleton(module));
         assertSame(channel, runtime.getChannel());
     }
 
     @Test
-    @Deprecated
     public void testGetObjectContext_CustomModule() {
         final ObjectContext context = new DataContext();
         final ObjectContextFactory factory = new ObjectContextFactory() {
@@ -169,7 +138,7 @@ public class ServerRuntimeTest {
 
         Module module = binder -> binder.bind(ObjectContextFactory.class).toInstance(factory);
 
-        ServerRuntime runtime = new ServerRuntime("mnYw", module);
+        ServerRuntime runtime = new ServerRuntime(Collections.singleton(module));
         assertSame(context, runtime.newContext());
         assertSame(context, runtime.newContext());
     }

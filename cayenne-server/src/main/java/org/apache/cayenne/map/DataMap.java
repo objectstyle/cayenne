@@ -37,12 +37,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static java.util.Collections.emptyList;
 
@@ -120,6 +117,7 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	 * also the URI to locate a copy of the schema document.
 	 */
 	public static final String SCHEMA_XSD = "http://cayenne.apache.org/schema/10/modelMap";
+    public static final String SCHEMA_XSD_LOCATION = "https://cayenne.apache.org/schema/10/modelMap.xsd";
 
 	protected String name;
 	protected String location;
@@ -138,17 +136,12 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	protected String defaultClientPackage;
 	protected String defaultClientSuperclass;
 
-	private SortedMap<String, Embeddable> embeddablesMap;
-	private SortedMap<String, ObjEntity> objEntityMap;
-	private SortedMap<String, DbEntity> dbEntityMap;
-	private SortedMap<String, Procedure> procedureMap;
-	private SortedMap<String, QueryDescriptor> queryDescriptorMap;
-	private SortedMap<String, SQLResult> results;
-
-	/**
-	 * @deprecated since 4.0 unused as listeners are no longer tied to a DataMap.
-	 */
-	private List<EntityListener> defaultEntityListeners;
+	private Map<String, Embeddable> embeddablesMap;
+    private Map<String, ObjEntity> objEntityMap;
+    private Map<String, DbEntity> dbEntityMap;
+    private Map<String, Procedure> procedureMap;
+    private Map<String, QueryDescriptor> queryDescriptorMap;
+    private Map<String, SQLResult> results;
 
 	/**
 	 * @since 3.1
@@ -171,17 +164,16 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	 * Creates a new named DataMap.
 	 */
 	public DataMap(String mapName) {
-		this(mapName, Collections.<String, Object> emptyMap());
+		this(mapName, Collections.emptyMap());
 	}
 
 	public DataMap(String mapName, Map<String, Object> properties) {
-		embeddablesMap = new TreeMap<>();
-		objEntityMap = new TreeMap<>();
-		dbEntityMap = new TreeMap<>();
-		procedureMap = new TreeMap<>();
-		queryDescriptorMap = new TreeMap<>();
-		defaultEntityListeners = new ArrayList<>(3);
-		results = new TreeMap<>();
+		embeddablesMap = new HashMap<>();
+		objEntityMap = new HashMap<>();
+		dbEntityMap = new HashMap<>();
+		procedureMap = new HashMap<>();
+		queryDescriptorMap = new HashMap<>();
+		results = new HashMap<>();
 		setName(mapName);
 		initWithProperties(properties);
 	}
@@ -246,7 +238,7 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	public void initWithProperties(Map<String, Object> properties) {
 		// must init defaults even if properties are empty
 		if (properties == null) {
-			properties = Collections.<String, Object> emptyMap();
+			properties = Collections.emptyMap();
 		}
 
 		Object lockType = properties.get(DEFAULT_LOCK_TYPE_PROPERTY);
@@ -263,11 +255,11 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 				: ObjEntity.LOCK_TYPE_NONE;
 
 		this.defaultPackage = (packageName != null) ? packageName.toString() : null;
-		this.quotingSQLIdentifiers = (quoteSqlIdentifier != null) ? "true".equalsIgnoreCase(quoteSqlIdentifier.toString()) : false;
+		this.quotingSQLIdentifiers = (quoteSqlIdentifier != null) && "true".equalsIgnoreCase(quoteSqlIdentifier.toString());
 		this.defaultSchema = (schema != null) ? schema.toString() : null;
 		this.defaultCatalog = (catalog != null) ? catalog.toString() : null;
 		this.defaultSuperclass = (superclass != null) ? superclass.toString() : null;
-		this.clientSupported = (clientEntities != null) ? "true".equalsIgnoreCase(clientEntities.toString()) : false;
+		this.clientSupported = (clientEntities != null) && "true".equalsIgnoreCase(clientEntities.toString());
 		this.defaultClientPackage = (clientPackageName != null) ? clientPackageName.toString() : null;
 		this.defaultClientSuperclass = (clientSuperclass != null) ? clientSuperclass.toString() : null;
 	}
@@ -311,7 +303,7 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 		encoder.start("data-map")
 				.attribute("xmlns", SCHEMA_XSD)
 				.attribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance", true)
-				.attribute("xsi:schemaLocation", SCHEMA_XSD + " " + SCHEMA_XSD + ".xsd", true)
+				.attribute("xsi:schemaLocation", SCHEMA_XSD + " " + SCHEMA_XSD_LOCATION, true)
 				.projectVersion()
 				// properties
 				.property(DEFAULT_LOCK_TYPE_PROPERTY, defaultLockType)
@@ -324,17 +316,17 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 				.property(DEFAULT_CLIENT_PACKAGE_PROPERTY, defaultClientPackage)
 				.property(DEFAULT_CLIENT_SUPERCLASS_PROPERTY, defaultClientSuperclass)
 				// elements
-				.nested(getEmbeddableMap(), delegate)
-				.nested(getProcedureMap(), delegate)
-				.nested(getDbEntityMap(), delegate)
-				.nested(getObjEntityMap(), delegate);
+				.nested(new TreeMap<>(getEmbeddableMap()), delegate)
+				.nested(new TreeMap<>(getProcedureMap()), delegate)
+				.nested(new TreeMap<>(getDbEntityMap()), delegate)
+				.nested(new TreeMap<>(getObjEntityMap()), delegate);
 
 		// and finally relationships
 		encodeDbRelationshipsAsXML(encoder, delegate);
 		encodeObjRelationshipsAsXML(encoder, delegate);
 
 		// descriptors at the end just to keep logic from older versions
-		encoder.nested(getQueryDescriptors(), delegate);
+		encoder.nested(new TreeMap<>(getQueryDescriptorMap()), delegate);
 
 		delegate.visitDataMap(this);
 		encoder.end();
@@ -342,25 +334,17 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 
 	// stores relationships for the map of entities
 	private void encodeDbRelationshipsAsXML(XMLEncoder encoder, ConfigurationNodeVisitor delegate) {
-		for (Entity entity : getDbEntityMap().values()) {
-			for (Relationship relationship : entity.getRelationships()) {
-				// filter out synthetic
-				if (!relationship.isRuntime()) {
-					relationship.encodeAsXML(encoder, delegate);
-				}
-			}
+		for (Entity entity : new TreeMap<>(getDbEntityMap()).values()) {
+			entity.getRelationships().stream().filter(r -> !r.isRuntime())
+					.forEach(r -> r.encodeAsXML(encoder, delegate));
 		}
 	}
 
 	// stores relationships for the map of entities
 	private void encodeObjRelationshipsAsXML(XMLEncoder encoder, ConfigurationNodeVisitor delegate) {
-		for (ObjEntity entity : getObjEntityMap().values()) {
-			for (Relationship relationship : entity.getDeclaredRelationships()) {
-				// filter out synthetic
-				if (!relationship.isRuntime()) {
-					relationship.encodeAsXML(encoder, delegate);
-				}
-			}
+		for (ObjEntity entity : new TreeMap<>(getObjEntityMap()).values()) {
+			entity.getDeclaredRelationships().stream().filter(r -> !r.isRuntime())
+					.forEach(r -> r.encodeAsXML(encoder, delegate));
 		}
 	}
 
@@ -425,19 +409,19 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	}
 
 	/**
-	 * Returns a sorted unmodifiable map of ObjEntities contained in this
+	 * Returns a unmodifiable map of ObjEntities contained in this
 	 * DataMap, keyed by ObjEntity name.
 	 */
-	public SortedMap<String, ObjEntity> getObjEntityMap() {
-		return Collections.unmodifiableSortedMap(objEntityMap);
+	public Map<String, ObjEntity> getObjEntityMap() {
+		return Collections.unmodifiableMap(objEntityMap);
 	}
 
 	/**
-	 * Returns a sorted unmodifiable map of DbEntities contained in this
+	 * Returns a unmodifiable map of DbEntities contained in this
 	 * DataMap, keyed by DbEntity name.
 	 */
-	public SortedMap<String, DbEntity> getDbEntityMap() {
-		return Collections.unmodifiableSortedMap(dbEntityMap);
+	public Map<String, DbEntity> getDbEntityMap() {
+		return Collections.unmodifiableMap(dbEntityMap);
 	}
 
 	/**
@@ -539,8 +523,8 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	/**
 	 * @since 4.0
      */
-	public SortedMap<String, QueryDescriptor> getQueryDescriptorMap() {
-		return Collections.unmodifiableSortedMap(queryDescriptorMap);
+	public Map<String, QueryDescriptor> getQueryDescriptorMap() {
+		return Collections.unmodifiableMap(queryDescriptorMap);
 	}
 
 	/**
@@ -720,75 +704,6 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	}
 
 	/**
-	 * Returns an unmodifiable list of default {@link EntityListener} objects.
-	 * Note that since the order of listeners is significant a list, not just a
-	 * generic Collection is returned.
-	 * 
-	 * @since 3.0
-	 * @deprecated since 4.0 unused as listeners are no longer tied to a
-	 *             DataMap.
-	 */
-	@Deprecated
-	public List<EntityListener> getDefaultEntityListeners() {
-		return Collections.unmodifiableList(defaultEntityListeners);
-	}
-
-	/**
-	 * Adds a new EntityListener.
-	 * 
-	 * @since 3.0
-	 * @throws IllegalArgumentException
-	 *             if a listener for the same class name is already registered.
-	 * @deprecated since 4.0 unused as listeners are no longer tied to a
-	 *             DataMap.
-	 */
-	@Deprecated
-	public void addDefaultEntityListener(EntityListener listener) {
-		for (EntityListener next : defaultEntityListeners) {
-			if (listener.getClassName().equals(next.getClassName())) {
-				throw new IllegalArgumentException("Duplicate default listener for " + next.getClassName());
-			}
-		}
-
-		defaultEntityListeners.add(listener);
-	}
-
-	/**
-	 * Removes a listener matching class name.
-	 * 
-	 * @since 3.0
-	 * @deprecated since 4.0 unused as listeners are no longer tied to a
-	 *             DataMap.
-	 */
-	@Deprecated
-	public void removeDefaultEntityListener(String className) {
-		Iterator<EntityListener> it = defaultEntityListeners.iterator();
-		while (it.hasNext()) {
-			EntityListener next = it.next();
-			if (className.equals(next.getClassName())) {
-				it.remove();
-				break;
-			}
-		}
-	}
-
-	/**
-	 * @since 3.0
-	 * @deprecated since 4.0 unused, as listeners are no longer tied to a
-	 *             DataMap.
-	 */
-	@Deprecated
-	public EntityListener getDefaultEntityListener(String className) {
-		for (EntityListener listener : defaultEntityListeners) {
-			if (className.equals(listener.getClassName())) {
-				return listener;
-			}
-		}
-
-		return null;
-	}
-
-	/**
 	 * Returns all DbEntities in this DataMap.
 	 */
 	public Collection<DbEntity> getDbEntities() {
@@ -955,7 +870,7 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 			for (ObjEntity ent : getObjEntities()) {
 				// take a copy since we're going to modify the entity
 				for (Relationship relationship : new ArrayList<>(ent.getRelationships())) {
-					if (objEntityName.equals(relationship.getTargetEntityName())
+					if (objEntityName.equals(relationship.getSourceEntity().getName())
 							|| objEntityName.equals(relationship.getTargetEntityName())) {
 						ent.removeRelationship(relationship.getName());
 					}
@@ -1024,8 +939,8 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 	 * Returns a sorted unmodifiable map of Procedures in this DataMap keyed by
 	 * name.
 	 */
-	public SortedMap<String, Procedure> getProcedureMap() {
-		return Collections.unmodifiableSortedMap(procedureMap);
+	public Map<String, Procedure> getProcedureMap() {
+		return Collections.unmodifiableMap(procedureMap);
 	}
 
 	/**
@@ -1336,7 +1251,6 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
 
     /**
      *
-     * @param name
      * @return package + "." + name when it is possible otherwise just name
      *
      * @since 4.0

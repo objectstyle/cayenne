@@ -22,7 +22,7 @@
 	<parent>
 		<artifactId>cayenne-parent</artifactId>
 		<groupId>org.apache.cayenne</groupId>
-		<version>4.1.M2-SNAPSHOT</version>
+		<version>4.1.B3-SNAPSHOT</version>
 	</parent>
 	<artifactId>cayenne-joda</artifactId>
 	<name>cayenne-joda: Cayenne Joda Extensions</name>
@@ -50,6 +50,11 @@
 		<dependency>
 			<groupId>joda-time</groupId>
 			<artifactId>joda-time</artifactId>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
 			<scope>compile</scope>
 		</dependency>
 
@@ -91,11 +96,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
 			<scope>test</scope>
 		</dependency>
@@ -120,17 +120,8 @@
 				<configuration>
 					<map>${project.basedir}/src/test/resources/joda.map.xml</map>
 					<destDir>${project.basedir}/src/test/java</destDir>
-					<defaultPackage>org.apache.cayenne.joda.db</defaultPackage>
 					<superPkg>org.apache.cayenne.joda.db.auto</superPkg>
 				</configuration>
-			</plugin>
-			<plugin>
-				<artifactId>maven-checkstyle-plugin</artifactId>
-				<!--<configuration> <suppressionsLocation>${project.basedir}/cayenne-checkstyle-suppression.xml</suppressionsLocation> 
-					</configuration> -->
-			</plugin>
-			<plugin>
-				<artifactId>maven-pmd-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>

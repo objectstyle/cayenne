@@ -19,11 +19,6 @@
 
 package org.apache.cayenne.dba.sqlserver;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
-import java.sql.Connection;
-
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
@@ -34,6 +29,11 @@ import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.ServerCaseDataSourceFactory;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
 import org.junit.Test;
+
+import java.sql.Connection;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @UseServerRuntime(CayenneProjects.TESTMAP_PROJECT)
 public class SQLServerSnifferIT extends ServerCase {
@@ -52,9 +52,9 @@ public class SQLServerSnifferIT extends ServerCase {
 
 		SQLServerSniffer sniffer = new SQLServerSniffer(objectFactory);
 
-		DbAdapter adapter = null;
+		DbAdapter adapter;
 
-		try (Connection c = dataSourceFactory.getSharedDataSource().getConnection();) {
+		try (Connection c = dataSourceFactory.getSharedDataSource().getConnection()) {
 			adapter = sniffer.createAdapter(c.getMetaData());
 		}
 

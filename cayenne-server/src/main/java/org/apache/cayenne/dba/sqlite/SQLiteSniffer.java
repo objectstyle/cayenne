@@ -18,13 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.dba.sqlite;
 
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-
 import org.apache.cayenne.configuration.server.DbAdapterDetector;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
+
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
 
 /**
  * Detects SQLite database from JDBC metadata.
@@ -46,6 +46,8 @@ public class SQLiteSniffer implements DbAdapterDetector {
             return null;
         }
 
-        return objectFactory.newInstance(DbAdapter.class, SQLiteAdapter.class.getName());
+        return objectFactory.newInstance(
+                DbAdapter.class,
+                SQLiteAdapter.class.getName());
     }
 }

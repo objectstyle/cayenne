@@ -19,22 +19,24 @@
 
 package org.apache.cayenne.modeler.editor.datanode;
 
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Font;
+import com.jgoodies.forms.builder.DefaultFormBuilder;
+import com.jgoodies.forms.layout.FormLayout;
+import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.modeler.util.JTextFieldUndoable;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
 
-import org.apache.cayenne.modeler.Application;
-import org.apache.cayenne.modeler.ProjectController;
-import org.apache.cayenne.modeler.util.JTextFieldUndoable;
-
-import com.jgoodies.forms.builder.DefaultFormBuilder;
-import com.jgoodies.forms.layout.FormLayout;
+import static org.apache.cayenne.modeler.editor.datanode.MainDataNodeEditor.DBCP_DATA_SOURCE_FACTORY;
 
 /**
  * A view for the main DataNode editor tab.
@@ -43,19 +45,21 @@ import com.jgoodies.forms.layout.FormLayout;
 public class MainDataNodeView extends JPanel {
 
     protected JTextField dataNodeName;
-    protected JComboBox factories;
+    protected JComboBox<String> factories;
     protected JPanel dataSourceDetail;
     protected CardLayout dataSourceDetailLayout;
-    protected JComboBox localDataSources;
+    protected JComboBox<String> localDataSources;
     protected JButton configLocalDataSources;
-    protected JComboBox schemaUpdateStrategy;
+    protected JComboBox<String> schemaUpdateStrategy;
 
-    public MainDataNodeView(final ProjectController projectController) {
+    public MainDataNodeView() {
 
         // create widgets
         this.dataNodeName = new JTextFieldUndoable();
 
         this.factories = Application.getWidgetFactory().createUndoableComboBox();
+
+        factories.addActionListener(this::showWarningMessage);
 
         this.localDataSources = Application.getWidgetFactory().createUndoableComboBox();
 
@@ -97,7 +101,7 @@ public class MainDataNodeView extends JPanel {
         add(dataSourceDetail, BorderLayout.CENTER);
     }
 
-    public JComboBox getSchemaUpdateStrategy() {
+    public JComboBox<String> getSchemaUpdateStrategy() {
         return schemaUpdateStrategy;
     }
 
@@ -109,7 +113,7 @@ public class MainDataNodeView extends JPanel {
         return dataSourceDetail;
     }
 
-    public JComboBox getLocalDataSources() {
+    public JComboBox<String> getLocalDataSources() {
         return localDataSources;
     }
 
@@ -117,11 +121,20 @@ public class MainDataNodeView extends JPanel {
         return dataSourceDetailLayout;
     }
 
-    public JComboBox getFactories() {
+    public JComboBox<String> getFactories() {
         return factories;
     }
 
     public JButton getConfigLocalDataSources() {
         return configLocalDataSources;
+    }
+
+    private void showWarningMessage(ActionEvent e){
+        if(DBCP_DATA_SOURCE_FACTORY.equals(factories.getSelectedItem())) {
+            JDialog dialog = new JOptionPane("DPCPDataSourceFactory is deprecated since 4.1", JOptionPane.WARNING_MESSAGE)
+                    .createDialog("Warning");
+            dialog.setAlwaysOnTop(true);
+            dialog.setVisible(true);
+        }
     }
 }

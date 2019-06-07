@@ -19,7 +19,6 @@
 
 package org.apache.cayenne.dba;
 
-import org.apache.cayenne.Cayenne;
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.di.Inject;
@@ -27,14 +26,17 @@ import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.ObjEntity;
 import org.apache.cayenne.query.SelectQuery;
 import org.apache.cayenne.testdo.qualified.Qualified1;
+import org.apache.cayenne.unit.DerbyUnitDbAdapter;
 import org.apache.cayenne.unit.UnitDbAdapter;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
+import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.Comparator;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,13 +53,29 @@ public class ConcurrentPkGeneratorIT extends ServerCase {
 
 	@Inject
 	private UnitDbAdapter unitDbAdapter;
-    
+
+	@Before
+	public void prepareDerbyDb() {
+		//use to fix random test failures on derby db
+		if(unitDbAdapter instanceof DerbyUnitDbAdapter) {
+			try(Connection connection = runtime.getDataDomain().getDataNode("qualified").getDataSource().getConnection()){
+				CallableStatement cs =
+						connection.prepareCall("CALL SYSCS_UTIL.SYSCS_SET_DATABASE_PROPERTY(?, ?)");
+				cs.setString(1, "derby.language.sequence.preallocator");
+				cs.setString(2, "200");
+				cs.execute();
+				cs.close();
+			} catch (SQLException ex) {
+				throw new RuntimeException(ex);
+			}
+		}
+	}
+
     /*
      * Attempts to discover any problems regarding thread locking in the PkGenerator
      */
     @Test
-    public void testConcurrentInserts() throws Exception {
-
+    public void testConcurrentInserts() {
     	if(!unitDbAdapter.supportsPKGeneratorConcurrency()) {
     		return;
 		}
@@ -72,22 +90,22 @@ public class ConcurrentPkGeneratorIT extends ServerCase {
 		
 		// perform concurrent inserts
 		int numThreads = 2;
+		int insertsPerThread = 100;
+
 		ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-		Runnable task = new Runnable() {
-			public void run() {
-				try {
-					ObjectContext context = runtime.newContext();
-					for (ObjEntity entity : dataMap.getObjEntities()) {
-						context.newObject(entity.getJavaClass());
-					}
-					context.commitChanges();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		};
+		Runnable task = () -> {
+            try {
+                ObjectContext context1 = runtime.newContext();
+                for (ObjEntity entity : dataMap.getObjEntities()) {
+                    context1.newObject(entity.getJavaClass());
+                }
+                context1.commitChanges();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
 		
-		for (int j = 0; j < 100; j++) {
+		for (int j = 0; j < insertsPerThread; j++) {
 			for (int i = 0; i < numThreads; i++) {
 				executor.submit(task);
 			}
@@ -107,17 +125,11 @@ public class ConcurrentPkGeneratorIT extends ServerCase {
 		
 		// check for gaps in the generated sequence numbers
 		qualified1s = context.select(SelectQuery.query(Qualified1.class, null));
-		assertEquals(100 * numThreads, qualified1s.size());
-		
-		Collections.sort(qualified1s, new Comparator<Qualified1>() {
-			public int compare(Qualified1 left, Qualified1 right) {
-				Integer leftPk = Cayenne.intPKForObject(left);
-				Integer rightPk = Cayenne.intPKForObject(right);
-				return leftPk.compareTo(rightPk);
-			}
-		});
-		
+		assertEquals(insertsPerThread * numThreads, qualified1s.size());
+
 		// PKs will be used in order most of the time, but the implementation doesn't guarantee it.
+//		qualified1s.sort(Comparator.comparing(Cayenne::intPKForObject));
+//
 //		int lastPk = Cayenne.intPKForObject(qualified1s.get(0)) - 1;
 //		for (Qualified1 qualified1 : qualified1s) {
 //			if (lastPk+1 != Cayenne.intPKForObject(qualified1)) {

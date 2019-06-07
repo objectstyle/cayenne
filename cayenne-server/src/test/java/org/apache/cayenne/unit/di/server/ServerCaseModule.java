@@ -31,6 +31,7 @@ import org.apache.cayenne.access.types.ByteArrayType;
 import org.apache.cayenne.access.types.ByteType;
 import org.apache.cayenne.access.types.CalendarType;
 import org.apache.cayenne.access.types.CharType;
+import org.apache.cayenne.access.types.CharacterValueType;
 import org.apache.cayenne.access.types.DateType;
 import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
 import org.apache.cayenne.access.types.DoubleType;
@@ -56,6 +57,7 @@ import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.configuration.ObjectStoreFactory;
 import org.apache.cayenne.configuration.RuntimeProperties;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
+import org.apache.cayenne.configuration.server.PkGeneratorFactoryProvider;
 import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.configuration.xml.DataChannelMetaData;
@@ -67,21 +69,33 @@ import org.apache.cayenne.configuration.xml.XMLReaderProvider;
 import org.apache.cayenne.conn.DataSourceInfo;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.dba.JdbcAdapter;
+import org.apache.cayenne.dba.JdbcPkGenerator;
+import org.apache.cayenne.dba.PkGenerator;
 import org.apache.cayenne.dba.db2.DB2Adapter;
+import org.apache.cayenne.dba.db2.DB2PkGenerator;
 import org.apache.cayenne.dba.derby.DerbyAdapter;
+import org.apache.cayenne.dba.derby.DerbyPkGenerator;
 import org.apache.cayenne.dba.firebird.FirebirdAdapter;
 import org.apache.cayenne.dba.frontbase.FrontBaseAdapter;
+import org.apache.cayenne.dba.frontbase.FrontBasePkGenerator;
 import org.apache.cayenne.dba.h2.H2Adapter;
+import org.apache.cayenne.dba.h2.H2PkGenerator;
 import org.apache.cayenne.dba.hsqldb.HSQLDBAdapter;
 import org.apache.cayenne.dba.ingres.IngresAdapter;
+import org.apache.cayenne.dba.ingres.IngresPkGenerator;
 import org.apache.cayenne.dba.mysql.MySQLAdapter;
+import org.apache.cayenne.dba.mysql.MySQLPkGenerator;
 import org.apache.cayenne.dba.openbase.OpenBaseAdapter;
+import org.apache.cayenne.dba.openbase.OpenBasePkGenerator;
 import org.apache.cayenne.dba.oracle.Oracle8Adapter;
 import org.apache.cayenne.dba.oracle.OracleAdapter;
+import org.apache.cayenne.dba.oracle.OraclePkGenerator;
 import org.apache.cayenne.dba.postgres.PostgresAdapter;
+import org.apache.cayenne.dba.postgres.PostgresPkGenerator;
 import org.apache.cayenne.dba.sqlite.SQLiteAdapter;
 import org.apache.cayenne.dba.sqlserver.SQLServerAdapter;
 import org.apache.cayenne.dba.sybase.SybaseAdapter;
+import org.apache.cayenne.dba.sybase.SybasePkGenerator;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Binder;
 import org.apache.cayenne.di.ClassLoaderManager;
@@ -90,8 +104,8 @@ import org.apache.cayenne.di.Module;
 import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
 import org.apache.cayenne.di.spi.DefaultScope;
-import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.log.JdbcEventLogger;
+import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
@@ -151,8 +165,31 @@ public class ServerCaseModule implements Module {
                 .put(FrontBaseAdapter.class.getName(), FrontBaseUnitDbAdapter.class.getName())
                 .put(IngresAdapter.class.getName(), IngresUnitDbAdapter.class.getName())
                 .put(SQLiteAdapter.class.getName(), SQLiteUnitDbAdapter.class.getName());
-        ServerModule.contributeProperties(binder);
-        
+        ServerModule.contributeProperties(binder)
+                // Use soft references instead of default weak.
+                // Should remove problems with random-failing tests (those that are GC-sensitive).
+                .put(Constants.SERVER_OBJECT_RETAIN_STRATEGY_PROPERTY, "soft");
+
+        ServerModule.contributeDomainFilters(binder);
+        ServerModule.contributeDomainSyncFilters(binder);
+        ServerModule.contributeDomainQueryFilters(binder);
+
+        binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
+        binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+        ServerModule.contributePkGenerators(binder)
+                .put(DB2Adapter.class.getName(), DB2PkGenerator.class)
+                .put(DerbyAdapter.class.getName(), DerbyPkGenerator.class)
+                .put(FrontBaseAdapter.class.getName(), FrontBasePkGenerator.class)
+                .put(H2Adapter.class.getName(), H2PkGenerator.class)
+                .put(IngresAdapter.class.getName(), IngresPkGenerator.class)
+                .put(MySQLAdapter.class.getName(), MySQLPkGenerator.class)
+                .put(OpenBaseAdapter.class.getName(), OpenBasePkGenerator.class)
+                .put(OracleAdapter.class.getName(), OraclePkGenerator.class)
+                .put(Oracle8Adapter.class.getName(), OraclePkGenerator.class)
+                .put(PostgresAdapter.class.getName(), PostgresPkGenerator.class)
+                .put(SQLServerAdapter.class.getName(), SybasePkGenerator.class)
+                .put(SybaseAdapter.class.getName(), SybasePkGenerator.class);
+
         // configure extended types
         ServerModule.contributeDefaultTypes(binder)
                 .add(new VoidType())
@@ -179,7 +216,8 @@ public class ServerCaseModule implements Module {
                 .add(UUIDValueType.class)
                 .add(LocalDateValueType.class)
                 .add(LocalTimeValueType.class)
-                .add(LocalDateTimeValueType.class);
+                .add(LocalDateTimeValueType.class)
+                .add(CharacterValueType.class);
         binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         binder.bind(SchemaBuilder.class).to(SchemaBuilder.class);

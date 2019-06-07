@@ -25,18 +25,22 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.1.M2-SNAPSHOT</version>
+		<version>4.1.B3-SNAPSHOT</version>
 	</parent>
 
 	<groupId>org.apache.cayenne.docs</groupId>
 	<artifactId>cayenne-docs-parent</artifactId>
-	<name>cayenne-docs-parent: Cayenne Documenation Parent</name>
+	<name>cayenne-docs-parent: Cayenne Documentation Parent</name>
 	<packaging>pom</packaging>
 
 	<modules>
 		<module>doc</module>
-		<module>docbook</module>
-	</modules>
+        <module>asciidoc</module>
+    </modules>
+
+	<properties>
+		<build.docs>generate-resources</build.docs>
+	</properties>
 
 	<build>
 		<plugins>
@@ -49,4 +53,14 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<id>src</id>
+			<properties>
+				<build.docs>none</build.docs>
+			</properties>
+		</profile>
+	</profiles>
+
 </project>

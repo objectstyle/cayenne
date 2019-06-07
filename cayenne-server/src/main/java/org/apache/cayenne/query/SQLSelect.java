@@ -18,13 +18,6 @@
  ****************************************************************/
 package org.apache.cayenne.query;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.DataRow;
 import org.apache.cayenne.ObjectContext;
@@ -33,7 +26,13 @@ import org.apache.cayenne.ResultIterator;
 import org.apache.cayenne.ResultIteratorCallback;
 import org.apache.cayenne.map.DataMap;
 import org.apache.cayenne.map.EntityResolver;
-import org.apache.cayenne.map.SQLResult;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A selecting query based on raw SQL and featuring fluent API.
@@ -44,11 +43,35 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 
 	private static final long serialVersionUID = -7074293371883740872L;
 
+	private List<Class<?>> resultColumnsTypes;
+	private boolean useScalar;
+	private boolean isFetchingDataRows;
+
 	/**
 	 * Creates a query that selects DataRows and uses default routing.
 	 */
 	public static SQLSelect<DataRow> dataRowQuery(String sql) {
-		return new SQLSelect<>(sql);
+		return new SQLSelect<>(sql)
+				.fetchingDataRows();
+	}
+
+	/**
+	 * Creates a query that selects DataRows and uses default routing.
+	 * @since 4.1
+	 */
+	public static SQLSelect<DataRow> dataRowQuery(String sql, Class<?>... types) {
+		return new SQLSelect<>(sql)
+				.resultColumnsTypes(types)
+				.fetchingDataRows();
+	}
+
+	/**
+	 * Creates a query that selects DataRows and uses routing based on the
+	 * provided DataMap name.
+	 * @since 4.1
+	 */
+	public static SQLSelect<DataRow> dataRowQuery(String dataMapName, String sql, Class<?>... types) {
+		return dataRowQuery(dataMapName, sql).resultColumnsTypes(types);
 	}
 
 	/**
@@ -58,7 +81,7 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	public static SQLSelect<DataRow> dataRowQuery(String dataMapName, String sql) {
 		SQLSelect<DataRow> query = new SQLSelect<>(sql);
 		query.dataMapName = dataMapName;
-		return query;
+		return query.fetchingDataRows();
 	}
 
 	/**
@@ -72,9 +95,7 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	 * Creates a query that selects scalar values and uses default routing.
 	 */
 	public static <T> SQLSelect<T> scalarQuery(Class<T> type, String sql) {
-		SQLSelect<T> query = new SQLSelect<>(sql);
-		query.scalarType = type;
-		return query;
+		return scalarQuery(sql, type);
 	}
 
 	/**
@@ -84,12 +105,83 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	public static <T> SQLSelect<T> scalarQuery(Class<T> type, String dataMapName, String sql) {
 		SQLSelect<T> query = new SQLSelect<>(sql);
 		query.dataMapName = dataMapName;
-		query.scalarType = type;
-		return query;
+		return query.resultColumnsTypes(type).useScalar();
+	}
+
+	/**
+	 * Creates query that selects scalar value and uses default routing
+	 *
+	 * @since 4.1
+	 */
+	public static <T> SQLSelect<T> scalarQuery(String sql, Class<T> type) {
+		SQLSelect<T> query = new SQLSelect<>(sql);
+		return query.resultColumnsTypes(type).useScalar();
+	}
+
+	/**
+	 * Creates query that selects scalar value and uses default routing
+	 *
+	 * @since 4.1
+	 */
+	public static <T> SQLSelect<T> scalarQuery(String sql, String dataMapName, Class<T> type) {
+		SQLSelect<T> query = new SQLSelect<>(sql);
+		query.dataMapName = dataMapName;
+		return query.resultColumnsTypes(type).useScalar();
+	}
+
+	/**
+	 * Creates query that selects scalar value and uses default routing
+	 *
+	 * @since 4.1
+	 */
+	public static SQLSelect<Object[]> scalarQuery(String sql) {
+		SQLSelect<Object[]> query = new SQLSelect<>(sql);
+		return query.useScalar();
+	}
+
+	/**
+	 * Creates query that selects scalar values (as Object[]) and uses routing based on the
+	 * provided DataMap name.
+	 * @since 4.1
+	 */
+	public static SQLSelect<Object[]> scalarQuery(String sql, String dataMapName) {
+		SQLSelect<Object[]> query = new SQLSelect<>(sql);
+		query.dataMapName = dataMapName;
+		return query.useScalar();
+	}
+
+	/**
+	 * Creates query that selects scalar values (as Object[]) and uses default routing
+	 *
+	 * @since 4.1
+	 */
+	public static SQLSelect<Object[]> scalarQuery(String sql, Class<?> firstType, Class<?>... types) {
+		SQLSelect<Object[]> query = new SQLSelect<>(sql);
+		return query.resultColumnsTypes(firstType).resultColumnsTypes(types).useScalar();
+	}
+
+	/**
+	 * Creates query that selects scalar values (as Object[]) and uses routing based on the
+	 * provided DataMap name.
+	 *
+	 * @since 4.1
+	 */
+	public static SQLSelect<Object[]> scalarQuery(String sql, String dataMapName, Class<?> firstType, Class<?>... types) {
+		SQLSelect<Object[]> query = new SQLSelect<>(sql);
+		query.dataMapName = dataMapName;
+		return query.resultColumnsTypes(firstType).resultColumnsTypes(types).useScalar();
+	}
+
+	@SuppressWarnings("unchecked")
+	private <E> SQLSelect<E> resultColumnsTypes(Class<?>... types) {
+		if(resultColumnsTypes == null) {
+			resultColumnsTypes = new ArrayList<>(types.length);
+		}
+		Collections.addAll(resultColumnsTypes, types);
+		return (SQLSelect<E>)this;
 	}
 
 	protected Class<T> persistentType;
-	protected Class<T> scalarType;
 	protected String dataMapName;
 	protected StringBuilder sqlBuffer;
 	protected QueryCacheStrategy cacheStrategy;
@@ -101,6 +193,7 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	protected int offset;
 	protected int pageSize;
 	protected int statementFetchSize;
+	protected PrefetchTreeNode prefetches;
 
 	public SQLSelect(String sql) {
 		this(null, sql);
@@ -145,11 +238,7 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	}
 
 	public boolean isFetchingDataRows() {
-		return persistentType == null;
-	}
-
-	public boolean isFetchingScalars() {
-		return scalarType != null;
+		return isFetchingDataRows;
 	}
 
 	public String getSql() {
@@ -173,17 +262,14 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public SQLSelect<T> params(Map<String, ?> parameters) {
-
 		if (this.params == null) {
 			this.params = new HashMap<>(parameters);
 		} else {
 			this.params.putAll(parameters);
 		}
-
 		this.replacementQuery = null;
 
-		// since named parameters are specified, resetting positional
-		// parameters
+		// since named parameters are specified, resetting positional parameters
 		this.positionalParams = null;
 		return this;
 	}
@@ -215,11 +301,11 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	 * parameters.
 	 */
 	public SQLSelect<T> paramsList(List<Object> params) {
-		// since named parameters are specified, resetting positional
-		// parameters
-		this.params = null;
-
 		this.positionalParams = params;
+		this.replacementQuery = null;
+
+		// since named parameters are specified, resetting positional parameters
+		this.params = null;
 		return this;
 	}
 
@@ -258,11 +344,15 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 		}
 
 		SQLTemplate template = new SQLTemplate();
-		template.setFetchingDataRows(isFetchingDataRows());
+		template.setFetchingDataRows(isFetchingDataRows);
 		template.setRoot(root);
 		template.setDefaultTemplate(getSql());
 		template.setCacheGroup(cacheGroup);
 		template.setCacheStrategy(cacheStrategy);
+		template.setResultColumnsTypes(resultColumnsTypes);
+		if (prefetches != null) {
+			template.addPrefetch(prefetches);
+		}
 
 		if (positionalParams != null) {
 			template.setParamsList(positionalParams);
@@ -275,12 +365,7 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 		template.setFetchOffset(offset);
 		template.setPageSize(pageSize);
 		template.setStatementFetchSize(statementFetchSize);
-
-		if (isFetchingScalars()) {
-			SQLResult resultMap = new SQLResult();
-			resultMap.addColumnResult("x");
-			template.setResult(resultMap);
-		}
+		template.setUseScalar(useScalar);
 
 		return template;
 	}
@@ -467,5 +552,52 @@ public class SQLSelect<T> extends IndirectQuery implements Select<T> {
 	 */
 	public int getStatementFetchSize() {
 		return statementFetchSize;
+	}
+
+	/**
+	 * Merges a prefetch path with specified semantics into the query prefetch tree.
+	 * @param path Path expression
+	 * @param semantics Defines a strategy to prefetch relationships. See {@link PrefetchTreeNode}
+	 * @return this object
+	 * @since 4.1
+	 */
+	public SQLSelect<T> addPrefetch(String path, int semantics) {
+		if (path == null) {
+			return this;
+		}
+		if (prefetches == null) {
+			prefetches = new PrefetchTreeNode();
+		}
+		prefetches.addPath(path).setSemantics(semantics);
+		return this;
+	}
+
+	/**
+	 * Merges a prefetch into the query prefetch tree.
+	 * @param node Prefetch which will added to query prefetch tree
+	 * @return this object
+	 * @since 4.1
+	 */
+	public SQLSelect<T> addPrefetch(PrefetchTreeNode node) {
+		if (node == null) {
+			return this;
+		}
+		if (prefetches == null) {
+			prefetches = new PrefetchTreeNode();
+		}
+		prefetches.merge(node);
+		return this;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <E> SQLSelect<E> fetchingDataRows() {
+		this.isFetchingDataRows = true;
+		return (SQLSelect<E>) this;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <E> SQLSelect<E> useScalar() {
+		this.useScalar = true;
+		return (SQLSelect<E>) this;
 	}
 }

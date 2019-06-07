@@ -85,19 +85,6 @@ public class Property<E> {
     private final Class<? super E> type;
 
     /**
-     * Constructs a new property with the given name.
-     *
-     * @param name name of the property (usually it's obj path)
-     *
-     * @see Property#create(String, Class)
-     * @deprecated use factory method Property.create("propertyName", PropertyType.class)
-     */
-    @Deprecated
-	public Property(final String name) {
-        this(name, null);
-    }
-
-    /**
      * Constructs a new property with the given name and type.
      *
      * @param name of the property (usually it's obj path)
@@ -181,12 +168,20 @@ public class Property<E> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         Property<?> property = (Property<?>) o;
-        if (name != null ? !name.equals(property.name) : property.name != null) return false;
-        if (name == null && !expressionProvider.get().equals(property.expressionProvider.get())) return false;
+        if (name != null ? !name.equals(property.name) : property.name != null) {
+            return false;
+        }
+        if (name == null && !expressionProvider.get().equals(property.expressionProvider.get())) {
+            return false;
+        }
         return (type == null ? property.type == null : type.equals(property.type));
     }
 
@@ -647,6 +642,14 @@ public class Property<E> {
      */
     public Property<Long> count() {
         return create(FunctionExpressionFactory.countExp(getExpression()), Long.class);
+    }
+    
+    /**
+     * @see FunctionExpressionFactory#countDistinctExp(Expression)
+     * @since 4.1
+     */
+    public Property<Long> countDistinct() {
+        return create(FunctionExpressionFactory.countDistinctExp(getExpression()), Long.class);
     }
 
     /**

@@ -20,9 +20,6 @@
 package org.apache.cayenne.modeler.editor;
 
 import org.apache.cayenne.configuration.event.QueryEvent;
-import org.apache.cayenne.exp.Expression;
-import org.apache.cayenne.exp.ExpressionException;
-import org.apache.cayenne.exp.ExpressionFactory;
 import org.apache.cayenne.map.Attribute;
 import org.apache.cayenne.map.Entity;
 import org.apache.cayenne.map.Relationship;
@@ -35,12 +32,17 @@ import org.apache.cayenne.modeler.util.EntityTreeModel;
 import org.apache.cayenne.modeler.util.ModelerUtil;
 import org.apache.cayenne.swing.components.image.FilteredIconFactory;
 
-import javax.swing.*;
-import javax.swing.table.AbstractTableModel;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultCellEditor;
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JToolBar;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableColumn;
 import javax.swing.table.TableModel;
 import javax.swing.tree.TreeModel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 /**
  * Subclass of the SelectQueryOrderingTab configured to work with prefetches.
@@ -48,8 +50,37 @@ import java.awt.event.ActionListener;
  */
 public class SelectQueryPrefetchTab extends SelectQueryOrderingTab {
 
+    static final String JOINT_PREFETCH_SEMANTICS = "Joint";
+    static final String DISJOINT_PREFETCH_SEMANTICS = "Disjoint";
+    static final String DISJOINT_BY_ID_PREFETCH_SEMANTICS = "Disjoint by id";
+    static final String UNDEFINED_SEMANTICS = "Undefined semantics";
+
     public SelectQueryPrefetchTab(ProjectController mediator) {
         super(mediator);
+    }
+
+    protected void initFromModel(){
+        super.initFromModel();
+        if(table.getColumnModel().getColumns().hasMoreElements()) {
+            setUpPrefetchBox(table.getColumnModel().getColumn(2));
+        }
+    }
+
+    protected void setUpPrefetchBox(TableColumn column) {
+
+        JComboBox<String> prefetchBox = new JComboBox<>();
+        prefetchBox.addItem(JOINT_PREFETCH_SEMANTICS);
+        prefetchBox.addItem(DISJOINT_PREFETCH_SEMANTICS);
+        prefetchBox.addItem(DISJOINT_BY_ID_PREFETCH_SEMANTICS);
+
+        prefetchBox.addActionListener(e -> Application.getInstance().getFrameController().getEditorView().getEventController().setDirty(true));
+
+        column.setCellEditor(new DefaultCellEditor(prefetchBox));
+
+        DefaultTableCellRenderer renderer =
+                new DefaultTableCellRenderer();
+        renderer.setToolTipText("Click for combo box");
+        column.setCellRenderer(renderer);
     }
 
     protected JComponent createToolbar() {
@@ -60,19 +91,16 @@ public class SelectQueryPrefetchTab extends SelectQueryOrderingTab {
         add.setIcon(addIcon);
         add.setDisabledIcon(FilteredIconFactory.createDisabledIcon(addIcon));
         
-        add.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-            	String prefetch = getSelectedPath();
-                
-            	if (prefetch == null) {
-                    return;
-                }
-            	
-                addPrefetch(prefetch);
-                
-                Application.getInstance().getUndoManager().addEdit(new AddPrefetchUndoableEdit(prefetch, SelectQueryPrefetchTab.this));
+        add.addActionListener(e -> {
+            String prefetch = getSelectedPath();
+
+            if (prefetch == null) {
+                return;
             }
 
+            addPrefetch(prefetch);
+
+            Application.getInstance().getUndoManager().addEdit(new AddPrefetchUndoableEdit(prefetch, SelectQueryPrefetchTab.this));
         });
 
         JButton remove = new CayenneAction.CayenneToolbarButton(null, 3);
@@ -80,21 +108,16 @@ public class SelectQueryPrefetchTab extends SelectQueryOrderingTab {
         Icon removeIcon = ModelerUtil.buildIcon("icon-trash.png");
         remove.setIcon(removeIcon);
         remove.setDisabledIcon(FilteredIconFactory.createDisabledIcon(removeIcon));
-        
-        remove.addActionListener(new ActionListener() {
+        remove.addActionListener(e -> {
+            int selection = table.getSelectedRow();
 
-            public void actionPerformed(ActionEvent e) {
-            	int selection = table.getSelectedRow();
-                
-            	if (selection < 0) {
-                    return;
-                }
-
-            	String prefetch = (String) table.getModel().getValueAt(selection, 0);
-            	
-                removePrefetch(prefetch);
+            if (selection < 0) {
+                return;
             }
 
+            String prefetch = (String) table.getModel().getValueAt(selection, 0);
+
+            removePrefetch(prefetch);
         });
 
         JToolBar toolBar = new JToolBar();
@@ -121,20 +144,22 @@ public class SelectQueryPrefetchTab extends SelectQueryOrderingTab {
     }
 
     protected TableModel createTableModel() {
-        return new PrefetchModel();
+        return new PrefetchModel(selectQuery.getPrefetchesMap(), selectQuery.getRoot());
     }
 
     public void addPrefetch(String prefetch) {
         
         // check if such prefetch already exists
-        if (!selectQuery.getPrefetches().isEmpty() && selectQuery.getPrefetches().contains(prefetch)) {
+        if (!selectQuery.getPrefetchesMap().isEmpty() && selectQuery.getPrefetchesMap().containsKey(prefetch)) {
             return;
         }
 
-        selectQuery.addPrefetch(prefetch);
+        //default value id disjoint
+        selectQuery.addPrefetch(prefetch, PrefetchModel.getPrefetchType(DISJOINT_PREFETCH_SEMANTICS));
        
         // reset the model, since it is immutable
         table.setModel(createTableModel());
+        setUpPrefetchBox(table.getColumnModel().getColumn(2));
         
         mediator.fireQueryEvent(new QueryEvent(this, selectQuery));
     }
@@ -144,92 +169,9 @@ public class SelectQueryPrefetchTab extends SelectQueryOrderingTab {
 
         // reset the model, since it is immutable
         table.setModel(createTableModel());
+        setUpPrefetchBox(table.getColumnModel().getColumn(2));
+
         mediator.fireQueryEvent(new QueryEvent(this, selectQuery));
     }
 
-    boolean isToMany(String prefetch) {
-        if (selectQuery == null) {
-            return false;
-        }
-
-        Object root = selectQuery.getRoot();
-
-        // totally invalid path would result in ExpressionException
-        try {
-            Expression exp = ExpressionFactory.exp(prefetch);
-            Object object = exp.evaluate(root);
-            if (object instanceof Relationship) {
-                return ((Relationship) object).isToMany();
-            }
-            else {
-                return false;
-            }
-        }
-        catch (ExpressionException e) {
-            return false;
-        }
-    }
-
-    /**
-     * A table model for the Ordering editing table.
-     */
-    final class PrefetchModel extends AbstractTableModel {
-
-        String[] prefetches;
-
-        PrefetchModel() {
-            if (selectQuery != null) {
-                prefetches = new String[selectQuery.getPrefetches().size()];
-
-                for (int i = 0; i < prefetches.length; i++) {
-                    prefetches[i] = selectQuery.getPrefetches().get(i);
-                }
-            }
-        }
-
-        public int getColumnCount() {
-            return 2;
-        }
-
-        public int getRowCount() {
-            return (prefetches != null) ? prefetches.length : 0;
-        }
-
-        public Object getValueAt(int row, int column) {
-            switch (column) {
-                case 0:
-                    return prefetches[row];
-                case 1:
-                    return isToMany(prefetches[row]) ? Boolean.TRUE : Boolean.FALSE;
-                default:
-                    throw new IndexOutOfBoundsException("Invalid column: " + column);
-            }
-        }
-
-        public Class getColumnClass(int column) {
-            switch (column) {
-                case 0:
-                    return String.class;
-                case 1:
-                    return Boolean.class;
-                default:
-                    throw new IndexOutOfBoundsException("Invalid column: " + column);
-            }
-        }
-
-        public String getColumnName(int column) {
-            switch (column) {
-                case 0:
-                    return "Prefetch Path";
-                case 1:
-                    return "To Many";
-                default:
-                    throw new IndexOutOfBoundsException("Invalid column: " + column);
-            }
-        }
-
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-    }
 }

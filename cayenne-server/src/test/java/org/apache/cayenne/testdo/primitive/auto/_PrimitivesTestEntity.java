@@ -20,9 +20,11 @@ public abstract class _PrimitivesTestEntity extends BaseDataObject {
     public static final String ID_PK_COLUMN = "ID";
 
     public static final Property<Boolean> BOOLEAN_COLUMN = Property.create("booleanColumn", Boolean.class);
+    public static final Property<Character> CHAR_COLUMN = Property.create("charColumn", Character.class);
     public static final Property<Integer> INT_COLUMN = Property.create("intColumn", Integer.class);
 
-    protected boolean booleanColumn;
+    protected Boolean booleanColumn;
+    protected Character charColumn;
     protected int intColumn;
 
 
@@ -33,7 +35,23 @@ public abstract class _PrimitivesTestEntity extends BaseDataObject {
 
 	public boolean isBooleanColumn() {
         beforePropertyRead("booleanColumn");
+        if(this.booleanColumn == null) {
+            return false;
+        }
         return this.booleanColumn;
+    }
+
+    public void setCharColumn(char charColumn) {
+        beforePropertyWrite("charColumn", this.charColumn, charColumn);
+        this.charColumn = charColumn;
+    }
+
+    public char getCharColumn() {
+        beforePropertyRead("charColumn");
+        if(this.charColumn == null) {
+            return 0;
+        }
+        return this.charColumn;
     }
 
     public void setIntColumn(int intColumn) {
@@ -55,6 +73,8 @@ public abstract class _PrimitivesTestEntity extends BaseDataObject {
         switch(propName) {
             case "booleanColumn":
                 return this.booleanColumn;
+            case "charColumn":
+                return this.charColumn;
             case "intColumn":
                 return this.intColumn;
             default:
@@ -70,10 +90,13 @@ public abstract class _PrimitivesTestEntity extends BaseDataObject {
 
         switch (propName) {
             case "booleanColumn":
-                this.booleanColumn = val == null ? false : (Boolean)val;
+                this.booleanColumn = (Boolean)val;
+                break;
+            case "charColumn":
+                this.charColumn = (Character)val;
                 break;
             case "intColumn":
-                this.intColumn = val == null ? 0 : (Integer)val;
+                this.intColumn = val == null ? 0 : (int)val;
                 break;
             default:
                 super.writePropertyDirectly(propName, val);
@@ -91,14 +114,16 @@ public abstract class _PrimitivesTestEntity extends BaseDataObject {
     @Override
     protected void writeState(ObjectOutputStream out) throws IOException {
         super.writeState(out);
-        out.writeBoolean(this.booleanColumn);
+        out.writeObject(this.booleanColumn);
+        out.writeObject(this.charColumn);
         out.writeInt(this.intColumn);
     }
 
     @Override
     protected void readState(ObjectInputStream in) throws IOException, ClassNotFoundException {
         super.readState(in);
-        this.booleanColumn = in.readBoolean();
+        this.booleanColumn = (Boolean)in.readObject();
+        this.charColumn = (Character)in.readObject();
         this.intColumn = in.readInt();
     }
 

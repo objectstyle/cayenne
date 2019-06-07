@@ -18,26 +18,12 @@
  ****************************************************************/
 package org.apache.cayenne.log;
 
-import org.apache.cayenne.configuration.DefaultRuntimeProperties;
 import org.apache.cayenne.util.IDUtil;
 import org.junit.Test;
 
-import java.util.Collections;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class Slf4jJdbcEventLoggerTest {
-
-    @Test
-    public void testSqlLiteralForObject() throws Exception {
-        StringBuilder buf = new StringBuilder();
-
-        // test unsupported type
-        new Slf4jJdbcEventLogger(new DefaultRuntimeProperties(Collections.<String, String>emptyMap()))
-                .sqlLiteralForObject(buf, new Object());
-        assertTrue(buf.length() > 0);
-    }
 
     @Test
     public void testAppendFormattedByte() throws Exception {

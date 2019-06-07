@@ -46,22 +46,21 @@ import org.apache.cayenne.modeler.pref.TableColumnPreferences;
 import org.apache.cayenne.modeler.util.CayenneAction;
 import org.apache.cayenne.modeler.util.CayenneTable;
 import org.apache.cayenne.modeler.util.CayenneTableModel;
-import org.apache.cayenne.modeler.util.DbAttributePathComboBoxRenderer;
 import org.apache.cayenne.modeler.util.DbAttributePathComboBoxEditor;
+import org.apache.cayenne.modeler.util.DbAttributePathComboBoxRenderer;
 import org.apache.cayenne.modeler.util.ModelerUtil;
 import org.apache.cayenne.modeler.util.PanelFactory;
 import org.apache.cayenne.modeler.util.ProjectUtil;
 import org.apache.cayenne.modeler.util.UIUtil;
 import org.apache.cayenne.modeler.util.combo.AutoCompletion;
-import org.apache.cayenne.swing.components.image.FilteredIconFactory;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
-import javax.swing.JOptionPane;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTable;
@@ -71,21 +70,24 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
-import java.awt.event.ActionEvent;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * Detail view of the ObjEntity attributes.
@@ -93,7 +95,7 @@ import java.util.Map;
 public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayListener,
         ObjEntityListener, ObjAttributeListener, ProjectOnSaveListener {
 
-    private static final int INHERITANCE_COLUMN_WIDTH = 35;
+    private static final ImageIcon INHERITANCE_ICON = ModelerUtil.buildIcon("icon-inheritance.png");
 
     private ProjectController mediator;
     private CayenneTable table;
@@ -142,10 +144,13 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
             public void mouseReleased(MouseEvent e) {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
-                if (row >= 0 && col == ObjAttributeTableModel.INHERITED) {
-                    if (Boolean.TRUE.equals(table.getValueAt(row, col))) {
-                        ActionManager actionManager = Application.getInstance().getActionManager();
-                        actionManager.getAction(ObjEntityToSuperEntityAction.class).performAction(null);
+                ObjAttribute objAttribute = ((ObjAttributeTableModel)table.getModel()).getAttribute(row).getValue();
+                int columnFromModel = table.getColumnModel().getColumn(col).getModelIndex();
+                if (row >= 0 && columnFromModel == ObjAttributeTableModel.OBJ_ATTRIBUTE) {
+                    if(objAttribute.isInherited()) {
+                        TableCellRenderer renderer = table.getCellRenderer(row, col);
+                        Rectangle rectangle = table.getCellRect(row, col, false);
+                        ((CellRenderer) renderer).mouseClicked(e, rectangle.x);
                     }
                 }
             }
@@ -153,7 +158,7 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
 
         // Create and install a popup
         Icon ico = ModelerUtil.buildIcon("icon-edit.png");
-        resolveMenu = new CayenneAction.CayenneMenuItem("Database Mapping", ico);
+        resolveMenu = new CayenneAction.CayenneMenuItem("Edit Attribute", ico);
 
         JPopupMenu popup = new JPopupMenu();
         popup.add(resolveMenu);
@@ -173,27 +178,24 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
         mediator.addObjEntityListener(this);
         mediator.addObjAttributeListener(this);
 
-        resolver = new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                int row = table.getSelectedRow();
-                if (row < 0) {
-                    return;
-                }
-
-                ObjAttributeTableModel model = (ObjAttributeTableModel) table.getModel();
-
-                // ... show dialog...
-                new ObjAttributeInfoDialog(mediator, row, model).startupAction();
-
-                // This is required for a table to be updated properly
-                table.cancelEditing();
-
-                // need to refresh selected row... do this by unselecting/selecting the row
-                table.getSelectionModel().clearSelection();
-                table.select(row);
-                enabledResolve = false;
+        resolver = e -> {
+            int row = table.getSelectedRow();
+            if (row < 0) {
+                return;
             }
+
+            ObjAttributeTableModel model = (ObjAttributeTableModel) table.getModel();
+
+            // ... show dialog...
+            new ObjAttributeInfoDialog(mediator, row, model).startupAction();
+
+            // This is required for a table to be updated properly
+            table.cancelEditing();
+
+            // need to refresh selected row... do this by unselecting/selecting the row
+            table.getSelectionModel().clearSelection();
+            table.select(row);
+            enabledResolve = false;
         };
         resolveMenu.addActionListener(resolver);
 
@@ -249,6 +251,9 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
         }
 
         table.select(newSel);
+
+        parentPanel.getResolve().removeActionListener(getResolver());
+        parentPanel.getResolve().addActionListener(getResolver());
     }
 
     public void objAttributeChanged(AttributeEvent e) {
@@ -379,20 +384,17 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
 
     protected void setUpTableStructure() {
         Map<Integer, Integer> minSizes = new HashMap<>();
-        Map<Integer, Integer> maxSizes = new HashMap<>();
-
-        minSizes.put(ObjAttributeTableModel.INHERITED, INHERITANCE_COLUMN_WIDTH);
-        maxSizes.put(ObjAttributeTableModel.INHERITED, INHERITANCE_COLUMN_WIDTH);
+        minSizes.put(ObjAttributeTableModel.OBJ_ATTRIBUTE, 150);
 
         initComboBoxes();
 
-        table.getColumnModel().getColumn(3).setCellRenderer(new DbAttributePathComboBoxRenderer());
-        table.getColumnModel().getColumn(3).setCellEditor(new DbAttributePathComboBoxEditor());
+        table.getColumnModel().getColumn(ObjAttributeTableModel.DB_ATTRIBUTE).setCellRenderer(new DbAttributePathComboBoxRenderer());
+        table.getColumnModel().getColumn(ObjAttributeTableModel.DB_ATTRIBUTE).setCellEditor(new DbAttributePathComboBoxEditor());
 
         tablePreferences.bind(
                 table,
                 minSizes,
-                maxSizes,
+                null,
                 null,
                 ObjAttributeTableModel.OBJ_ATTRIBUTE,
                 true);
@@ -446,35 +448,36 @@ public class ObjEntityAttributePanel extends JPanel implements ObjEntityDisplayL
             ObjAttributeTableModel model = (ObjAttributeTableModel) table.getModel();
             column = table.getColumnModel().getColumn(column).getModelIndex();
             ObjAttribute attribute = model.getAttribute(row).getValue();
-            if (column != ObjAttributeTableModel.INHERITED) {
 
-                if (!model.isCellEditable(row, column)) {
-                    setForeground(Color.GRAY);
-                } else {
-                    setForeground(isSelected && !hasFocus ? table.getSelectionForeground() : table.getForeground());
-                }
-
-                if (attribute.isInherited()) {
-                    Font font = getFont();
-                    Font newFont = font.deriveFont(Font.ITALIC);
-                    setFont(newFont);
-                }
-                setIcon(null);
+            if (!model.isCellEditable(row, column)) {
+                setForeground(isSelected ? new Color(0xEEEEEE) : Color.GRAY);
             } else {
-                if (attribute.isInherited()) {
-                    Icon objEntityIcon = ModelerUtil.buildIcon("icon-inheritance.png");
-                    if(isSelected) {
-                        objEntityIcon = FilteredIconFactory
-                                .createIcon(objEntityIcon, FilteredIconFactory.FilterType.SELECTION);
-                    }
-                    setIcon(objEntityIcon);
-                }
-                setText("");
+                setForeground(isSelected && !hasFocus ? table.getSelectionForeground() : table.getForeground());
             }
+
+            setIcon(null);
+
+            if (attribute.isInherited()) {
+                Font font = getFont();
+                Font newFont = font.deriveFont(Font.ITALIC);
+                setFont(newFont);
+                if(column == ObjAttributeTableModel.OBJ_ATTRIBUTE) {
+                    setIcon(INHERITANCE_ICON);
+                }
+            }
+
             setFont(UIManager.getFont("Label.font"));
             setBorder(BorderFactory.createEmptyBorder(0,5,0,0));
 
             return this;
+        }
+
+        public void mouseClicked(MouseEvent event, int x) {
+            Point point = event.getPoint();
+            if(point.x - x <= INHERITANCE_ICON.getIconWidth()) {
+                ActionManager actionManager = Application.getInstance().getActionManager();
+                actionManager.getAction(ObjEntityToSuperEntityAction.class).performAction(null);
+            }
         }
     }
 

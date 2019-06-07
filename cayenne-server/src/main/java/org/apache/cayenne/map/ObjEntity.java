@@ -42,7 +42,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 
@@ -80,15 +79,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     protected String clientClassName;
     protected String clientSuperClassName;
 
-    @Deprecated
-    protected List<EntityListener> entityListeners;
     protected CallbackMap callbacks;
-
-    @Deprecated
-    protected boolean excludingDefaultListeners;
-
-    @Deprecated
-    protected boolean excludingSuperclassListeners;
 
     protected Map<String, String> attributeOverrides;
 
@@ -100,7 +91,6 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
         setName(name);
         this.lockType = LOCK_TYPE_NONE;
         this.callbacks = new CallbackMap();
-        this.entityListeners = new ArrayList<>(2);
         this.attributeOverrides = new TreeMap<>();
     }
 
@@ -276,75 +266,6 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
         } catch (ClassNotFoundException e) {
             throw new CayenneRuntimeException("Failed to doLoad class " + name + ": " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Returns an unmodifiable list of registered {@link EntityListener}
-     * objects. Note that since the order of listeners is significant a list,
-     * not just a generic Collection is returned.
-     * 
-     * @since 3.0
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public List<EntityListener> getEntityListeners() {
-        return Collections.unmodifiableList(entityListeners);
-    }
-
-    /**
-     * Adds a new EntityListener.
-     * 
-     * @since 3.0
-     * @throws IllegalArgumentException
-     *             if a listener for the same class name is already registered.
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public void addEntityListener(EntityListener listener) {
-        for (EntityListener next : entityListeners) {
-            if (listener.getClassName().equals(next.getClassName())) {
-                throw new IllegalArgumentException("Duplicate listener for " + next.getClassName());
-            }
-        }
-
-        entityListeners.add(listener);
-    }
-
-    /**
-     * Removes a listener matching class name.
-     * 
-     * @since 3.0
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public void removeEntityListener(String className) {
-        Iterator<EntityListener> it = entityListeners.iterator();
-        while (it.hasNext()) {
-            EntityListener next = it.next();
-            if (className.equals(next.getClassName())) {
-                it.remove();
-                break;
-            }
-        }
-    }
-
-    /**
-     * @since 3.0
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public EntityListener getEntityListener(String className) {
-        for (EntityListener next : entityListeners) {
-            if (className.equals(next.getClassName())) {
-                return next;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -692,16 +613,16 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     }
 
     /**
-     * Returns a SortedMap of all attributes that either belong to this
+     * Returns a Map of all attributes that either belong to this
      * ObjEntity or inherited.
      */
     @Override
-    public SortedMap<String, ObjAttribute> getAttributeMap() {
+    public Map<String, ObjAttribute> getAttributeMap() {
         if (superEntityName == null) {
             return getAttributeMapInternal();
         }
 
-        SortedMap<String, ObjAttribute> attributeMap = new TreeMap<>();
+        Map<String, ObjAttribute> attributeMap = new HashMap<>();
         appendAttributes(attributeMap);
         return attributeMap;
     }
@@ -714,7 +635,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
 
         ObjEntity superEntity = getSuperEntity();
         if (superEntity != null) {
-            SortedMap<String, ObjAttribute> attributeMap = new TreeMap<>();
+            Map<String, ObjAttribute> attributeMap = new HashMap<>();
             superEntity.appendAttributes(attributeMap);
             for (String attributeName : attributeMap.keySet()) {
 
@@ -731,8 +652,8 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     }
 
     @SuppressWarnings("unchecked")
-    final SortedMap<String, ObjAttribute> getAttributeMapInternal() {
-        return (SortedMap<String, ObjAttribute>) super.getAttributeMap();
+    final Map<String, ObjAttribute> getAttributeMapInternal() {
+        return (Map<String, ObjAttribute>) super.getAttributeMap();
     }
 
     /**
@@ -811,12 +732,12 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     }
 
     @Override
-    public SortedMap<String, ObjRelationship> getRelationshipMap() {
+    public Map<String, ObjRelationship> getRelationshipMap() {
         if (superEntityName == null) {
             return getRelationshipMapInternal();
         }
 
-        SortedMap<String, ObjRelationship> relationshipMap = new TreeMap<>();
+        Map<String, ObjRelationship> relationshipMap = new HashMap<>();
         appendRelationships(relationshipMap);
         return relationshipMap;
     }
@@ -840,8 +761,8 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     }
 
     @SuppressWarnings("unchecked")
-    final SortedMap<String, ObjRelationship> getRelationshipMapInternal() {
-        return (SortedMap<String, ObjRelationship>) super.getRelationshipMap();
+    final Map<String, ObjRelationship> getRelationshipMapInternal() {
+        return (Map<String, ObjRelationship>) super.getRelationshipMap();
     }
 
     /**
@@ -1089,7 +1010,7 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
     }
 
     private PathComponentIterator createPathIterator(String path) {
-        return new PathComponentIterator(ObjEntity.this, path, new HashMap<String, String>());
+        return new PathComponentIterator(ObjEntity.this, path, Collections.emptyMap());
         // TODO: do we need aliases here?
     }
 
@@ -1156,11 +1077,8 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
             }
 
             // convert obj_path to db_path
-
             String converted = toDbPath(createPathIterator((String) expression.getOperand(0)));
-            Expression exp = ExpressionFactory.expressionOfType(Expression.DB_PATH);
-            exp.setOperand(0, converted);
-            return exp;
+            return ExpressionFactory.dbPathExp(converted);
         }
     }
 
@@ -1223,47 +1141,4 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
         // does nothing currently
     }
 
-    /**
-     * Returns true if the default lifecycle listeners should not be notified of
-     * this entity lifecycle events.
-     * 
-     * @since 3.0
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public boolean isExcludingDefaultListeners() {
-        return excludingDefaultListeners;
-    }
-
-    /**
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public void setExcludingDefaultListeners(boolean excludingDefaultListeners) {
-        this.excludingDefaultListeners = excludingDefaultListeners;
-    }
-
-    /**
-     * Returns true if the lifeycle listeners defined on the superclasses should
-     * not be notified of this entity lifecycle events.
-     * 
-     * @since 3.0
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public boolean isExcludingSuperclassListeners() {
-        return excludingSuperclassListeners;
-    }
-
-    /**
-     * @deprecated since 4.0 unused, as listeners are no longer mapped in a
-     *             DataMap.
-     */
-    @Deprecated
-    public void setExcludingSuperclassListeners(boolean excludingSuperclassListeners) {
-        this.excludingSuperclassListeners = excludingSuperclassListeners;
-    }
 }

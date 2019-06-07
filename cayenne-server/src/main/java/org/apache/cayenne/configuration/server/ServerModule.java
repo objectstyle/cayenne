@@ -18,8 +18,13 @@
  ****************************************************************/
 package org.apache.cayenne.configuration.server;
 
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+
 import org.apache.cayenne.DataChannel;
 import org.apache.cayenne.DataChannelFilter;
+import org.apache.cayenne.DataChannelQueryFilter;
+import org.apache.cayenne.DataChannelSyncFilter;
 import org.apache.cayenne.access.DataDomain;
 import org.apache.cayenne.access.DataRowStoreFactory;
 import org.apache.cayenne.access.DefaultDataRowStoreFactory;
@@ -41,6 +46,7 @@ import org.apache.cayenne.access.types.ByteArrayType;
 import org.apache.cayenne.access.types.ByteType;
 import org.apache.cayenne.access.types.CalendarType;
 import org.apache.cayenne.access.types.CharType;
+import org.apache.cayenne.access.types.CharacterValueType;
 import org.apache.cayenne.access.types.DateType;
 import org.apache.cayenne.access.types.DefaultValueObjectTypeRegistry;
 import org.apache.cayenne.access.types.DoubleType;
@@ -57,6 +63,7 @@ import org.apache.cayenne.access.types.TimeType;
 import org.apache.cayenne.access.types.TimestampType;
 import org.apache.cayenne.access.types.UUIDValueType;
 import org.apache.cayenne.access.types.UtilDateType;
+import org.apache.cayenne.access.types.ValueObjectType;
 import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
 import org.apache.cayenne.access.types.VoidType;
 import org.apache.cayenne.ashwood.AshwoodEntitySorter;
@@ -81,19 +88,44 @@ import org.apache.cayenne.configuration.xml.NoopDataChannelMetaData;
 import org.apache.cayenne.configuration.xml.XMLDataChannelDescriptorLoader;
 import org.apache.cayenne.configuration.xml.XMLDataMapLoader;
 import org.apache.cayenne.configuration.xml.XMLReaderProvider;
+import org.apache.cayenne.dba.JdbcPkGenerator;
+import org.apache.cayenne.dba.PkGenerator;
+import org.apache.cayenne.dba.db2.DB2Adapter;
+import org.apache.cayenne.dba.db2.DB2PkGenerator;
 import org.apache.cayenne.dba.db2.DB2Sniffer;
+import org.apache.cayenne.dba.derby.DerbyAdapter;
+import org.apache.cayenne.dba.derby.DerbyPkGenerator;
 import org.apache.cayenne.dba.derby.DerbySniffer;
 import org.apache.cayenne.dba.firebird.FirebirdSniffer;
+import org.apache.cayenne.dba.frontbase.FrontBaseAdapter;
+import org.apache.cayenne.dba.frontbase.FrontBasePkGenerator;
 import org.apache.cayenne.dba.frontbase.FrontBaseSniffer;
+import org.apache.cayenne.dba.h2.H2Adapter;
+import org.apache.cayenne.dba.h2.H2PkGenerator;
 import org.apache.cayenne.dba.h2.H2Sniffer;
 import org.apache.cayenne.dba.hsqldb.HSQLDBSniffer;
+import org.apache.cayenne.dba.ingres.IngresAdapter;
+import org.apache.cayenne.dba.ingres.IngresPkGenerator;
 import org.apache.cayenne.dba.ingres.IngresSniffer;
+import org.apache.cayenne.dba.mariadb.MariaDBSniffer;
+import org.apache.cayenne.dba.mysql.MySQLAdapter;
+import org.apache.cayenne.dba.mysql.MySQLPkGenerator;
 import org.apache.cayenne.dba.mysql.MySQLSniffer;
+import org.apache.cayenne.dba.openbase.OpenBaseAdapter;
+import org.apache.cayenne.dba.openbase.OpenBasePkGenerator;
 import org.apache.cayenne.dba.openbase.OpenBaseSniffer;
+import org.apache.cayenne.dba.oracle.Oracle8Adapter;
+import org.apache.cayenne.dba.oracle.OracleAdapter;
+import org.apache.cayenne.dba.oracle.OraclePkGenerator;
 import org.apache.cayenne.dba.oracle.OracleSniffer;
+import org.apache.cayenne.dba.postgres.PostgresAdapter;
+import org.apache.cayenne.dba.postgres.PostgresPkGenerator;
 import org.apache.cayenne.dba.postgres.PostgresSniffer;
 import org.apache.cayenne.dba.sqlite.SQLiteSniffer;
+import org.apache.cayenne.dba.sqlserver.SQLServerAdapter;
 import org.apache.cayenne.dba.sqlserver.SQLServerSniffer;
+import org.apache.cayenne.dba.sybase.SybaseAdapter;
+import org.apache.cayenne.dba.sybase.SybasePkGenerator;
 import org.apache.cayenne.dba.sybase.SybaseSniffer;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Binder;
@@ -104,14 +136,13 @@ import org.apache.cayenne.di.MapBuilder;
 import org.apache.cayenne.di.Module;
 import org.apache.cayenne.di.spi.DefaultAdhocObjectFactory;
 import org.apache.cayenne.di.spi.DefaultClassLoaderManager;
-import org.apache.cayenne.event.DefaultEventManager;
-import org.apache.cayenne.event.NoopEventBridgeProvider;
 import org.apache.cayenne.event.EventBridge;
 import org.apache.cayenne.event.EventManager;
-import org.apache.cayenne.log.Slf4jJdbcEventLogger;
+import org.apache.cayenne.event.EventManagerProvider;
+import org.apache.cayenne.event.NoopEventBridgeProvider;
 import org.apache.cayenne.log.JdbcEventLogger;
+import org.apache.cayenne.log.Slf4jJdbcEventLogger;
 import org.apache.cayenne.map.EntitySorter;
-import org.apache.cayenne.access.types.ValueObjectType;
 import org.apache.cayenne.resource.ClassLoaderResourceLocator;
 import org.apache.cayenne.resource.ResourceLocator;
 import org.apache.cayenne.template.CayenneSQLTemplateProcessor;
@@ -124,9 +155,6 @@ import org.apache.cayenne.tx.TransactionFilter;
 import org.apache.cayenne.tx.TransactionManager;
 import org.xml.sax.XMLReader;
 
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-
 /**
  * A DI module containing all Cayenne server runtime configuration.
  *
@@ -136,13 +164,10 @@ public class ServerModule implements Module {
 
     private static final int DEFAULT_MAX_ID_QUALIFIER_SIZE = 10000;
 
-    @Deprecated
-    protected String[] configurationLocations;
-
     /**
      * Sets transaction management to either external or internal transactions. Default is internally-managed transactions.
      *
-     * @param binder  DI binder passed to the module during injector startup.
+     * @param binder      DI binder passed to the module during injector startup.
      * @param useExternal whether external (true) or internal (false) transaction management should be used.
      * @since 4.0
      */
@@ -154,7 +179,7 @@ public class ServerModule implements Module {
      * Sets max size of snapshot cache, in pre 4.0 version this was set in the Modeler.
      *
      * @param binder DI binder passed to the module during injector startup.
-     * @param size max size of snapshot cache
+     * @param size   max size of snapshot cache
      * @since 4.0
      */
     public static void setSnapshotCacheSize(Binder binder, int size) {
@@ -180,9 +205,35 @@ public class ServerModule implements Module {
      * @param binder DI binder passed to the module during injector startup.
      * @return ListBuilder for DataChannelFilter.
      * @since 4.0
+     * @deprecated since 4.1 use {@link #contributeDomainQueryFilters(Binder)} and {@link #contributeDomainSyncFilters(Binder)}
      */
+    @Deprecated
     public static ListBuilder<DataChannelFilter> contributeDomainFilters(Binder binder) {
         return binder.bindList(DataChannelFilter.class, Constants.SERVER_DOMAIN_FILTERS_LIST);
+    }
+
+    /**
+     * Provides access to a DI collection builder for {@link DataChannelQueryFilter}'s that allows downstream modules to
+     * "contribute" their own DataDomain query filters
+     *
+     * @param binder DI binder passed to the module during injector startup.
+     * @return ListBuilder for DataChannelQueryFilter.
+     * @since 4.1
+     */
+    public static ListBuilder<DataChannelQueryFilter> contributeDomainQueryFilters(Binder binder) {
+        return binder.bindList(DataChannelQueryFilter.class);
+    }
+
+    /**
+     * Provides access to a DI collection builder for {@link DataChannelSyncFilter}'s that allows downstream modules to
+     * "contribute" their own DataDomain sync filters
+     *
+     * @param binder DI binder passed to the module during injector startup.
+     * @return ListBuilder for DataChannelSyncFilter.
+     * @since 4.1
+     */
+    public static ListBuilder<DataChannelSyncFilter> contributeDomainSyncFilters(Binder binder) {
+        return binder.bindList(DataChannelSyncFilter.class);
     }
 
     /**
@@ -206,6 +257,18 @@ public class ServerModule implements Module {
      */
     public static ListBuilder<DbAdapterDetector> contributeAdapterDetectors(Binder binder) {
         return binder.bindList(DbAdapterDetector.class, Constants.SERVER_ADAPTER_DETECTORS_LIST);
+    }
+
+    /**
+     * Provides access to a DI map builder for {@link PkGenerator}'s that allows downstream modules to
+     * "contribute" their own pk generators.
+     *
+     * @param binder DI binder passed to the module during injector startup.
+     * @return MapBuilder for properties.
+     * @since 4.1
+     */
+    public static MapBuilder<PkGenerator> contributePkGenerators(Binder binder) {
+        return binder.bindMap(PkGenerator.class);
     }
 
     /**
@@ -259,7 +322,6 @@ public class ServerModule implements Module {
     }
 
     /**
-     *
      * @param binder DI binder passed to module during injector startup
      * @return ListBuilder for user-contributed ValueObjectTypes
      * @since 4.0
@@ -274,28 +336,6 @@ public class ServerModule implements Module {
      * @since 4.0
      */
     public ServerModule() {
-        this.configurationLocations = new String[0];
-    }
-
-    /**
-     * Creates a ServerModule with at least one configuration location. For multi-module projects additional locations
-     * can be specified as well.
-     *
-     * @deprecated since 4.0 use {@link ServerRuntimeBuilder#addConfig(String)} and/or
-     * {@link ServerModule#contributeProjectLocations(Binder)} to specify locations.
-     */
-    @Deprecated
-    public ServerModule(String firstConfigLocation, String... configurationLocations) {
-        if (configurationLocations == null) {
-            configurationLocations = new String[0];
-        }
-
-        this.configurationLocations = new String[configurationLocations.length + 1];
-        this.configurationLocations[0] = firstConfigLocation;
-
-        if (configurationLocations.length > 0) {
-            System.arraycopy(configurationLocations, 0, this.configurationLocations, 1, configurationLocations.length);
-        }
     }
 
     public void configure(Binder binder) {
@@ -303,6 +343,8 @@ public class ServerModule implements Module {
         // configure global stack properties
         contributeProperties(binder)
                 .put(Constants.SERVER_MAX_ID_QUALIFIER_SIZE_PROPERTY, String.valueOf(DEFAULT_MAX_ID_QUALIFIER_SIZE));
+        contributeProperties(binder)
+                .put(Constants.SERVER_CONTEXTS_SYNC_PROPERTY, String.valueOf(false));
 
         binder.bind(JdbcEventLogger.class).to(Slf4jJdbcEventLogger.class);
         binder.bind(ClassLoaderManager.class).to(DefaultClassLoaderManager.class);
@@ -311,14 +353,46 @@ public class ServerModule implements Module {
         // configure known DbAdapter detectors in reverse order of popularity.
         // Users can add their own to install custom adapters automatically
 
-        contributeAdapterDetectors(binder).add(FirebirdSniffer.class).add(OpenBaseSniffer.class)
-                .add(FrontBaseSniffer.class).add(IngresSniffer.class).add(SQLiteSniffer.class).add(DB2Sniffer.class)
-                .add(H2Sniffer.class).add(HSQLDBSniffer.class).add(SybaseSniffer.class).add(DerbySniffer.class)
-                .add(SQLServerSniffer.class).add(OracleSniffer.class).add(PostgresSniffer.class)
-                .add(MySQLSniffer.class);
+        contributeAdapterDetectors(binder)
+                .add(FirebirdSniffer.class)
+                .add(OpenBaseSniffer.class)
+                .add(FrontBaseSniffer.class)
+                .add(IngresSniffer.class)
+                .add(SQLiteSniffer.class)
+                .add(DB2Sniffer.class)
+                .add(H2Sniffer.class)
+                .add(HSQLDBSniffer.class)
+                .add(SybaseSniffer.class)
+                .add(DerbySniffer.class)
+                .add(SQLServerSniffer.class)
+                .add(OracleSniffer.class)
+                .add(PostgresSniffer.class)
+                .add(MySQLSniffer.class)
+                .add(MariaDBSniffer.class);
+
+        //installing Pk for adapters
+        binder.bind(PkGeneratorFactoryProvider.class).to(PkGeneratorFactoryProvider.class);
+        binder.bind(PkGenerator.class).to(JdbcPkGenerator.class);
+
+        //set PkGenerators for current Adapters
+        contributePkGenerators(binder)
+                .put(DB2Adapter.class.getName(), DB2PkGenerator.class)
+                .put(DerbyAdapter.class.getName(), DerbyPkGenerator.class)
+                .put(FrontBaseAdapter.class.getName(), FrontBasePkGenerator.class)
+                .put(H2Adapter.class.getName(), H2PkGenerator.class)
+                .put(IngresAdapter.class.getName(), IngresPkGenerator.class)
+                .put(MySQLAdapter.class.getName(), MySQLPkGenerator.class)
+                .put(OpenBaseAdapter.class.getName(), OpenBasePkGenerator.class)
+                .put(OracleAdapter.class.getName(), OraclePkGenerator.class)
+                .put(Oracle8Adapter.class.getName(), OraclePkGenerator.class)
+                .put(PostgresAdapter.class.getName(), PostgresPkGenerator.class)
+                .put(SQLServerAdapter.class.getName(), SybasePkGenerator.class)
+                .put(SybaseAdapter.class.getName(), SybasePkGenerator.class);
 
         // configure a filter chain with only one TransactionFilter as default
-        contributeDomainFilters(binder).add(TransactionFilter.class);
+        contributeDomainFilters(binder);
+        contributeDomainQueryFilters(binder);
+        contributeDomainSyncFilters(binder).add(TransactionFilter.class);
 
         // init listener list
         contributeDomainListeners(binder);
@@ -327,10 +401,18 @@ public class ServerModule implements Module {
         contributeDefaultTypes(binder)
                 .add(new VoidType())
                 .add(new BigDecimalType())
-                .add(new BooleanType()).add(new ByteType(false)).add(new CharType(false, true))
-                .add(new DoubleType()).add(new FloatType()).add(new IntegerType()).add(new LongType()).add(new ShortType(false))
+                .add(new BooleanType())
+                .add(new ByteType(false))
+                .add(new CharType(false, true))
+                .add(new DoubleType())
+                .add(new FloatType())
+                .add(new IntegerType())
+                .add(new LongType())
+                .add(new ShortType(false))
                 .add(new ByteArrayType(false, true))
-                .add(new DateType()).add(new TimeType()).add(new TimestampType())
+                .add(new DateType())
+                .add(new TimeType())
+                .add(new TimestampType())
                 // should be converted from ExtendedType to ValueType
                 .add(new UtilDateType()).add(new CalendarType<>(GregorianCalendar.class)).add(new CalendarType<>(Calendar.class));
         contributeUserTypes(binder);
@@ -342,19 +424,17 @@ public class ServerModule implements Module {
                 .add(UUIDValueType.class)
                 .add(LocalDateValueType.class)
                 .add(LocalTimeValueType.class)
-                .add(LocalDateTimeValueType.class);
+                .add(LocalDateTimeValueType.class)
+                .add(CharacterValueType.class);
 
         binder.bind(ValueObjectTypeRegistry.class).to(DefaultValueObjectTypeRegistry.class);
 
         // configure explicit configurations
-        ListBuilder<String> locationsListBuilder = contributeProjectLocations(binder);
-        for (String location : configurationLocations) {
-            locationsListBuilder.add(location);
-        }
+        contributeProjectLocations(binder);
 
         binder.bind(ConfigurationNameMapper.class).to(DefaultConfigurationNameMapper.class);
 
-        binder.bind(EventManager.class).to(DefaultEventManager.class);
+        binder.bind(EventManager.class).toProvider(EventManagerProvider.class);
 
         binder.bind(QueryCache.class).toProvider(MapQueryCacheProvider.class);
 
@@ -362,8 +442,8 @@ public class ServerModule implements Module {
 
         binder.bind(DataRowStoreFactory.class).to(DefaultDataRowStoreFactory.class);
 
-		// a service to provide the main stack DataDomain
-		binder.bind(DataDomain.class).toProvider(DataDomainProvider.class);
+        // a service to provide the main stack DataDomain
+        binder.bind(DataDomain.class).toProvider(DataDomainProvider.class);
 
         binder.bind(DataNodeFactory.class).to(DefaultDataNodeFactory.class);
 

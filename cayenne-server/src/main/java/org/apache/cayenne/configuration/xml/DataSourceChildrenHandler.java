@@ -35,7 +35,7 @@ import org.xml.sax.Attributes;
  */
 class DataSourceChildrenHandler extends NamespaceAwareNestedTagHandler {
 
-    private static Logger logger = LoggerFactory.getLogger(XMLDataChannelDescriptorLoader.class);
+    private static final Logger logger = LoggerFactory.getLogger(XMLDataChannelDescriptorLoader.class);
 
     static final String DRIVER_TAG = "driver";
     static final String LOGIN_TAG = "login";
@@ -78,8 +78,6 @@ class DataSourceChildrenHandler extends NamespaceAwareNestedTagHandler {
     }
 
     void configureCredentials(Attributes attributes) {
-        logger.info("loading user name and password.");
-
         String encoderClass = attributes.getValue("encoderClass");
 
         String encoderKey = attributes.getValue("encoderKey");
@@ -104,7 +102,7 @@ class DataSourceChildrenHandler extends NamespaceAwareNestedTagHandler {
 
         // Replace {} in passwordSource with encoderSalt -- useful for EXECUTABLE & URL options
         if (encoderKey != null) {
-            passwordSource = passwordSource.replaceAll("\\{\\}", encoderKey);
+            passwordSource = passwordSource.replaceAll("\\{}", encoderKey);
         }
 
         String encoderType = dataSourceDescriptor.getPasswordEncoderClass();
@@ -133,14 +131,12 @@ class DataSourceChildrenHandler extends NamespaceAwareNestedTagHandler {
                     }
                     break;
                 case DataSourceInfo.PASSWORD_LOCATION_EXECUTABLE:
-                    if (passwordSource != null) {
-                        try {
-                            Process process = Runtime.getRuntime().exec(passwordSource);
-                            password = XMLDataChannelDescriptorLoader.passwordFromInputStream(process.getInputStream());
-                            process.waitFor();
-                        } catch (IOException | InterruptedException exception) {
-                            logger.warn(exception.getMessage(), exception);
-                        }
+                    try {
+                        Process process = Runtime.getRuntime().exec(passwordSource);
+                        password = XMLDataChannelDescriptorLoader.passwordFromInputStream(process.getInputStream());
+                        process.waitFor();
+                    } catch (IOException | InterruptedException exception) {
+                        logger.warn(exception.getMessage(), exception);
                     }
                     break;
             }

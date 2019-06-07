@@ -18,7 +18,7 @@
     <parent>
         <artifactId>cayenne-tutorials-parent</artifactId>
         <groupId>org.apache.cayenne.tutorials</groupId>
-        <version>4.1.M2-SNAPSHOT</version>
+        <version>4.1.B3-SNAPSHOT</version>
     </parent>
 
     <artifactId>tutorial-rop-server-http2</artifactId>
@@ -41,13 +41,13 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.cayenne</groupId>
-            <artifactId>cayenne-java8</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.derby</groupId>
             <artifactId>derby</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
             <scope>compile</scope>
         </dependency>
 
@@ -67,6 +67,7 @@
             <artifactId>jetty-servlets</artifactId>
             <version>${jetty.version}</version>
         </dependency>
+
     </dependencies>
 
 </project>

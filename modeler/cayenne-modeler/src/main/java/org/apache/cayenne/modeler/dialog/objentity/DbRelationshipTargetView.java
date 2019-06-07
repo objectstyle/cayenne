@@ -18,7 +18,14 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.dialog.objentity;
 
-import java.awt.BorderLayout;
+import com.jgoodies.forms.builder.PanelBuilder;
+import com.jgoodies.forms.layout.CellConstraints;
+import com.jgoodies.forms.layout.FormLayout;
+import org.apache.cayenne.map.DbEntity;
+import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.modeler.util.DefaultWidgetFactory;
+import org.apache.cayenne.modeler.util.PanelFactory;
+import org.apache.cayenne.modeler.util.WidgetFactory;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -26,28 +33,21 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JRadioButton;
-
-import org.apache.cayenne.map.DbEntity;
-import org.apache.cayenne.modeler.util.DefaultWidgetFactory;
-import org.apache.cayenne.modeler.util.PanelFactory;
-import org.apache.cayenne.modeler.util.WidgetFactory;
-
-import com.jgoodies.forms.builder.PanelBuilder;
-import com.jgoodies.forms.layout.CellConstraints;
-import com.jgoodies.forms.layout.FormLayout;
+import java.awt.BorderLayout;
 
 public class DbRelationshipTargetView extends JDialog {
     
     protected WidgetFactory widgetFactory;
     protected JCheckBox toManyCheckBox ;
     protected JButton saveButton;
-    protected JButton cancelButton ;
+    protected JButton cancelButton;
     protected JRadioButton source1Button;
     protected JRadioButton source2Button;
-    protected JComboBox targetCombo;
+    protected JComboBox<DbEntity> targetCombo;
     
     public DbRelationshipTargetView(DbEntity source1, DbEntity source2) {
-        
+        super(Application.getFrame());
+
         widgetFactory = new DefaultWidgetFactory();
         
         // create widgets
@@ -63,7 +63,9 @@ public class DbRelationshipTargetView extends JDialog {
         source1Button = new JRadioButton();
         source2Button = new JRadioButton();
         source2Button.setEnabled(source2 != null);
-        
+
+        getRootPane().setDefaultButton(saveButton);
+
         ButtonGroup bg = new ButtonGroup();
         bg.add(source1Button);
         bg.add(source2Button);
@@ -93,9 +95,8 @@ public class DbRelationshipTargetView extends JDialog {
         builder.add(toManyCheckBox, cc.xywh(3, 7, 1, 1));
         
         add(builder.getPanel(), BorderLayout.CENTER);
-        add(PanelFactory.createButtonPanel(new JButton[] {
-                saveButton, cancelButton
-            }), BorderLayout.SOUTH);
+        JButton[] buttons = {cancelButton, saveButton};
+        add(PanelFactory.createButtonPanel(buttons), BorderLayout.SOUTH);
     }
     
     public JRadioButton getSource1Button() {

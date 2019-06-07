@@ -69,7 +69,7 @@ public class LifecycleCallbackRegistry {
 		// downstream.
 		this.eventCallbacks = new LifecycleCallbackEventHandler[LifecycleEvent.values().length];
 		for (int i = 0; i < eventCallbacks.length; i++) {
-			eventCallbacks[i] = new LifecycleCallbackEventHandler(resolver);
+			eventCallbacks[i] = new LifecycleCallbackEventHandler();
 		}
 
 		// other "static" lookup maps are initialized on-demand
@@ -158,14 +158,6 @@ public class LifecycleCallbackRegistry {
 	 */
 	public void addCallback(LifecycleEvent type, Class<?> entityClass, String methodName) {
 		eventCallbacks[type.ordinal()].addListener(entityClass, methodName);
-	}
-
-	/**
-	 * @since 4.0 renamed to {@link #addCallback(LifecycleEvent, Class, String)}.
-	 */
-	@Deprecated
-	public void addListener(LifecycleEvent type, Class<?> entityClass, String methodName) {
-		addCallback(type, entityClass, methodName);
 	}
 
 	/**

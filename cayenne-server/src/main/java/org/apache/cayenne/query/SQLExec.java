@@ -64,6 +64,7 @@ public class SQLExec extends IndirectQuery {
     protected StringBuilder sqlBuffer;
     protected Map<String, Object> params;
     protected List<Object> positionalParams;
+    protected boolean returnGeneratedKeys;
 
     public SQLExec(String sql) {
         this.sqlBuffer = sql != null ? new StringBuilder(sql) : new StringBuilder();
@@ -94,14 +95,12 @@ public class SQLExec extends IndirectQuery {
         if (this.params == null) {
             this.params = new HashMap<>(parameters);
         } else {
-            Map bareMap = parameters;
-            this.params.putAll(bareMap);
+            this.params.putAll(parameters);
         }
 
         this.replacementQuery = null;
 
-        // since named parameters are specified, resetting positional
-        // parameters
+        // since named parameters are specified, resetting positional parameters
         this.positionalParams = null;
         return this;
     }
@@ -133,10 +132,11 @@ public class SQLExec extends IndirectQuery {
      * parameters.
      */
     public SQLExec paramsList(List<Object> params) {
+        this.positionalParams = params;
+        this.replacementQuery = null;
+
         // since named parameters are specified, resetting positional parameters
         this.params = null;
-
-        this.positionalParams = params;
         return this;
     }
 
@@ -198,6 +198,28 @@ public class SQLExec extends IndirectQuery {
         return results.firstBatchUpdateCount();
     }
 
+    /**
+     * @return returnGeneratedKeys flag value
+     *
+     * @since 4.1
+     */
+    public boolean isReturnGeneratedKeys() {
+        return returnGeneratedKeys;
+    }
+
+    /**
+     * Flag indicating that generated keys should be returned by this query execution.
+     * Generated keys could be read via {@link QueryResponse#currentList()} method
+     *
+     * @param returnGeneratedKeys flag value
+     * @see java.sql.Statement#RETURN_GENERATED_KEYS
+     * @since 4.1
+     */
+    public SQLExec returnGeneratedKeys(boolean returnGeneratedKeys) {
+        this.returnGeneratedKeys = returnGeneratedKeys;
+        return this;
+    }
+
     @Override
     protected Query createReplacementQuery(EntityResolver resolver) {
 
@@ -219,6 +241,7 @@ public class SQLExec extends IndirectQuery {
         template.setRoot(root);
         template.setDefaultTemplate(getSql());
         template.setFetchingDataRows(true); // in case result set will be returned
+        template.setReturnGeneratedKeys(returnGeneratedKeys);
 
         if (positionalParams != null) {
             template.setParamsList(positionalParams);

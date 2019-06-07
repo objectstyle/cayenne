@@ -19,23 +19,18 @@
 
 package org.apache.cayenne.modeler.dialog.pref;
 
-import java.awt.Component;
-import java.awt.Dialog;
-import java.awt.Frame;
-import java.awt.Window;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.cayenne.modeler.util.CayenneController;
+import org.apache.cayenne.pref.PreferenceEditor;
 
 import javax.swing.JDialog;
 import javax.swing.JList;
 import javax.swing.SwingUtilities;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-
-import org.apache.cayenne.modeler.util.CayenneController;
-import org.apache.cayenne.pref.PreferenceEditor;
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Frame;
+import java.awt.Window;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A controller for editing Modeler preferences.
@@ -53,17 +48,19 @@ public class PreferenceDialog extends CayenneController {
     };
 
     protected PreferenceDialogView view;
-    protected Map detailControllers;
+    protected Map<String, CayenneController> detailControllers;
     protected PreferenceEditor editor;
 
-    public PreferenceDialog(CayenneController parent) {
+    public PreferenceDialog(final CayenneController parent) {
         super(parent);
 
-        Window parentView = parent.getView() instanceof Window ? (Window) parent.getView() : 
-            SwingUtilities.getWindowAncestor(parent.getView());
-        this.view = (parentView instanceof Dialog) ? new PreferenceDialogView(
-                (Dialog) parentView) : new PreferenceDialogView((Frame) parentView);
-        this.detailControllers = new HashMap();
+        final Window parentView = parent.getView() instanceof Window
+                ? (Window) parent.getView()
+                : SwingUtilities.getWindowAncestor(parent.getView());
+        this.view = (parentView instanceof Dialog)
+                ? new PreferenceDialogView((Dialog) parentView)
+                : new PreferenceDialogView((Frame) parentView);
+        this.detailControllers = new HashMap<>();
 
         // editor must be configured before startup for "showDetailViewAction()" to work
         this.editor = new CayenneModelerPreferenceEditor(application);
@@ -72,33 +69,19 @@ public class PreferenceDialog extends CayenneController {
     }
 
     protected void initBindings() {
-        final JList list = view.getList();
+        final JList<String> list = view.getList();
         list.setListData(preferenceMenus);
-        list.addListSelectionListener(new ListSelectionListener() {
+        list.addListSelectionListener(e -> updateSelection());
 
-            public void valueChanged(ListSelectionEvent e) {
-                Object selection = list.getSelectedValue();
-                if (selection != null) {
-                    view.getDetailLayout().show(
-                            view.getDetailPanel(),
-                            selection.toString());
-                }
-            }
-        });
+        view.getCancelButton().addActionListener(e -> cancelAction());
+        view.getSaveButton().addActionListener(e -> savePreferencesAction());
+    }
 
-        view.getCancelButton().addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                cancelAction();
-            }
-        });
-
-        view.getSaveButton().addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                savePreferencesAction();
-            }
-        });
+    public void updateSelection() {
+        final String selection = view.getList().getSelectedValue();
+        if (selection != null) {
+            view.getDetailLayout().show(view.getDetailPanel(), selection);
+        }
     }
 
     public void cancelAction() {
@@ -108,9 +91,6 @@ public class PreferenceDialog extends CayenneController {
 
     public void savePreferencesAction() {
         editor.save();
-
-        // update
-
         view.dispose();
     }
 
@@ -118,27 +98,43 @@ public class PreferenceDialog extends CayenneController {
      * Configures preferences dialog to display an editor for a local DataSource with
      * specified name.
      */
-    public void showDataSourceEditorAction(Object dataSourceKey) {
+    public void showDataSourceEditorAction(final Object dataSourceKey) {
         configure();
 
         // this will install needed controller
         view.getDetailLayout().show(view.getDetailPanel(), DATA_SOURCES_KEY);
 
-        DataSourcePreferences controller = (DataSourcePreferences) detailControllers
+        final DataSourcePreferences controller = (DataSourcePreferences) detailControllers
                 .get(DATA_SOURCES_KEY);
         controller.editDataSourceAction(dataSourceKey);
         view.setVisible(true);
     }
 
-    public void startupAction(String key) {
-
-        if (key == null) {
-            key = GENERAL_KEY;
-        }
-
+    /**
+     * Configures preferences dialog to display an editor for a local DataSource with
+     * specified name.
+     */
+    public void showClassPathEditorAction() {
         configure();
-        view.getList().setSelectedValue(key, true);
+
+        // this will install needed controller
+        view.getDetailLayout().show(view.getDetailPanel(), CLASS_PATH_KEY);
+
+        ClasspathPreferences controller = (ClasspathPreferences) detailControllers
+                .get(CLASS_PATH_KEY);
+        controller.getView().setEnabled(true);
         view.setVisible(true);
+    }
+
+    public void startupAction(final String key) {
+        configure();
+        view.getList().setSelectedValue(key == null ? GENERAL_KEY : key, true);
+        view.setVisible(true);
+    }
+
+    public void startupToCreateTemplate(String template, String superTemplate) {
+        configure();
+        ((TemplatePreferences) detailControllers.get(TEMPLATES_KEY)).addTemplateAction(template, superTemplate);
     }
 
     protected void configure() {
@@ -148,7 +144,6 @@ public class PreferenceDialog extends CayenneController {
         registerPanel(CLASS_PATH_KEY, new ClasspathPreferences(this));
         registerPanel(TEMPLATES_KEY, new TemplatePreferences(this));
         view.getDetailLayout().show(view.getDetailPanel(), GENERAL_KEY);
-        // view.getSplit().setDividerLocation(150);
         view.pack();
 
         // show
@@ -159,7 +154,7 @@ public class PreferenceDialog extends CayenneController {
         view.setModal(true);
     }
 
-    protected void registerPanel(String name, CayenneController panelController) {
+    protected void registerPanel(final String name, final CayenneController panelController) {
         detailControllers.put(name, panelController);
         view.getDetailPanel().add(panelController.getView(), name);
     }

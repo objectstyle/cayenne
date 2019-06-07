@@ -22,6 +22,19 @@ import org.apache.cayenne.configuration.ConfigurationNameMapper;
 import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.modeler.Application;
+import org.apache.cayenne.modeler.action.dbimport.AddCatalogAction;
+import org.apache.cayenne.modeler.action.dbimport.AddExcludeColumnAction;
+import org.apache.cayenne.modeler.action.dbimport.AddExcludeProcedureAction;
+import org.apache.cayenne.modeler.action.dbimport.AddExcludeTableAction;
+import org.apache.cayenne.modeler.action.dbimport.AddIncludeColumnAction;
+import org.apache.cayenne.modeler.action.dbimport.AddIncludeProcedureAction;
+import org.apache.cayenne.modeler.action.dbimport.AddIncludeTableAction;
+import org.apache.cayenne.modeler.action.dbimport.AddSchemaAction;
+import org.apache.cayenne.modeler.action.dbimport.DeleteNodeAction;
+import org.apache.cayenne.modeler.action.dbimport.EditNodeAction;
+import org.apache.cayenne.modeler.action.dbimport.MoveImportNodeAction;
+import org.apache.cayenne.modeler.action.dbimport.MoveInvertNodeAction;
+import org.apache.cayenne.modeler.action.dbimport.ReverseEngineeringToolMenuAction;
 import org.apache.cayenne.modeler.graph.action.ShowGraphEntityAction;
 import org.apache.cayenne.modeler.util.CayenneAction;
 import org.apache.cayenne.project.ConfigurationNodeParentGetter;
@@ -73,6 +86,7 @@ public class DefaultActionManager implements ActionManager {
         registerAction(new CreateDataMapAction(application));
         registerAction(new GenerateCodeAction(application));
         registerAction(new CreateObjEntityAction(application));
+        registerAction(new CreateObjEntityFromDbAction(application));
         registerAction(new CreateDbEntityAction(application));
         registerAction(new CreateProcedureAction(application));
         registerAction(new CreateProcedureParameterAction(application));
@@ -94,9 +108,24 @@ public class DefaultActionManager implements ActionManager {
         registerAction(new ObjEntityToSuperEntityAction(application));
         registerAction(new ReverseEngineeringAction(application));
         registerAction(new InferRelationshipsAction(application));
+        registerAction(new ReverseEngineeringToolMenuAction(application));
         registerAction(new ImportEOModelAction(application));
         registerAction(new GenerateDBAction(application));
         registerAction(new MigrateAction(application));
+        registerAction(new AddSchemaAction(application)).setAlwaysOn(true);
+        registerAction(new AddCatalogAction(application)).setAlwaysOn(true);
+        registerAction(new AddIncludeTableAction(application)).setAlwaysOn(true);
+        registerAction(new AddExcludeTableAction(application)).setAlwaysOn(true);
+        registerAction(new AddIncludeColumnAction(application)).setAlwaysOn(true);
+        registerAction(new AddExcludeColumnAction(application)).setAlwaysOn(true);
+        registerAction(new AddIncludeProcedureAction(application)).setAlwaysOn(true);
+        registerAction(new AddExcludeProcedureAction(application)).setAlwaysOn(true);
+        registerAction(new GetDbConnectionAction(application)).setAlwaysOn(true);
+        registerAction(new EditNodeAction(application)).setAlwaysOn(true);
+        registerAction(new DeleteNodeAction(application)).setAlwaysOn(true);
+        registerAction(new MoveImportNodeAction(application)).setAlwaysOn(true);
+        registerAction(new LoadDbSchemaAction(application)).setAlwaysOn(true);
+        registerAction(new MoveInvertNodeAction(application)).setAlwaysOn(true);
         registerAction(new AboutAction(application)).setAlwaysOn(true);
         registerAction(new DocumentationAction(application)).setAlwaysOn(true);
         registerAction(new ConfigurePreferencesAction(application)).setAlwaysOn(true);
@@ -141,14 +170,14 @@ public class DefaultActionManager implements ActionManager {
     }
 
     private void initActions() {
-        SPECIAL_ACTIONS = new HashSet<String>();
+        SPECIAL_ACTIONS = new HashSet<>();
 
         SPECIAL_ACTIONS.addAll(Arrays.asList(
                 SaveAction.class.getName(),
                 UndoAction.class.getName(),
                 RedoAction.class.getName()));
 
-        PROJECT_ACTIONS = new HashSet<String>();
+        PROJECT_ACTIONS = new HashSet<>();
         PROJECT_ACTIONS.addAll(Arrays.asList(
                 RevertAction.class.getName(),
                 ProjectAction.class.getName(),
@@ -156,7 +185,7 @@ public class DefaultActionManager implements ActionManager {
                 SaveAsAction.class.getName(),
                 FindAction.class.getName()));
 
-        DOMAIN_ACTIONS = new HashSet<String>(PROJECT_ACTIONS);
+        DOMAIN_ACTIONS = new HashSet<>(PROJECT_ACTIONS);
         DOMAIN_ACTIONS.addAll(Arrays.asList(
                 ImportDataMapAction.class.getName(),
                 CreateDataMapAction.class.getName(),
@@ -165,13 +194,15 @@ public class DefaultActionManager implements ActionManager {
                 ImportEOModelAction.class.getName(),
                 GenerateCodeAction.class.getName(),
                 GenerateDBAction.class.getName(),
-                PasteAction.class.getName()));
+                PasteAction.class.getName(),
+                ReverseEngineeringToolMenuAction.class.getName()));
 
-        DATA_NODE_ACTIONS = new HashSet<String>(DOMAIN_ACTIONS);
+        DATA_NODE_ACTIONS = new HashSet<>(DOMAIN_ACTIONS);
         DATA_NODE_ACTIONS.addAll(Arrays.asList(
-                LinkDataMapsAction.class.getName()));
+                LinkDataMapsAction.class.getName(),
+                RemoveAction.class.getName()));
 
-        DATA_MAP_ACTIONS = new HashSet<String>(DOMAIN_ACTIONS);
+        DATA_MAP_ACTIONS = new HashSet<>(DOMAIN_ACTIONS);
         DATA_MAP_ACTIONS.addAll(Arrays.asList(
                 CreateEmbeddableAction.class.getName(),
                 CreateObjEntityAction.class.getName(),
@@ -184,7 +215,7 @@ public class DefaultActionManager implements ActionManager {
                 CutAction.class.getName(),
                 CopyAction.class.getName()));
 
-        OBJ_ENTITY_ACTIONS = new HashSet<String>(DATA_MAP_ACTIONS);
+        OBJ_ENTITY_ACTIONS = new HashSet<>(DATA_MAP_ACTIONS);
 
         OBJ_ENTITY_ACTIONS.addAll(Arrays.asList(
                 ObjEntitySyncAction.class.getName(),
@@ -194,25 +225,26 @@ public class DefaultActionManager implements ActionManager {
                 ObjEntityToSuperEntityAction.class.getName(),
                 ShowGraphEntityAction.class.getName()));
 
-        DB_ENTITY_ACTIONS = new HashSet<String>(DATA_MAP_ACTIONS);
+        DB_ENTITY_ACTIONS = new HashSet<>(DATA_MAP_ACTIONS);
 
         DB_ENTITY_ACTIONS.addAll(Arrays.asList(
                 CreateAttributeAction.class.getName(),
                 CreateRelationshipAction.class.getName(),
                 DbEntitySyncAction.class.getName(),
                 DbEntityCounterpartAction.class.getName(),
-                ShowGraphEntityAction.class.getName()));
+                ShowGraphEntityAction.class.getName(),
+                CreateObjEntityFromDbAction.class.getName()));
 
-        EMBEDDABLE_ACTIONS = new HashSet<String>(DATA_MAP_ACTIONS);
+        EMBEDDABLE_ACTIONS = new HashSet<>(DATA_MAP_ACTIONS);
 
-        EMBEDDABLE_ACTIONS.addAll(Arrays.asList(CreateAttributeAction.class.getName()));
+        EMBEDDABLE_ACTIONS.addAll(Collections.singletonList(CreateAttributeAction.class.getName()));
 
-        PROCEDURE_ACTIONS = new HashSet<String>(DATA_MAP_ACTIONS);
+        PROCEDURE_ACTIONS = new HashSet<>(DATA_MAP_ACTIONS);
 
-        PROCEDURE_ACTIONS.addAll(Arrays.asList(CreateProcedureParameterAction.class
+        PROCEDURE_ACTIONS.addAll(Collections.singletonList(CreateProcedureParameterAction.class
                 .getName()));
 
-        MULTIPLE_OBJECTS_ACTIONS = new HashSet<String>(PROJECT_ACTIONS);
+        MULTIPLE_OBJECTS_ACTIONS = new HashSet<>(PROJECT_ACTIONS);
 
         MULTIPLE_OBJECTS_ACTIONS.addAll(Arrays.asList(
                 RemoveAction.class.getName(),
@@ -247,6 +279,7 @@ public class DefaultActionManager implements ActionManager {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public <T extends Action> T getAction(Class<T> actionClass) {
         return (T) actionMap.get(actionClass.getName());
     }
@@ -260,7 +293,7 @@ public class DefaultActionManager implements ActionManager {
     }
 
     public void projectClosed() {
-        processActionsState(Collections.<String> emptySet());
+        processActionsState(Collections.emptySet());
         updateActions("");
     }
 
@@ -321,7 +354,7 @@ public class DefaultActionManager implements ActionManager {
         boolean canCopy = true; // cut/copy can be performed if selected objects are on
         // the same level
 
-        if (!cutAction.enableForPath((ConfigurationNode) objects[0])) {
+        if (!cutAction.enableForPath(objects[0])) {
             canCopy = false;
         }
         else {
@@ -332,7 +365,7 @@ public class DefaultActionManager implements ActionManager {
 
             for (int i = 1; i < objects.length; i++) {
                 if (parentGetter.getParent(objects[i]) != parent
-                        || !cutAction.enableForPath((ConfigurationNode) objects[i])) {
+                        || !cutAction.enableForPath(objects[i])) {
                     canCopy = false;
                     break;
                 }

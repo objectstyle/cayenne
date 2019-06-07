@@ -18,10 +18,10 @@
  ****************************************************************/
 package org.apache.cayenne.modeler.util;
 
+import org.slf4j.ILoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import org.slf4j.ILoggerFactory;
 
 /**
  * Factory for creating ModelerLogger instances.
@@ -33,6 +33,8 @@ public class ModelerLogFactory implements ILoggerFactory {
 	 */
 	protected Map<String, ModelerLogger> localCache;
 
+	private static final String ignoreVelocoty = "org.apache.velocity";
+
 	public ModelerLogFactory() {
 		localCache = new HashMap<>();
 	}
@@ -40,8 +42,11 @@ public class ModelerLogFactory implements ILoggerFactory {
 	public ModelerLogger getLogger(String name) {
 		ModelerLogger local = localCache.get(name);
 		if (local == null) {
-			//Logger def = LoggerFactory.getLogger(name);
-			local = new ModelerLogger(name);
+			if(name.contains(ignoreVelocoty)) {
+				local = new NoopModelerLogger(name);
+			} else {
+				local = new ModelerLogger(name);
+			}
 			localCache.put(name, local);
 		}
 		return local;

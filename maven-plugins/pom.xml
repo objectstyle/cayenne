@@ -14,7 +14,7 @@
 	<parent>
 		<groupId>org.apache.cayenne</groupId>
 		<artifactId>cayenne-parent</artifactId>
-		<version>4.1.M2-SNAPSHOT</version>
+		<version>4.1.B3-SNAPSHOT</version>
 	</parent>
 	<groupId>org.apache.cayenne.plugins</groupId>
 	<artifactId>cayenne-maven-plugins-parent</artifactId>
@@ -23,8 +23,8 @@
 
 	<modules>
 		<module>cayenne-maven-plugin</module>
-		<module>maven-cayenne-plugin</module>
 		<module>cayenne-modeler-maven-plugin</module>
+		<module>cayenne-tools-itest</module>
 	</modules>
 
 	<dependencyManagement>

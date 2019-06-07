@@ -24,6 +24,7 @@ import java.util.Collection;
 import org.apache.cayenne.CayenneRuntimeException;
 import org.apache.cayenne.ObjectId;
 import org.apache.cayenne.map.DataMap;
+import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.map.MappingNamespace;
 import org.apache.cayenne.map.ObjAttribute;
@@ -261,6 +262,16 @@ public class EntityUtils {
         }
 
         return attribute.getType();
+    }
+
+    /**
+     * Checks is the db attribute declared for some object attribute.
+     * @param pkAttribute - db attribute for PK
+     *
+     * @since 4.1
+     */
+    public boolean declaresDbAttribute(DbAttribute pkAttribute) {
+        return objEntity.getAttributeForDbAttribute(pkAttribute) != null;
     }
 
     /**

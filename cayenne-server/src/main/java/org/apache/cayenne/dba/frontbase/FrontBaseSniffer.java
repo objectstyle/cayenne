@@ -19,13 +19,13 @@
 
 package org.apache.cayenne.dba.frontbase;
 
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-
 import org.apache.cayenne.configuration.server.DbAdapterDetector;
 import org.apache.cayenne.dba.DbAdapter;
 import org.apache.cayenne.di.AdhocObjectFactory;
 import org.apache.cayenne.di.Inject;
+
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
 
 /**
  * @since 1.2
@@ -41,7 +41,12 @@ public class FrontBaseSniffer implements DbAdapterDetector {
     @Override
     public DbAdapter createAdapter(DatabaseMetaData md) throws SQLException {
         String dbName = md.getDatabaseProductName();
-        return dbName != null && dbName.toUpperCase().contains("FRONTBASE")
-                ? (DbAdapter) objectFactory.newInstance(DbAdapter.class, FrontBaseAdapter.class.getName()) : null;
+        if (dbName == null || !dbName.toUpperCase().contains("FRONTBASE")) {
+            return null;
+        }
+
+        return objectFactory.newInstance(
+                DbAdapter.class,
+                FrontBaseAdapter.class.getName());
     }
 }

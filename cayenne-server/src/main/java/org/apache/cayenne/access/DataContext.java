@@ -863,7 +863,7 @@ public class DataContext extends BaseContext {
             Transaction tx = getTransactionFactory().createTransaction();
             BaseTransaction.bindThreadTransaction(tx);
 
-            ResultIterator result;
+            ResultIterator<?> result;
             try {
                 result = internalPerformIteratedQuery(query);
             } catch (Exception e) {
@@ -889,7 +889,7 @@ public class DataContext extends BaseContext {
                 }
             }
 
-            return new TransactionResultIteratorDecorator(result, tx);
+            return new TransactionResultIteratorDecorator<>(result, tx);
         }
     }
 
@@ -1060,8 +1060,10 @@ public class DataContext extends BaseContext {
     // ---------------------------------------------
 
     private void writeObject(ObjectOutputStream out) throws IOException {
-        out.defaultWriteObject();
-
+        // See CAY-2382
+        synchronized (getObjectStore()) {
+            out.defaultWriteObject();
+        }
         // Serialize local snapshots cache
         if (!isUsingSharedSnapshotCache()) {
             out.writeObject(objectStore.getDataRowCache());

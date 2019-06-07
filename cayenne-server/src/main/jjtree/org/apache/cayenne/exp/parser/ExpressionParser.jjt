@@ -354,7 +354,7 @@ void asterisk() #Asterisk : {}
 
 void count() #Count : { }
 {
-	<COUNT> "(" ( asterisk() | pathExpression() ) ")"
+	<COUNT> "(" ( asterisk() | pathExpression() | distinct() ) ")"
 }
 
 void avg() #Avg : { }
@@ -417,6 +417,11 @@ void dateTimeExtractingFunction() #Extract(1) : {
         jjtThis.setPartToken(t.image);
     }
     "(" pathExpression() ")"
+}
+
+void distinct() #Distinct : { }
+{
+	<DISTINCT> "(" ( pathExpression() ) ")"
 }
 
 TOKEN_MGR_DECLS:
@@ -515,6 +520,7 @@ TOKEN : /* aggregates */
 	|	<MAX: "max" >
 	|	<SUM: "sum" >
 	|	<COUNT: "count" >
+	|	<DISTINCT: "distinct" >
 }
 
 TOKEN : /* functions returning strings */
@@ -579,7 +585,7 @@ void pathExpression() : {
    |
      "db:"   t = <PROPERTY_PATH> { jjtThis.setPath(t.image); } #DbPath(0)
    |
-     "enum:" t = <PROPERTY_PATH> { jjtThis.setValue(ParserUtil.makeEnum(t.image)); } #Scalar(0)
+     "enum:" t = <PROPERTY_PATH> { jjtThis.setEnumValue(t.image); } #Enum(0)
    )
 }
 

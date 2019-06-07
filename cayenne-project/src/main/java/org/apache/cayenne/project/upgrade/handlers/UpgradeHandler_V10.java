@@ -19,7 +19,6 @@
 
 package org.apache.cayenne.project.upgrade.handlers;
 
-import org.apache.cayenne.configuration.DataChannelDescriptor;
 import org.apache.cayenne.project.upgrade.UpgradeUnit;
 import org.w3c.dom.Element;
 
@@ -45,7 +44,7 @@ public class UpgradeHandler_V10 implements UpgradeHandler {
         domain.setAttribute("xmlns","http://cayenne.apache.org/schema/10/domain");
         domain.setAttribute("xmlns:xsi","http://www.w3.org/2001/XMLSchema-instance");
         domain.setAttribute("xsi:schemaLocation", "http://cayenne.apache.org/schema/10/domain " +
-                "http://cayenne.apache.org/schema/10/domain.xsd");
+                "https://cayenne.apache.org/schema/10/domain.xsd");
         // update version
         domain.setAttribute("project-version", getVersion());
     }
@@ -56,13 +55,8 @@ public class UpgradeHandler_V10 implements UpgradeHandler {
         // update schema
         dataMap.setAttribute("xmlns","http://cayenne.apache.org/schema/10/modelMap");
         dataMap.setAttribute("xsi:schemaLocation", "http://cayenne.apache.org/schema/10/modelMap " +
-                "http://cayenne.apache.org/schema/10/modelMap.xsd");
+                "https://cayenne.apache.org/schema/10/modelMap.xsd");
         // update version
         dataMap.setAttribute("project-version", getVersion());
-    }
-
-    @Override
-    public void processModel(DataChannelDescriptor dataChannelDescriptor) {
-        // noop
     }
 }

@@ -20,10 +20,6 @@
 
 package org.apache.cayenne.modeler.dialog;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -31,10 +27,14 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.ScrollPaneConstants;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 
 import com.jgoodies.forms.builder.PanelBuilder;
 import com.jgoodies.forms.layout.CellConstraints;
 import com.jgoodies.forms.layout.FormLayout;
+import org.apache.cayenne.modeler.Application;
 
 /**
  */
@@ -45,6 +45,8 @@ public class ValidationResultBrowserView extends JDialog {
     protected JButton closeButton;
 
     public ValidationResultBrowserView() {
+        super(Application.getFrame());
+
         this.closeButton = new JButton("Close");
 
         this.messageLabel = new JTextArea();
@@ -63,15 +65,14 @@ public class ValidationResultBrowserView extends JDialog {
                 "fill:min(50dlu;pref):grow",
                 "fill:20dlu, 9dlu, p, 3dlu, fill:40dlu:grow"));
         builder.setDefaultDialogBorder();
-        builder.add(new JScrollPane(
-                messageLabel,
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER), cc.xy(1, 1));
+        builder.add(messageLabel, cc.xy(1, 1));
         builder.addSeparator("Details", cc.xy(1, 3));
         builder.add(new JScrollPane(
                 errorsDisplay,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER), cc.xy(1, 5));
+
+        getRootPane().setDefaultButton(closeButton);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttons.add(closeButton);

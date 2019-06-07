@@ -40,9 +40,6 @@ public class ImageRendererColumn extends DefaultTableCellRenderer {
         setText(((JLabel) value).getText());
         setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
         Icon icon = ((JLabel) value).getIcon();
-        if(isSelected) {
-            icon = FilteredIconFactory.createIcon(icon, FilteredIconFactory.FilterType.SELECTION);
-        }
         setIcon(icon);
         return this;
     }

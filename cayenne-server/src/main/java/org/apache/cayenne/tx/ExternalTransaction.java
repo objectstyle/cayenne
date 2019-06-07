@@ -31,6 +31,14 @@ public class ExternalTransaction extends BaseTransaction {
     protected JdbcEventLogger logger;
 
     public ExternalTransaction(JdbcEventLogger jdbcEventLogger) {
+        this(jdbcEventLogger, DefaultTransactionDescriptor.getInstance());
+    }
+
+    /**
+     * @since 4.1
+     */
+    public ExternalTransaction(JdbcEventLogger jdbcEventLogger, TransactionDescriptor descriptor) {
+        super(descriptor);
         this.logger = jdbcEventLogger;
     }
 

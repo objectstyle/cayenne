@@ -19,7 +19,9 @@
 package org.apache.cayenne.access;
 
 import org.apache.cayenne.ObjectContext;
+import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.di.Inject;
+import org.apache.cayenne.query.EJBQLQuery;
 import org.apache.cayenne.query.ObjectSelect;
 import org.apache.cayenne.query.SelectById;
 import org.apache.cayenne.query.SelectQuery;
@@ -29,18 +31,18 @@ import org.apache.cayenne.testdo.inheritance_vertical.*;
 import org.apache.cayenne.unit.di.server.CayenneProjects;
 import org.apache.cayenne.unit.di.server.ServerCase;
 import org.apache.cayenne.unit.di.server.UseServerRuntime;
-import org.apache.cayenne.validation.ValidationException;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -52,6 +54,9 @@ public class VerticalInheritanceIT extends ServerCase {
 
 	@Inject
 	protected DBHelper dbHelper;
+
+	@Inject
+	protected ServerRuntime runtime;
 
     @Test
 	public void testInsert_Root() throws Exception {
@@ -195,7 +200,7 @@ public class VerticalInheritanceIT extends ServerCase {
 	 * @link https://issues.apache.org/jira/browse/CAY-2146
 	 */
     @Test(expected = org.apache.cayenne.validation.ValidationException.class)
-    public void testValidationOnInsert_Sub3_Exception() throws Exception {
+    public void testValidationOnInsert_Sub3_Exception() {
 
         TableHelper ivRootTable = new TableHelper(dbHelper, "IV_ROOT");
         ivRootTable.setColumns("ID", "NAME", "DISCRIMINATOR");
@@ -232,13 +237,12 @@ public class VerticalInheritanceIT extends ServerCase {
 	/**
 	 * @link https://issues.apache.org/jira/browse/CAY-2282
 	 */
-	@Ignore("Test case for unfixed issue CAY-2282")
 	@Test
 	public void testUpdateRelation_Sub3() throws Exception {
 		TableHelper ivRootTable = new TableHelper(dbHelper, "IV_ROOT");
 		ivRootTable.setColumns("ID", "NAME", "DISCRIMINATOR");
-		ivRootTable.insert(1, null, null);
-		ivRootTable.insert(2, null, null);
+		ivRootTable.insert(1, "root1", null);
+		ivRootTable.insert(2, "root2", null);
 		ivRootTable.insert(3, "name", "IvSub3");
 
 		TableHelper ivSub3Table = new TableHelper(dbHelper, "IV_SUB3");
@@ -253,6 +257,17 @@ public class VerticalInheritanceIT extends ServerCase {
 		// this will create 3 queries...
 		// update for name, insert for new relationship, delete for old relationship
 		context.commitChanges();
+
+		ObjectContext cleanContext = runtime.newContext();
+		IvSub3 sub3Clean = SelectById.query(IvSub3.class, 3).selectOne(cleanContext);
+
+		assertNotNull(sub3Clean);
+		assertNotSame(sub3, sub3Clean);
+
+		assertEquals("new name", sub3.getName());
+		assertNotNull(sub3Clean.getIvRoot());
+		assertEquals("root2", sub3Clean.getIvRoot().getName());
+
 	}
 
     @Test
@@ -310,8 +325,8 @@ public class VerticalInheritanceIT extends ServerCase {
 		ivRootTable.insert(2, "xSUB1_ROOT", "IvSub1");
 		ivSub1Table.insert(2, "xSUB1");
 
-		SelectQuery query = new SelectQuery(IvRoot.class);
-		List<IvRoot> results = context.performQuery(query);
+		SelectQuery<IvRoot> query = new SelectQuery<>(IvRoot.class);
+		List<IvRoot> results = context.select(query);
 
 		assertEquals(2, results.size());
 
@@ -366,8 +381,8 @@ public class VerticalInheritanceIT extends ServerCase {
 		ivRootTable.insert(4, "xROOT_SUB2", "IvSub2");
 		ivSub2Table.insert(4, "xSUB2");
 
-		SelectQuery query = new SelectQuery(IvRoot.class);
-		List<IvRoot> results = context.performQuery(query);
+		SelectQuery<IvRoot> query = new SelectQuery<>(IvRoot.class);
+		List<IvRoot> results = context.select(query);
 
 		assertEquals(4, results.size());
 
@@ -436,8 +451,8 @@ public class VerticalInheritanceIT extends ServerCase {
 		ivRootTable.insert(4, "xROOT_SUB2", "IvSub2");
 		ivSub2Table.insert(4, "xSUB2");
 
-		SelectQuery query = new SelectQuery(IvSub1.class);
-		List<IvRoot> results = context.performQuery(query);
+		SelectQuery<IvSub1> query = new SelectQuery<>(IvSub1.class);
+		List<IvSub1> results = context.select(query);
 
 		assertEquals(2, results.size());
 
@@ -495,9 +510,9 @@ public class VerticalInheritanceIT extends ServerCase {
 		ivRootTable.insert(4, "xROOT_SUB2", "IvSub2");
 		ivSub2Table.insert(4, "xSUB2");
 
-		SelectQuery query = new SelectQuery(IvRoot.class);
+		SelectQuery<IvRoot> query = new SelectQuery<>(IvRoot.class);
 
-		List<IvRoot> results = context.performQuery(query);
+		List<IvRoot> results = context.select(query);
 
 		assertEquals(4, results.size());
 		Map<String, IvRoot> resultTypes = new HashMap<>();
@@ -521,7 +536,7 @@ public class VerticalInheritanceIT extends ServerCase {
 		assertEquals(1, ivSub1Sub1Table.getRowCount());
 		assertEquals(1, ivSub2Table.getRowCount());
 
-		results = context.performQuery(query);
+		results = context.select(query);
 		assertEquals(2, results.size());
 	}
 
@@ -540,8 +555,8 @@ public class VerticalInheritanceIT extends ServerCase {
 		iv1RootTable.insert(2, "xSUB1_ROOT", "Iv1Sub1");
 		iv1Sub1Table.insert(2, "xSUB1");
 
-		SelectQuery query = new SelectQuery(Iv1Root.class);
-		List<Iv1Root> results = context.performQuery(query);
+		SelectQuery<Iv1Root> query = new SelectQuery<>(Iv1Root.class);
+		List<Iv1Root> results = context.select(query);
 
 		assertEquals(2, results.size());
 
@@ -612,7 +627,7 @@ public class VerticalInheritanceIT extends ServerCase {
 		context.commitChanges();
 	}
 
-	@Test(expected = ValidationException.class) // other2 is missing now
+	@Test//(expected = ValidationException.class) // other2 is not mandatory for now
 	public void testInsertWithAttributeAndRelationship() {
 		IvOther other = context.newObject(IvOther.class);
 		other.setName("other");
@@ -677,51 +692,6 @@ public class VerticalInheritanceIT extends ServerCase {
 	/**
 	 * @link https://issues.apache.org/jira/browse/CAY-2282
 	 */
-	@Ignore("Test case for unfixed issue CAY-2282")
-	@Test
-	public void testUpdateTwoObjectsWithMultipleAttributeAndMultipleRelationship() throws SQLException {
-		TableHelper ivOtherTable = new TableHelper(dbHelper, "IV_OTHER");
-		ivOtherTable.setColumns("ID", "NAME").setColumnTypes(Types.INTEGER, Types.VARCHAR);
-
-		TableHelper ivBaseTable = new TableHelper(dbHelper, "IV_BASE");
-		ivBaseTable.setColumns("ID", "NAME", "TYPE")
-				.setColumnTypes(Types.INTEGER, Types.VARCHAR, Types.CHAR);
-
-		TableHelper ivImplTable = new TableHelper(dbHelper, "IV_IMPL");
-		ivImplTable.setColumns("ID", "ATTR1", "ATTR2", "OTHER1_ID", "OTHER2_ID")
-				.setColumnTypes(Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.INTEGER, Types.INTEGER);
-
-		// Insert records we want to update
-		ivOtherTable.insert(1, "other1");
-		ivOtherTable.insert(2, "other2");
-
-		ivBaseTable.insert(1, "Impl 1", "I");
-		ivBaseTable.insert(2, "Impl 2", "I");
-
-		ivImplTable.insert(1, "attr1", "attr2", 1, 2);
-		ivImplTable.insert(2, "attr1", "attr2", 1, 2);
-
-		// Fetch and update the records
-		IvOther other1 = ObjectSelect.query(IvOther.class).where(IvOther.NAME.eq("other1")).selectOne(context);
-		IvOther other2 = ObjectSelect.query(IvOther.class).where(IvOther.NAME.eq("other2")).selectOne(context);
-
-		for(IvImpl record : ObjectSelect.query(IvImpl.class).select(context)) {
-			record.setName(record.getName() + "-Change");
-			record.setAttr1(record.getAttr1() + "-Change");
-			record.setAttr2(record.getAttr2() + "-Change");
-			record.setOther1(other2);
-			record.setOther2(other1);
-		}
-
-		context.commitChanges();
-
-		// todo: add some assertions after fixing commit bug above
-
-	}
-
-	/**
-	 * @link https://issues.apache.org/jira/browse/CAY-2282
-	 */
 	@Test
 	public void testUpdateWithOptimisticLocks() throws SQLException {
 		TableHelper ivOtherTable = new TableHelper(dbHelper, "IV_OTHER");
@@ -752,4 +722,36 @@ public class VerticalInheritanceIT extends ServerCase {
 		context.commitChanges();
 	}
 
+	@Test
+	public void testCountEjbqlQuery() throws Exception {
+		TableHelper ivRootTable = new TableHelper(dbHelper, "IV_ROOT");
+		ivRootTable.setColumns("ID", "NAME", "DISCRIMINATOR");
+
+		TableHelper ivSub1Table = new TableHelper(dbHelper, "IV_SUB1");
+		ivSub1Table.setColumns("ID", "SUB1_NAME");
+
+		TableHelper ivSub2Table = new TableHelper(dbHelper, "IV_SUB2");
+		ivSub2Table.setColumns("ID", "SUB2_ATTR", "SUB2_NAME");
+
+		// Root, IvSub1, IvSub2
+
+		ivRootTable.insert(1, "root1", "");
+
+		ivRootTable.insert(2, "sub11", "IvSub1");
+		ivSub1Table.insert(2, "sub_name1_1");
+
+		ivRootTable.insert(3, "sub21", "IvSub2");
+		ivRootTable.insert(4, "sub22", "IvSub2");
+		ivSub2Table.insert(3, "attr1", "sub_name2_1");
+		ivSub2Table.insert(4, "attr2", "sub_name2_2");
+
+		EJBQLQuery query1 = new EJBQLQuery("SELECT COUNT(a) FROM IvRoot a");
+		assertEquals(Collections.singletonList(4L), context.performQuery(query1));
+
+		EJBQLQuery query2 = new EJBQLQuery("SELECT COUNT(a) FROM IvSub1 a");
+		assertEquals(Collections.singletonList(1L), context.performQuery(query2));
+
+		EJBQLQuery query3 = new EJBQLQuery("SELECT COUNT(a) FROM IvSub2 a");
+		assertEquals(Collections.singletonList(2L), context.performQuery(query3));
+	}
 }

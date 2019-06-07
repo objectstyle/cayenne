@@ -118,7 +118,7 @@ public class IncrementalFaultList<E> implements List<E>, Serializable {
 		// create an internal query, it is a partial replica of
 		// the original query and will serve as a value holder for
 		// various parameters
-		this.internalQuery = new SelectQuery<Object>(rootEntity);
+		this.internalQuery = new SelectQuery<>(rootEntity);
 		this.internalQuery.setFetchingDataRows(metadata.isFetchingDataRows());
 		this.internalQuery.setPrefetchTree(metadata.getPrefetchTree());
 
@@ -265,8 +265,7 @@ public class IncrementalFaultList<E> implements List<E>, Serializable {
 	}
 
 	SelectQuery<Object> createSelectQuery(List<Expression> expressions) {
-		SelectQuery<Object> query = new SelectQuery<>(rootEntity,
-				ExpressionFactory.joinExp(Expression.OR, expressions));
+		SelectQuery<Object> query = new SelectQuery<>(rootEntity, ExpressionFactory.joinExp(Expression.OR, expressions));
 
 		query.setFetchingDataRows(internalQuery.isFetchingDataRows());
 		if (!query.isFetchingDataRows()) {
@@ -340,7 +339,7 @@ public class IncrementalFaultList<E> implements List<E>, Serializable {
 			throw new IndexOutOfBoundsException("Index: " + elementIndex);
 		}
 
-		if (pageSize <= 0 || elementIndex < 0) {
+		if (pageSize <= 0) {
 			return -1;
 		}
 
@@ -423,8 +422,9 @@ public class IncrementalFaultList<E> implements List<E>, Serializable {
 			}
 
 			public E next() {
-				if (listIndex >= elements.size())
+				if (listIndex >= elements.size()) {
 					throw new NoSuchElementException("no more elements");
+				}
 
 				return get(listIndex++);
 			}
@@ -808,8 +808,9 @@ public class IncrementalFaultList<E> implements List<E>, Serializable {
 		}
 
 		public E next() {
-			if (listIndex >= elements.size())
+			if (listIndex >= elements.size()) {
 				throw new NoSuchElementException("at the end of the list");
+			}
 
 			return get(listIndex++);
 		}
@@ -819,8 +820,9 @@ public class IncrementalFaultList<E> implements List<E>, Serializable {
 		}
 
 		public E previous() {
-			if (listIndex < 1)
+			if (listIndex < 1) {
 				throw new NoSuchElementException("at the beginning of the list");
+			}
 
 			return get(--listIndex);
 		}

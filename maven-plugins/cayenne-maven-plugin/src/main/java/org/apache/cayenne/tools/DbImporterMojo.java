@@ -26,16 +26,19 @@ import org.apache.cayenne.dbsync.reverse.dbimport.DbImportConfigurationValidator
 import org.apache.cayenne.dbsync.reverse.dbimport.DbImportModule;
 import org.apache.cayenne.dbsync.reverse.dbimport.ReverseEngineering;
 import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
+import org.apache.cayenne.di.ClassLoaderManager;
 import org.apache.cayenne.di.DIBootstrap;
 import org.apache.cayenne.di.Injector;
 import org.apache.cayenne.util.Util;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
 import org.slf4j.Logger;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
 
@@ -44,7 +47,7 @@ import java.io.File;
  *
  * @since 3.0
  */
-@Mojo(name = "cdbimport", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
+@Mojo(name = "cdbimport", defaultPhase = LifecyclePhase.GENERATE_SOURCES, requiresDependencyResolution = ResolutionScope.COMPILE)
 public class DbImporterMojo extends AbstractMojo {
 
     /**
@@ -71,53 +74,38 @@ public class DbImporterMojo extends AbstractMojo {
     private File map;
 
     /**
+     * Project XML file to use. If set cayenneProject will be created or updated after DB importing.
+     * This is optional parameter.
+     * @since 4.1
+     */
+    @Parameter
+    private File cayenneProject;
+
+    /**
      * An object that contains reverse engineering rules.
      */
     @Parameter(name = "dbimport", property = "dbimport", alias = "dbImport")
     private ReverseEngineering dbImportConfig = new ReverseEngineering();
 
-    /**
-     * @deprecated use {@code <dataSource>} tag to set connection properties
-     */
-    @Deprecated @Parameter(name = "url", property = "url")
-    private final String oldUrl = "";                // TODO remove in 4.0.BETA
-
-    /**
-     * @deprecated moved to {@code <dbimport>} section
-     */
-    @Deprecated @Parameter(name = "meaningfulPkTables", property = "meaningfulPkTables")
-    private final String oldMeaningfulPkTables = ""; // TODO remove in 4.0.BETA
-
-    /**
-     * @deprecated use {@code <dataSource>} tag to set connection properties
-     */
-    @Deprecated @Parameter(name = "driver", property = "driver")
-    private final String oldDriver = "";             // TODO remove in 4.0.BETA
-
-    /**
-     * @deprecated moved to {@code <dbimport>} section
-     */
-    @Deprecated @Parameter(name = "defaultPackage", property = "defaultPackage")
-    private final String oldDefaultPackage = "";     // TODO remove in 4.0.BETA
-
-    /**
-     * @deprecated renamed to {@code <dbimport>},  remove in 4.0.BETA
-     */
-    @Deprecated @Parameter
-    public OldReverseEngineering reverseEngineering;
+    @Parameter(defaultValue = "${project}" )
+    private MavenProject project;
 
     public void execute() throws MojoExecutionException, MojoFailureException {
 
-        Logger logger = new MavenLogger(this);
+        final Logger logger = new MavenLogger(this);
+
+        if (project == null) {
+            throw new MojoExecutionException("Can't load MavenProject.");
+        }
 
         // check missing data source parameters
         dataSource.validate();
+        final DbImportConfiguration config = createConfig(logger);
+        final Injector injector = DIBootstrap.createInjector(
+                new DbSyncModule(), new ToolsModule(logger), new DbImportModule(),
+                binder -> binder.bind(ClassLoaderManager.class).toInstance(new MavenPluginClassLoaderManager(project)));
 
-        DbImportConfiguration config = createConfig(logger);
-        Injector injector = DIBootstrap.createInjector(
-                new DbSyncModule(), new ToolsModule(logger), new DbImportModule());
-
-        DbImportConfigurationValidator validator = new DbImportConfigurationValidator(
+        final DbImportConfigurationValidator validator = new DbImportConfigurationValidator(
                 dbImportConfig, config, injector);
         try {
             validator.validate();
@@ -128,7 +116,7 @@ public class DbImporterMojo extends AbstractMojo {
         try {
             injector.getInstance(DbImportAction.class).execute(config);
         } catch (Exception ex) {
-            Throwable th = Util.unwindException(ex);
+           final Throwable th = Util.unwindException(ex);
 
             String message = "Error importing database schema";
 
@@ -141,9 +129,12 @@ public class DbImporterMojo extends AbstractMojo {
         }
     }
 
-    DbImportConfiguration createConfig(Logger logger) {
+    DbImportConfiguration createConfig(final Logger logger) {
 
         DbImportConfiguration config = new DbImportConfiguration();
+        if (dbImportConfig.getCatalogs().size() == 0 && dbImportConfig.isEmptyContainer()) {
+            config.setUseDataMapReverseEngineering(true);
+        }
         config.setAdapter(adapter);
         config.setDefaultPackage(dbImportConfig.getDefaultPackage());
         config.setDriver(dataSource.getDriver());
@@ -159,6 +150,7 @@ public class DbImporterMojo extends AbstractMojo {
         config.setStripFromTableNames(dbImportConfig.getStripFromTableNames());
         config.setTableTypes(dbImportConfig.getTableTypes());
         config.setTargetDataMap(map);
+        config.setCayenneProject(cayenneProject);
         config.setUrl(dataSource.getUrl());
         config.setUsername(dataSource.getUsername());
         config.setUsePrimitives(dbImportConfig.isUsePrimitives());
@@ -174,21 +166,21 @@ public class DbImporterMojo extends AbstractMojo {
     /**
      * Used only in tests, Maven will inject value directly into the "map" field
      */
-    public void setMap(File map) {
+    public void setMap(final File map) {
         this.map = map;
     }
 
     /**
      * This setter is used by Maven when defined {@code <dbimport>} tag
      */
-    public void setDbimport(ReverseEngineering dbImportConfig) {
+    public void setDbimport(final ReverseEngineering dbImportConfig) {
         this.dbImportConfig = dbImportConfig;
     }
 
     /**
      * This setter is used by Maven {@code <dbImport>} tag
      */
-    public void setDbImport(ReverseEngineering dbImportConfig) {
+    public void setDbImport(final ReverseEngineering dbImportConfig) {
         this.dbImportConfig = dbImportConfig;
     }
 
@@ -196,30 +188,6 @@ public class DbImporterMojo extends AbstractMojo {
         return dbImportConfig;
     }
 
-    // TODO ⬇⬇⬇ All following setters should be removed in 4.0.BETA ⬇⬇⬇
-    @Deprecated
-    public void setUrl(String url) {
-        throw new UnsupportedOperationException("\nConnection properties were replaced with <dataSource> tag since 4.0.M5.\n" +
-                "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
-    }
-
-    @Deprecated
-    public void setDriver(String driver) {
-        throw new UnsupportedOperationException("\nConnection properties were replaced with <dataSource> tag since 4.0.M5.\n" +
-                "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
-    }
-
-    @Deprecated
-    public void setMeaningfulPkTables(String meaningfulPkTables) {
-        throw new UnsupportedOperationException("\nmeaningfulPkTables property has been moved to <dbimport> tag since 4.0.M5.\n" +
-                "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
-    }
-
-    @Deprecated
-    public void setDefaultPackage(String defaultPackage) {
-        throw new UnsupportedOperationException("\ndefaultPackage property has been moved to <dbimport> tag since 4.0.M5.\n" +
-                "\tFor additional information see http://cayenne.apache.org/docs/4.0/cayenne-guide/including-cayenne-in-project.html#maven-projects");
-    }
 }
 
 

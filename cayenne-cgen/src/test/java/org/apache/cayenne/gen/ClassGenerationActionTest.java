@@ -29,6 +29,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -36,18 +37,24 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class ClassGenerationActionTest {
 
 	protected ClassGenerationAction action;
 	protected Collection<StringWriter> writers;
 
+	protected CgenConfiguration cgenConfiguration;
+
 	@Before
 	public void setUp() throws Exception {
 		writers = new ArrayList<>(3);
-		action = new ClassGenerationAction() {
+		cgenConfiguration = new CgenConfiguration();
+		action = new ClassGenerationAction(cgenConfiguration) {
 
 			@Override
 			protected Writer openWriter(TemplateType templateType) throws Exception {
@@ -70,8 +77,8 @@ public class ClassGenerationActionTest {
 		ObjEntity testEntity1 = new ObjEntity("TE1");
 		testEntity1.setClassName("org.example.TestClass1");
 
-		action.setMakePairs(true);
-		action.setSuperPkg("org.example.auto");
+		cgenConfiguration.setMakePairs(true);
+		cgenConfiguration.setSuperPkg("org.example.auto");
 
 		List<String> generated = execute(new EntityArtifact(testEntity1));
 		assertNotNull(generated);
@@ -112,7 +119,7 @@ public class ClassGenerationActionTest {
 		relationship.setCollectionType("java.util.Map");
 		testEntity1.addRelationship(relationship);
 
-		action.setMakePairs(true);
+		cgenConfiguration.setMakePairs(true);
 
 		List<String> generated = execute(new EntityArtifact(testEntity1));
 		assertNotNull(generated);
@@ -139,7 +146,7 @@ public class ClassGenerationActionTest {
 		testEntity1.addAttribute(attr);
 		testEntity1.addAttribute(attr1);
 
-		action.setMakePairs(true);
+		cgenConfiguration.setMakePairs(true);
 
 		List<String> generated = execute(new EntityArtifact(testEntity1));
 		assertNotNull(generated);
@@ -209,7 +216,7 @@ public class ClassGenerationActionTest {
 
 		if (isClient) {
 
-			action = new ClientClassGenerationAction() {
+			action = new ClientClassGenerationAction(cgenConfiguration) {
 				@Override
 				protected Writer openWriter(TemplateType templateType) throws Exception {
 					StringWriter writer = new StringWriter();
@@ -221,7 +228,7 @@ public class ClassGenerationActionTest {
 
 		}
 
-		action.setMakePairs(true);
+		cgenConfiguration.setMakePairs(true);
 
 		List<String> generated = execute(new EntityArtifact(testEntity1));
 		assertNotNull(generated);
@@ -250,5 +257,43 @@ public class ClassGenerationActionTest {
 			strings.add(writer.toString());
 		}
 		return strings;
+	}
+
+	@Test
+	public void testIsOld() {
+		File file = mock(File.class);
+		when(file.lastModified()).thenReturn(1000L);
+
+		cgenConfiguration.setTimestamp(0);
+		assertTrue(action.isOld(file));
+
+		cgenConfiguration.setTimestamp(2000L);
+		assertFalse(action.isOld(file));
+	}
+
+	@Test
+	public void testFileNeedUpdate() {
+		File file = mock(File.class);
+		when(file.lastModified()).thenReturn(1000L);
+
+		cgenConfiguration.setTimestamp(0);
+		cgenConfiguration.setForce(false);
+
+		assertFalse(action.fileNeedUpdate(file, null));
+
+		cgenConfiguration.setTimestamp(2000L);
+		cgenConfiguration.setForce(false);
+
+		assertTrue(action.fileNeedUpdate(file, null));
+
+		cgenConfiguration.setTimestamp(0);
+		cgenConfiguration.setForce(true);
+
+		assertTrue(action.fileNeedUpdate(file, null));
+
+		cgenConfiguration.setTimestamp(2000L);
+		cgenConfiguration.setForce(true);
+
+		assertTrue(action.fileNeedUpdate(file, null));
 	}
 }

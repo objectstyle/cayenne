@@ -19,23 +19,39 @@
 
 package org.apache.cayenne.dbsync.reverse.dbimport;
 
+import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+import org.apache.cayenne.util.XMLEncoder;
+import org.apache.cayenne.util.XMLSerializable;
+
 import java.util.Collection;
 import java.util.LinkedList;
 
 /**
  * @since 4.0.
  */
-public class IncludeTable extends PatternParam {
+public class IncludeTable extends PatternParam implements XMLSerializable {
 
     private final Collection<IncludeColumn> includeColumns = new LinkedList<>();
 
     private final Collection<ExcludeColumn> excludeColumns = new LinkedList<>();
+
+    private final Collection<ExcludeRelationship> excludeRelationship = new LinkedList<>();
 
     public IncludeTable() {
     }
 
     public IncludeTable(String pattern) {
         super(pattern);
+    }
+
+    public IncludeTable(IncludeTable original) {
+        super(original);
+        for (IncludeColumn includeColumn : original.getIncludeColumns()) {
+            this.addIncludeColumn(new IncludeColumn(includeColumn));
+        }
+        for (ExcludeColumn excludeColumn : original.getExcludeColumns()) {
+            this.addExcludeColumn(new ExcludeColumn(excludeColumn));
+        }
     }
 
     public Collection<IncludeColumn> getIncludeColumns() {
@@ -54,12 +70,42 @@ public class IncludeTable extends PatternParam {
         this.excludeColumns.addAll(excludeColumns);
     }
 
+    /**
+     * @since 4.1
+     */
+    public Collection<ExcludeRelationship> getExcludeRelationship() {
+        return excludeRelationship;
+    }
+
+    /**
+     * @since 4.1
+     */
+    public void setExcludeRelationship (Collection<ExcludeRelationship> excludeRelationship) {
+        this.excludeRelationship.addAll(excludeRelationship);
+    }
+
     public void addIncludeColumn(IncludeColumn includeColumn) {
         this.includeColumns.add(includeColumn);
     }
 
     public void addExcludeColumn(ExcludeColumn excludeColumn) {
         this.excludeColumns.add(excludeColumn);
+    }
+
+    /**
+     * @since 4.1
+     */
+    public void addExcludeRelationship(ExcludeRelationship excludeRelationship){
+        this.excludeRelationship.add(excludeRelationship);
+    }
+
+    @Override
+    public void encodeAsXML(XMLEncoder encoder, ConfigurationNodeVisitor delegate) {
+        encoder.start("includeTable")
+            .simpleTag("name", this.getPattern())
+            .nested(this.getIncludeColumns(), delegate)
+            .nested(this.getExcludeColumns(), delegate)
+        .end();
     }
 
     @Override
@@ -76,6 +122,12 @@ public class IncludeTable extends PatternParam {
         if (excludeColumns != null && !excludeColumns.isEmpty()) {
             for (ExcludeColumn excludeColumn : excludeColumns) {
                 excludeColumn.toString(res, prefix);
+            }
+        }
+
+        if(excludeRelationship != null && !excludeRelationship.isEmpty()) {
+            for(ExcludeRelationship excludeRelationship : excludeRelationship) {
+                excludeRelationship.toString(res, prefix);
             }
         }
 

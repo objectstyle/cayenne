@@ -19,9 +19,11 @@
 
 package org.apache.cayenne.dbsync.reverse.dbload;
 
+import org.apache.cayenne.map.DbEntity;
 import org.apache.cayenne.util.EqualsBuilder;
 import org.apache.cayenne.util.HashCodeBuilder;
 import org.apache.cayenne.util.CompareToBuilder;
+import org.apache.cayenne.util.Util;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -216,5 +218,37 @@ public class ExportedKey implements Comparable {
                     .toHashCode();
         }
 
+        /**
+         * Validate that entity is for this key (exists and has same catalog/schema)
+         * @param entity to validate
+         * @return is entity matches for this key
+         */
+        public boolean validateEntity(DbEntity entity) {
+            if (entity == null) {
+                return false;
+            }
+
+            if(Util.isEmptyString(catalog)) {
+                if(!Util.isEmptyString(entity.getCatalog())) {
+                    return false;
+                }
+            } else {
+                if(!catalog.equals(entity.getCatalog())) {
+                    return false;
+                }
+            }
+
+            if(Util.isEmptyString(schema)) {
+                if(!Util.isEmptyString(entity.getSchema())) {
+                    return false;
+                }
+            } else {
+                if(!schema.equals(entity.getSchema())) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }

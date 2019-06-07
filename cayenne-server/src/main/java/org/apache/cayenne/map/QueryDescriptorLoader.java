@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.cayenne.util.Util.isBlank;
+
 /**
  * A builder that constructs Cayenne queries from abstract configuration information
  * defined in cayenne-data-map*.dtd. This abstract builder supports values declared in the
@@ -50,7 +52,7 @@ public class QueryDescriptorLoader {
     protected String resultEntity;
 
     protected List<Ordering> orderings = new ArrayList<>();
-    protected List<String> prefetches = new ArrayList<>();
+    protected HashMap<String, Integer> prefetchesMap = new HashMap<>();
     protected Map<String, String> adapterSql = new HashMap<>();
     protected Map<String, String> properties = new HashMap<>();
 
@@ -69,10 +71,11 @@ public class QueryDescriptorLoader {
             case QueryDescriptor.SELECT_QUERY:
                 ((SelectQueryDescriptor) descriptor).setQualifier(qualifier);
                 ((SelectQueryDescriptor) descriptor).setOrderings(orderings);
-                ((SelectQueryDescriptor) descriptor).setPrefetches(prefetches);
+                ((SelectQueryDescriptor) descriptor).setPrefetchesMap(prefetchesMap);
                 break;
             case QueryDescriptor.SQL_TEMPLATE:
                 ((SQLTemplateDescriptor) descriptor).setSql(sql);
+                ((SQLTemplateDescriptor) descriptor).setPrefetchesMap(prefetchesMap);
                 ((SQLTemplateDescriptor) descriptor).setAdapterSql(adapterSql);
                 break;
             case QueryDescriptor.EJBQL_QUERY:
@@ -189,10 +192,9 @@ public class QueryDescriptorLoader {
     }
 
     public void setQualifier(String qualifier) {
-        if (qualifier == null || qualifier.trim().length() == 0) {
+        if (qualifier == null || isBlank(qualifier)) {
             this.qualifier = null;
-        }
-        else {
+        } else {
             this.qualifier = ExpressionFactory.exp(qualifier.trim());
         }
     }
@@ -210,7 +212,7 @@ public class QueryDescriptorLoader {
             orderings = new ArrayList<>();
         }
 
-        if (path != null && path.trim().length() == 0) {
+        if (path != null && isBlank(path)) {
             path = null;
         }
         boolean isDescending = "true".equalsIgnoreCase(descending);
@@ -232,15 +234,16 @@ public class QueryDescriptorLoader {
         orderings.add(new Ordering(path, order));
     }
 
-    public void addPrefetch(String path) {
-        if (path == null || (path != null && path.trim().length() == 0)) {
+    public void addPrefetch(String path, int semantics) {
+        if (path == null || isBlank(path)) {
             // throw??
             return;
         }
 
-        if (prefetches == null) {
-            prefetches = new ArrayList<>();
+        if (prefetchesMap == null) {
+            prefetchesMap = new HashMap<>();
         }
-        prefetches.add(path.trim());
+
+        prefetchesMap.put(path.trim(), semantics);
     }
 }

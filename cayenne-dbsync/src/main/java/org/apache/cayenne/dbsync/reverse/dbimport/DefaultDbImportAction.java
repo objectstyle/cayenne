@@ -16,27 +16,44 @@
  *  specific language governing permissions and limitations
  *  under the License.
  ****************************************************************/
+
 package org.apache.cayenne.dbsync.reverse.dbimport;
 
+import javax.sql.DataSource;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.sql.Connection;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.cayenne.CayenneRuntimeException;
+import org.apache.cayenne.configuration.ConfigurationNode;
 import org.apache.cayenne.configuration.ConfigurationTree;
+import org.apache.cayenne.configuration.DataChannelDescriptor;
+import org.apache.cayenne.configuration.DataChannelDescriptorLoader;
 import org.apache.cayenne.configuration.DataMapLoader;
 import org.apache.cayenne.configuration.DataNodeDescriptor;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
 import org.apache.cayenne.configuration.server.DbAdapterFactory;
+import org.apache.cayenne.configuration.xml.DataChannelMetaData;
 import org.apache.cayenne.dba.DbAdapter;
-import org.apache.cayenne.dbsync.merge.token.model.AbstractToModelToken;
 import org.apache.cayenne.dbsync.merge.DataMapMerger;
 import org.apache.cayenne.dbsync.merge.context.MergerContext;
-import org.apache.cayenne.dbsync.merge.token.MergerToken;
-import org.apache.cayenne.dbsync.reverse.dbload.ModelMergeDelegate;
-import org.apache.cayenne.dbsync.reverse.dbload.ProxyModelMergeDelegate;
 import org.apache.cayenne.dbsync.merge.factory.MergerTokenFactory;
 import org.apache.cayenne.dbsync.merge.factory.MergerTokenFactoryProvider;
+import org.apache.cayenne.dbsync.merge.token.MergerToken;
+import org.apache.cayenne.dbsync.merge.token.model.AbstractToModelToken;
 import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
 import org.apache.cayenne.dbsync.reverse.dbload.DbLoader;
 import org.apache.cayenne.dbsync.reverse.dbload.DbLoaderConfiguration;
+import org.apache.cayenne.dbsync.reverse.dbload.ModelMergeDelegate;
+import org.apache.cayenne.dbsync.reverse.dbload.ProxyModelMergeDelegate;
 import org.apache.cayenne.dbsync.reverse.filters.CatalogFilter;
 import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
+import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
 import org.apache.cayenne.dbsync.reverse.filters.PatternFilter;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.map.DataMap;
@@ -53,15 +70,7 @@ import org.apache.cayenne.validation.ValidationFailure;
 import org.apache.cayenne.validation.ValidationResult;
 import org.slf4j.Logger;
 
-import javax.sql.DataSource;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.sql.Connection;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import static org.apache.cayenne.util.Util.isBlank;
 
 /**
  * A default implementation of {@link DbImportAction} that can load DB schema and merge it to a new or an existing
@@ -72,24 +81,34 @@ import java.util.List;
 public class DefaultDbImportAction implements DbImportAction {
 
     private final ProjectSaver projectSaver;
-    private final Logger logger;
+    protected final Logger logger;
     private final DataSourceFactory dataSourceFactory;
     private final DbAdapterFactory adapterFactory;
     private final DataMapLoader mapLoader;
     private final MergerTokenFactoryProvider mergerTokenFactoryProvider;
+    private final DataChannelDescriptorLoader dataChannelDescriptorLoader;
+    private final DataChannelMetaData metaData;
+    private boolean hasChanges;
+    private FiltersConfig filters;
+    private Collection<MergerToken> tokens;
+    private DataMap loadedDataMap;
 
     public DefaultDbImportAction(@Inject Logger logger,
                                  @Inject ProjectSaver projectSaver,
                                  @Inject DataSourceFactory dataSourceFactory,
                                  @Inject DbAdapterFactory adapterFactory,
                                  @Inject DataMapLoader mapLoader,
-                                 @Inject MergerTokenFactoryProvider mergerTokenFactoryProvider) {
+                                 @Inject MergerTokenFactoryProvider mergerTokenFactoryProvider,
+                                 @Inject DataChannelDescriptorLoader dataChannelDescriptorLoader,
+                                 @Inject DataChannelMetaData metaData) {
         this.logger = logger;
         this.projectSaver = projectSaver;
         this.dataSourceFactory = dataSourceFactory;
         this.adapterFactory = adapterFactory;
         this.mapLoader = mapLoader;
         this.mergerTokenFactoryProvider = mergerTokenFactoryProvider;
+        this.metaData = metaData;
+        this.dataChannelDescriptorLoader = dataChannelDescriptorLoader;
     }
 
     protected static List<MergerToken> sort(List<MergerToken> reverse) {
@@ -125,23 +144,51 @@ public class DefaultDbImportAction implements DbImportAction {
 
     @Override
     public void execute(DbImportConfiguration config) throws Exception {
+        commit(config, loadDataMap(config));
+    }
 
+    protected void commit(DbImportConfiguration config, DataMap sourceDataMap) throws Exception {
+        if (hasChanges) {
+            DataMap targetDataMap = loadedDataMap;
+
+            syncDataMapProperties(targetDataMap, config);
+            applyTokens(targetDataMap, tokens, config);
+            syncProcedures(targetDataMap, sourceDataMap, filters);
+
+            saveLoaded(targetDataMap, config);
+            this.loadedDataMap = null;
+            this.hasChanges = false;
+        }
+    }
+
+    protected DataMap loadDataMap(DbImportConfiguration config) throws Exception {
         if (logger.isDebugEnabled()) {
             logger.debug("DB connection: " + config.getDataSourceInfo());
             logger.debug(String.valueOf(config));
         }
 
-        boolean hasChanges = false;
         DataNodeDescriptor dataNodeDescriptor = config.createDataNodeDescriptor();
         DataSource dataSource = dataSourceFactory.getDataSource(dataNodeDescriptor);
         DbAdapter adapter = adapterFactory.createAdapter(dataNodeDescriptor, dataSource);
 
         DataMap sourceDataMap;
+        DataMap targetDataMap = existingTargetMap(config);
+
+        ReverseEngineering dataMapReverseEngineering = metaData.get(targetDataMap, ReverseEngineering.class);
+        if ((config.isUseDataMapReverseEngineering()) && (dataMapReverseEngineering != null)) {
+            putReverseEngineeringToConfig(dataMapReverseEngineering, config);
+        }
+        if ((dataMapReverseEngineering != null) && (!config.isUseDataMapReverseEngineering())) {
+            logger.warn("Found several dbimport configs. Configuration selected from 'build.gradle' file.");
+        }
+        if ((dataMapReverseEngineering == null) && (config.isUseDataMapReverseEngineering())) {
+            logger.warn("Missing dbimport config. Database is imported completely.");
+        }
+
         try (Connection connection = dataSource.getConnection()) {
             sourceDataMap = load(config, adapter, connection);
         }
 
-        DataMap targetDataMap = existingTargetMap(config);
         if (targetDataMap == null) {
 
             String path = config.getTargetDataMap() == null ? "null" : config.getTargetDataMap().getAbsolutePath() + "'";
@@ -152,28 +199,43 @@ public class DefaultDbImportAction implements DbImportAction {
             hasChanges = true;
             targetDataMap = newTargetDataMap(config);
         }
+        this.loadedDataMap = targetDataMap;
 
+        // In that moment our data map fills with sorce map
         // transform source DataMap before merging
         transformSourceBeforeMerge(sourceDataMap, targetDataMap, config);
 
         MergerTokenFactory mergerTokenFactory = mergerTokenFactoryProvider.get(adapter);
 
         DbLoaderConfiguration loaderConfig = config.getDbLoaderConfig();
-        Collection<MergerToken> tokens = DataMapMerger.builder(mergerTokenFactory)
-                .filters(loaderConfig.getFiltersConfig())
-                .skipPKTokens(loaderConfig.isSkipPrimaryKeyLoading())
-                .skipRelationshipsTokens(loaderConfig.isSkipRelationshipsLoading())
-                .build()
-                .createMergeTokens(targetDataMap, sourceDataMap);
+        tokens = DataMapMerger.builder(mergerTokenFactory)
+           .filters(loaderConfig.getFiltersConfig())
+           .skipPKTokens(loaderConfig.isSkipPrimaryKeyLoading())
+           .skipRelationshipsTokens(loaderConfig.isSkipRelationshipsLoading())
+           .build()
+           .createMergeTokens(targetDataMap, sourceDataMap);
         tokens = log(sort(reverse(mergerTokenFactory, tokens)));
+        filters = loaderConfig.getFiltersConfig();
 
-        hasChanges |= syncDataMapProperties(targetDataMap, config);
-        hasChanges |= applyTokens(targetDataMap, tokens, config);
-        hasChanges |= syncProcedures(targetDataMap, sourceDataMap, loaderConfig.getFiltersConfig());
+        hasChanges |= checkDataMapProperties(targetDataMap, config);
+        hasChanges |= hasTokensToImport(tokens);
+        hasChanges |= checkIncludedProcedures(sourceDataMap, filters);
+        return sourceDataMap;
+    }
 
-        if (hasChanges) {
-            saveLoaded(targetDataMap);
-        }
+    private void putReverseEngineeringToConfig(ReverseEngineering reverseEngineering, DbImportConfiguration config) {
+        config.setSkipRelationshipsLoading(reverseEngineering.getSkipRelationshipsLoading());
+        config.setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
+        config.setStripFromTableNames(reverseEngineering.getStripFromTableNames());
+        config.setTableTypes(reverseEngineering.getTableTypes());
+        config.setMeaningfulPkTables(reverseEngineering.getMeaningfulPkTables());
+        config.setNamingStrategy(reverseEngineering.getNamingStrategy());
+        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
+        config.setForceDataMapCatalog(reverseEngineering.isForceDataMapCatalog());
+        config.setForceDataMapSchema(reverseEngineering.isForceDataMapSchema());
+        config.setDefaultPackage(reverseEngineering.getDefaultPackage());
+        config.setUsePrimitives(reverseEngineering.isUsePrimitives());
+        config.setUseJava7Types(reverseEngineering.isUseJava7Types());
     }
 
     protected void transformSourceBeforeMerge(DataMap sourceDataMap, DataMap targetDataMap, DbImportConfiguration configuration) {
@@ -192,18 +254,52 @@ public class DefaultDbImportAction implements DbImportAction {
         }
     }
 
-    private boolean syncDataMapProperties(DataMap targetDataMap, DbImportConfiguration config) {
-        String defaultPackage = config.getDefaultPackage();
-        if (defaultPackage == null || defaultPackage.trim().length() == 0) {
+    public boolean hasTokensToImport(Collection<MergerToken> tokens) {
+
+        if (tokens.isEmpty()) {
+            logger.info("");
+            logger.info("Detected changes: No changes to import.");
             return false;
         }
 
-        if (defaultPackage.equals(targetDataMap.getDefaultPackage())) {
+        return true;
+
+    }
+
+    private boolean checkDataMapProperties(DataMap targetDataMap, DbImportConfiguration config) {
+        String defaultPackage = config.getDefaultPackage();
+        if (defaultPackage == null || isBlank(defaultPackage)) {
             return false;
+        }
+
+        return defaultPackage.equals(targetDataMap.getDefaultPackage());
+    }
+
+    protected boolean hasChangesForProcedure(Procedure procedure) {
+        PatternFilter proceduresFilter = filters.proceduresFilter(procedure.getCatalog(), procedure.getSchema());
+        return proceduresFilter != null && proceduresFilter.isIncluded(procedure.getName());
+    }
+
+    protected boolean checkIncludedProcedures(DataMap loadedDataMap, FiltersConfig filters) {
+        Collection<Procedure> procedures = loadedDataMap.getProcedures();
+        boolean hasChanges = false;
+        for (Procedure procedure : procedures) {
+            if(!hasChangesForProcedure(procedure)) {
+                continue;
+            }
+            hasChanges = true;
+        }
+        return hasChanges;
+    }
+
+
+    private void syncDataMapProperties(DataMap targetDataMap, DbImportConfiguration config) {
+        String defaultPackage = config.getDefaultPackage();
+        if (defaultPackage == null || isBlank(defaultPackage)) {
+            return;
         }
 
         targetDataMap.setDefaultPackage(defaultPackage);
-        return true;
     }
 
     private void relationshipsSanity(DataMap executed) {
@@ -219,7 +315,7 @@ public class DefaultDbImportAction implements DbImportAction {
         }
     }
 
-    private Collection<MergerToken> log(List<MergerToken> tokens) {
+    protected Collection<MergerToken> log(List<MergerToken> tokens) {
         logger.info("");
         if (tokens.isEmpty()) {
             logger.info("Detected changes: No changes to import.");
@@ -243,7 +339,6 @@ public class DefaultDbImportAction implements DbImportAction {
             DataMap dataMap = mapLoader.load(configurationResource);
             dataMap.setNamespace(new EntityResolver(Collections.singleton(dataMap)));
             dataMap.setConfigurationSource(configurationResource);
-
             return dataMap;
         }
 
@@ -302,12 +397,11 @@ public class DefaultDbImportAction implements DbImportAction {
         return tokens;
     }
 
-    private boolean applyTokens(DataMap targetDataMap, Collection<MergerToken> tokens, DbImportConfiguration config) {
+    private void applyTokens(DataMap targetDataMap, Collection<MergerToken> tokens, DbImportConfiguration config) {
 
         if (tokens.isEmpty()) {
             logger.info("");
             logger.info("Detected changes: No changes to import.");
-            return false;
         }
 
         final Collection<ObjEntity> loadedObjEntities = new LinkedList<>();
@@ -353,16 +447,21 @@ public class DefaultDbImportAction implements DbImportAction {
 
         flattenManyToManyRelationships(targetDataMap, loadedObjEntities, nameGenerator);
         relationshipsSanity(targetDataMap);
-        return true;
     }
 
-    private boolean syncProcedures(DataMap targetDataMap, DataMap loadedDataMap, FiltersConfig filters) {
-        Collection<Procedure> procedures = loadedDataMap.getProcedures();
-        if (procedures.isEmpty()) {
-            return false;
-        }
+    protected void addMessageToLogs(String message, List<String> messages) {
+        messages.add(message);
+    }
 
-        boolean hasChanges = false;
+    protected void logMessages(List<String> messages) {
+        messages.forEach(logger::info);
+    }
+
+
+    protected void syncProcedures(DataMap targetDataMap, DataMap loadedDataMap, FiltersConfig filters) {
+        Collection<Procedure> procedures = loadedDataMap.getProcedures();
+        List<String> messages = new LinkedList<>();
+
         for (Procedure procedure : procedures) {
             PatternFilter proceduresFilter = filters.proceduresFilter(procedure.getCatalog(), procedure.getSchema());
             if (proceduresFilter == null || !proceduresFilter.isIncluded(procedure.getName())) {
@@ -373,20 +472,67 @@ public class DefaultDbImportAction implements DbImportAction {
             // maybe we need to compare oldProcedure's and procedure's fully qualified names?
             if (oldProcedure != null) {
                 targetDataMap.removeProcedure(procedure.getName());
-                logger.info("Replace procedure " + procedure.getName());
+                addMessageToLogs("Replace procedure " + procedure.getName(), messages);
             } else {
-                logger.info("Add new procedure " + procedure.getName());
+                addMessageToLogs("Add new procedure " + procedure.getName(), messages);
             }
             targetDataMap.addProcedure(procedure);
-            hasChanges = true;
         }
-        return hasChanges;
+        logMessages(messages);
     }
 
-    protected void saveLoaded(DataMap dataMap) throws FileNotFoundException {
-        ConfigurationTree<DataMap> projectRoot = new ConfigurationTree<>(dataMap);
+    /**
+     * Save imported data.
+     * This can create DataMap and/or Project files.
+     */
+    protected void saveLoaded(DataMap dataMap, DbImportConfiguration config) throws MalformedURLException {
+        ConfigurationTree<ConfigurationNode> projectRoot;
+        if(config.getCayenneProject() == null) {
+            // Old version of cdbimport, no Cayenne project, need to save only DataMap
+            projectRoot = new ConfigurationTree<>(dataMap);
+        } else {
+            // Cayenne project is present
+            DataChannelDescriptor dataChannelDescriptor;
+            if(config.getCayenneProject().exists()) {
+                // Cayenne project file exists, need to read it and push DataMap inside
+                URLResource configurationResource = new URLResource(config.getCayenneProject().toURI().toURL());
+                ConfigurationTree<DataChannelDescriptor> configurationTree = dataChannelDescriptorLoader.load(configurationResource);
+                if(!configurationTree.getLoadFailures().isEmpty()) {
+                    throw new CayenneRuntimeException("Unable to load cayenne project %s, %s", config.getCayenneProject(),
+                            configurationTree.getLoadFailures().iterator().next().getDescription());
+                }
+                dataChannelDescriptor = configurationTree.getRootNode();
+                // remove old copy of DataMap if it's there
+                DataMap oldDataMap = dataChannelDescriptor.getDataMap(dataMap.getName());
+                if(oldDataMap != null) {
+                    dataChannelDescriptor.getDataMaps().remove(oldDataMap);
+                }
+            } else {
+                // No project file yet, can simply create empty project with resulting DataMap
+                dataChannelDescriptor = new DataChannelDescriptor();
+                dataChannelDescriptor.setName(getProjectNameFromFileName(config.getCayenneProject().getName()));
+                dataChannelDescriptor.setConfigurationSource(new URLResource(config.getCayenneProject().toURI().toURL()));
+                logger.info("Project file does not exist. New project will be saved into '" + config.getCayenneProject().getAbsolutePath());
+            }
+
+            dataChannelDescriptor.getDataMaps().add(dataMap);
+            projectRoot = new ConfigurationTree<>(dataChannelDescriptor);
+        }
+
         Project project = new Project(projectRoot);
         projectSaver.save(project);
+
+        logger.info("");
+        logger.info("All changes saved.");
+    }
+
+    protected String getProjectNameFromFileName(String fileName) {
+        int xmlExtPosition = fileName.lastIndexOf(".xml");
+        String name = fileName.substring(0, xmlExtPosition == -1 ? fileName.length() : xmlExtPosition);
+        if(fileName.startsWith("cayenne-")) {
+            name = name.substring("cayenne-".length());
+        }
+        return name;
     }
 
     protected DataMap load(DbImportConfiguration config, DbAdapter adapter, Connection connection) throws Exception {

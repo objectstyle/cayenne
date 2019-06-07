@@ -18,11 +18,12 @@
 	<parent>
 		<groupId>org.apache.cayenne.tutorials</groupId>
 		<artifactId>cayenne-tutorials-parent</artifactId>
-		<version>4.1.M2-SNAPSHOT</version>
+		<version>4.1.B3-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>tutorial</artifactId>
 	<name>tutorial: Cayenne Tutorial</name>
+	<packaging>war</packaging>
 
 	<dependencies>
 		<dependency>
@@ -31,17 +32,24 @@
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.cayenne</groupId>
-			<artifactId>cayenne-java8</artifactId>
-			<version>${project.version}</version>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+			<version>3.1.0</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
+			<groupId>org.apache.cayenne</groupId>
+			<artifactId>cayenne-web</artifactId>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.derby</groupId>
 			<artifactId>derby</artifactId>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
 			<scope>compile</scope>
 		</dependency>
 	</dependencies>
